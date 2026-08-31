@@ -1,0 +1,108 @@
+{
+  "digest": "c9458e5866feba16f0abbbd0e40d7185e3bedbe1ea3f6ce9010aaeadd76d9c56",
+  "languages": [
+    "de",
+    "en"
+  ],
+  "schemaVersion": 1,
+  "source": {
+    "commit": "3a66c3a01fa794e54e94c22a218aa4b63168fdb0",
+    "dirty": false,
+    "repository": "https://github.com/lumine-code/language-sofistik"
+  },
+  "sources": [
+    {
+      "digest": "0ea1fc428d2a7b0660be48d2d610f66f652894b427913282e3bdab1e17481684",
+      "file": "sofistik.2018.de.json",
+      "language": "de",
+      "version": "2018"
+    },
+    {
+      "digest": "f27067f0c535598788c127222be50b398c1730a6d62837b52031e1add8147804",
+      "file": "sofistik.2018.en.json",
+      "language": "en",
+      "version": "2018"
+    },
+    {
+      "digest": "4b96e8d8786bcf8312c12cc6b96400c1bec42c978305e1d16f1ed8d454be7547",
+      "file": "sofistik.2020.de.json",
+      "language": "de",
+      "version": "2020"
+    },
+    {
+      "digest": "849e7b734aa33c573689dcb17358e7adcec255a0e7f50867ef0e19778840d5c3",
+      "file": "sofistik.2020.en.json",
+      "language": "en",
+      "version": "2020"
+    },
+    {
+      "digest": "464a2b412618724ef938da88c2f9f95132d72c144c430aa3f1a079f2fde92578",
+      "file": "sofistik.2022.de.json",
+      "language": "de",
+      "version": "2022"
+    },
+    {
+      "digest": "44979188371f90212b21f657a03f9c84dd56db102aac337602113a533c927164",
+      "file": "sofistik.2022.en.json",
+      "language": "en",
+      "version": "2022"
+    },
+    {
+      "digest": "fa671bed06cf4039c873402931ddf1e42580ff789b0b2cab619ef4048293402e",
+      "file": "sofistik.2023.de.json",
+      "language": "de",
+      "version": "2023"
+    },
+    {
+      "digest": "a5972bd4e51bcd5d0089345a1ddc45038745625d00b14758c43e5792a72e1713",
+      "file": "sofistik.2023.en.json",
+      "language": "en",
+      "version": "2023"
+    },
+    {
+      "digest": "9f6297e3594a62618ed505c7e5354856e996bb014e2cd355838ef131c8c8303b",
+      "file": "sofistik.2024.de.json",
+      "language": "de",
+      "version": "2024"
+    },
+    {
+      "digest": "991949f19d58697d0bc8577b6f5588caee900e3ad01052fe0ea5a872390ae4da",
+      "file": "sofistik.2024.en.json",
+      "language": "en",
+      "version": "2024"
+    },
+    {
+      "digest": "9d43db5e1b9977ee829190b37251fa6c2bd025fa8cabca95c1cb4a327f6a37d6",
+      "file": "sofistik.2025.de.json",
+      "language": "de",
+      "version": "2025"
+    },
+    {
+      "digest": "868796fe01de5deb75262cf6072434c0091fc8fe4d1fa5faf677b25fd13a618b",
+      "file": "sofistik.2025.en.json",
+      "language": "en",
+      "version": "2025"
+    },
+    {
+      "digest": "6381b6502a552f2b76848daae931ab902e63ee5e08058d61917b719fd05683c6",
+      "file": "sofistik.2026.de.json",
+      "language": "de",
+      "version": "2026"
+    },
+    {
+      "digest": "c30d579c4d88eedb4cc94e03e714f017aacbe7997698728f4bf81586bd6337fd",
+      "file": "sofistik.2026.en.json",
+      "language": "en",
+      "version": "2026"
+    }
+  ],
+  "versions": [
+    "2018",
+    "2020",
+    "2022",
+    "2023",
+    "2024",
+    "2025",
+    "2026"
+  ]
+}

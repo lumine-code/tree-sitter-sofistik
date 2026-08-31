@@ -1,0 +1,1380 @@
+[
+  {
+    "type": "_value",
+    "named": true,
+    "subtypes": [
+      {
+        "type": "bare_value",
+        "named": true
+      },
+      {
+        "type": "dollar_variable",
+        "named": true
+      },
+      {
+        "type": "expression",
+        "named": true
+      },
+      {
+        "type": "generic_expression",
+        "named": true
+      },
+      {
+        "type": "hash_variable",
+        "named": true
+      },
+      {
+        "type": "number",
+        "named": true
+      },
+      {
+        "type": "number_list",
+        "named": true
+      },
+      {
+        "type": "string",
+        "named": true
+      },
+      {
+        "type": "unit",
+        "named": true
+      }
+    ]
+  },
+  {
+    "type": "apply_sigil",
+    "named": true,
+    "fields": {}
+  },
+  {
+    "type": "apply_statement",
+    "named": true,
+    "fields": {
+      "argument": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "_value",
+            "named": true
+          }
+        ]
+      },
+      "sigil": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "apply_sigil",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "command",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "command_name",
+            "named": true
+          }
+        ]
+      },
+      "record": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "implicit_record",
+            "named": true
+          },
+          {
+            "type": "record",
+            "named": true
+          },
+          {
+            "type": "table_definition",
+            "named": true
+          },
+          {
+            "type": "table_row",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "dynamic_record",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "dynamic_command_name",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "_value",
+            "named": true
+          },
+          {
+            "type": "continuation",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "else_header",
+    "named": true,
+    "fields": {
+      "keyword": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "control_keyword",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "elseif_header",
+    "named": true,
+    "fields": {
+      "condition": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "_value",
+            "named": true
+          }
+        ]
+      },
+      "keyword": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "control_keyword",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "end_record",
+    "named": true,
+    "fields": {}
+  },
+  {
+    "type": "endif_record",
+    "named": true,
+    "fields": {
+      "keyword": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "control_keyword",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "endloop_record",
+    "named": true,
+    "fields": {
+      "keyword": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "control_keyword",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "exit_iteration_record",
+    "named": true,
+    "fields": {
+      "keyword": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "control_keyword",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "if_block",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "command",
+          "named": true
+        },
+        {
+          "type": "dynamic_record",
+          "named": true
+        },
+        {
+          "type": "else_header",
+          "named": true
+        },
+        {
+          "type": "elseif_header",
+          "named": true
+        },
+        {
+          "type": "endif_record",
+          "named": true
+        },
+        {
+          "type": "exit_iteration_record",
+          "named": true
+        },
+        {
+          "type": "if_block",
+          "named": true
+        },
+        {
+          "type": "if_header",
+          "named": true
+        },
+        {
+          "type": "implicit_record",
+          "named": true
+        },
+        {
+          "type": "invalid_command_record",
+          "named": true
+        },
+        {
+          "type": "loop_block",
+          "named": true
+        },
+        {
+          "type": "metadata",
+          "named": true
+        },
+        {
+          "type": "preprocessor_define_block",
+          "named": true
+        },
+        {
+          "type": "preprocessor_define_statement",
+          "named": true
+        },
+        {
+          "type": "preprocessor_directive",
+          "named": true
+        },
+        {
+          "type": "preprocessor_program_block",
+          "named": true
+        },
+        {
+          "type": "text_block",
+          "named": true
+        },
+        {
+          "type": "variable_statement",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "if_header",
+    "named": true,
+    "fields": {
+      "condition": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "_value",
+            "named": true
+          }
+        ]
+      },
+      "keyword": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "control_keyword",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "implicit_record",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "_value",
+          "named": true
+        },
+        {
+          "type": "continuation",
+          "named": true
+        },
+        {
+          "type": "invalid_item",
+          "named": true
+        },
+        {
+          "type": "item_sequence",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "input_block",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "command",
+          "named": true
+        },
+        {
+          "type": "dynamic_record",
+          "named": true
+        },
+        {
+          "type": "end_record",
+          "named": true
+        },
+        {
+          "type": "exit_iteration_record",
+          "named": true
+        },
+        {
+          "type": "if_block",
+          "named": true
+        },
+        {
+          "type": "implicit_record",
+          "named": true
+        },
+        {
+          "type": "invalid_command_record",
+          "named": true
+        },
+        {
+          "type": "loop_block",
+          "named": true
+        },
+        {
+          "type": "metadata",
+          "named": true
+        },
+        {
+          "type": "preprocessor_define_block",
+          "named": true
+        },
+        {
+          "type": "preprocessor_define_statement",
+          "named": true
+        },
+        {
+          "type": "preprocessor_directive",
+          "named": true
+        },
+        {
+          "type": "preprocessor_program_block",
+          "named": true
+        },
+        {
+          "type": "text_block",
+          "named": true
+        },
+        {
+          "type": "variable_statement",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "invalid_command_record",
+    "named": true,
+    "fields": {
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "invalid_command",
+            "named": true
+          }
+        ]
+      }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "_value",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "item_sequence",
+    "named": true,
+    "fields": {
+      "item": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "item_name",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "_value",
+            "named": true
+          },
+          {
+            "type": "enum_value",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "loop_block",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "command",
+          "named": true
+        },
+        {
+          "type": "dynamic_record",
+          "named": true
+        },
+        {
+          "type": "endloop_record",
+          "named": true
+        },
+        {
+          "type": "exit_iteration_record",
+          "named": true
+        },
+        {
+          "type": "if_block",
+          "named": true
+        },
+        {
+          "type": "implicit_record",
+          "named": true
+        },
+        {
+          "type": "invalid_command_record",
+          "named": true
+        },
+        {
+          "type": "loop_block",
+          "named": true
+        },
+        {
+          "type": "loop_header",
+          "named": true
+        },
+        {
+          "type": "metadata",
+          "named": true
+        },
+        {
+          "type": "preprocessor_define_block",
+          "named": true
+        },
+        {
+          "type": "preprocessor_define_statement",
+          "named": true
+        },
+        {
+          "type": "preprocessor_directive",
+          "named": true
+        },
+        {
+          "type": "preprocessor_program_block",
+          "named": true
+        },
+        {
+          "type": "text_block",
+          "named": true
+        },
+        {
+          "type": "variable_statement",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "loop_header",
+    "named": true,
+    "fields": {
+      "argument": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "_value",
+            "named": true
+          }
+        ]
+      },
+      "keyword": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "control_keyword",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "preprocessor_block",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "apply_statement",
+          "named": true
+        },
+        {
+          "type": "metadata",
+          "named": true
+        },
+        {
+          "type": "preprocessor_block",
+          "named": true
+        },
+        {
+          "type": "preprocessor_define_block",
+          "named": true
+        },
+        {
+          "type": "preprocessor_define_statement",
+          "named": true
+        },
+        {
+          "type": "preprocessor_directive",
+          "named": true
+        },
+        {
+          "type": "preprocessor_else_header",
+          "named": true
+        },
+        {
+          "type": "preprocessor_elseif_header",
+          "named": true
+        },
+        {
+          "type": "preprocessor_endif_record",
+          "named": true
+        },
+        {
+          "type": "preprocessor_if_header",
+          "named": true
+        },
+        {
+          "type": "program",
+          "named": true
+        },
+        {
+          "type": "sys_statement",
+          "named": true
+        },
+        {
+          "type": "text_block",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "preprocessor_define_block",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "dynamic_record",
+          "named": true
+        },
+        {
+          "type": "preprocessor_define_header",
+          "named": true
+        },
+        {
+          "type": "preprocessor_enddef_record",
+          "named": true
+        },
+        {
+          "type": "text_block",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "preprocessor_define_header",
+    "named": true,
+    "fields": {
+      "keyword": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "preprocessor_keyword",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "preprocessor_name",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "_value",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "preprocessor_define_statement",
+    "named": true,
+    "fields": {
+      "keyword": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "preprocessor_keyword",
+            "named": true
+          }
+        ]
+      },
+      "name": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "preprocessor_name",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "_value",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "preprocessor_directive",
+    "named": true,
+    "fields": {
+      "argument": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "_value",
+            "named": true
+          }
+        ]
+      },
+      "keyword": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "preprocessor_keyword",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "preprocessor_else_header",
+    "named": true,
+    "fields": {
+      "keyword": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "preprocessor_keyword",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "preprocessor_elseif_header",
+    "named": true,
+    "fields": {
+      "condition": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "_value",
+            "named": true
+          }
+        ]
+      },
+      "keyword": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "preprocessor_keyword",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "preprocessor_enddef_record",
+    "named": true,
+    "fields": {
+      "keyword": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "preprocessor_keyword",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "preprocessor_endif_record",
+    "named": true,
+    "fields": {
+      "keyword": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "preprocessor_keyword",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "preprocessor_if_header",
+    "named": true,
+    "fields": {
+      "condition": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "_value",
+            "named": true
+          }
+        ]
+      },
+      "keyword": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "preprocessor_keyword",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "preprocessor_program_block",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "command",
+          "named": true
+        },
+        {
+          "type": "dynamic_record",
+          "named": true
+        },
+        {
+          "type": "exit_iteration_record",
+          "named": true
+        },
+        {
+          "type": "if_block",
+          "named": true
+        },
+        {
+          "type": "implicit_record",
+          "named": true
+        },
+        {
+          "type": "invalid_command_record",
+          "named": true
+        },
+        {
+          "type": "loop_block",
+          "named": true
+        },
+        {
+          "type": "metadata",
+          "named": true
+        },
+        {
+          "type": "preprocessor_define_block",
+          "named": true
+        },
+        {
+          "type": "preprocessor_define_statement",
+          "named": true
+        },
+        {
+          "type": "preprocessor_directive",
+          "named": true
+        },
+        {
+          "type": "preprocessor_else_header",
+          "named": true
+        },
+        {
+          "type": "preprocessor_elseif_header",
+          "named": true
+        },
+        {
+          "type": "preprocessor_endif_record",
+          "named": true
+        },
+        {
+          "type": "preprocessor_if_header",
+          "named": true
+        },
+        {
+          "type": "preprocessor_program_block",
+          "named": true
+        },
+        {
+          "type": "text_block",
+          "named": true
+        },
+        {
+          "type": "variable_statement",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "program",
+    "named": true,
+    "fields": {
+      "body": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "input_block",
+            "named": true
+          }
+        ]
+      },
+      "header": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "program_header",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "program_header",
+    "named": true,
+    "fields": {
+      "module": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "invalid_module",
+            "named": true
+          },
+          {
+            "type": "module_name",
+            "named": true
+          }
+        ]
+      },
+      "option": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "program_option",
+            "named": true
+          }
+        ]
+      },
+      "sigil": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "program_sigil",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "program_option",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": false,
+      "required": true,
+      "types": [
+        {
+          "type": "_value",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "program_sigil",
+    "named": true,
+    "fields": {}
+  },
+  {
+    "type": "record",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "_value",
+          "named": true
+        },
+        {
+          "type": "continuation",
+          "named": true
+        },
+        {
+          "type": "invalid_item",
+          "named": true
+        },
+        {
+          "type": "item_sequence",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "source_file",
+    "named": true,
+    "root": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "apply_statement",
+          "named": true
+        },
+        {
+          "type": "metadata",
+          "named": true
+        },
+        {
+          "type": "preprocessor_block",
+          "named": true
+        },
+        {
+          "type": "preprocessor_define_statement",
+          "named": true
+        },
+        {
+          "type": "preprocessor_directive",
+          "named": true
+        },
+        {
+          "type": "program",
+          "named": true
+        },
+        {
+          "type": "sys_statement",
+          "named": true
+        },
+        {
+          "type": "text_block",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "string",
+    "named": true,
+    "fields": {}
+  },
+  {
+    "type": "sys_sigil",
+    "named": true,
+    "fields": {}
+  },
+  {
+    "type": "sys_statement",
+    "named": true,
+    "fields": {
+      "argument": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "_value",
+            "named": true
+          }
+        ]
+      },
+      "sigil": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "sys_sigil",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "table_definition",
+    "named": true,
+    "fields": {
+      "item": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "item_name",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "table_row",
+    "named": true,
+    "fields": {
+      "value": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "_value",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "text_block",
+    "named": true,
+    "fields": {
+      "body": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "text_content",
+            "named": true
+          }
+        ]
+      },
+      "end": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "text_end",
+            "named": true
+          }
+        ]
+      },
+      "start": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "text_start",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "variable_keyword",
+    "named": true,
+    "fields": {}
+  },
+  {
+    "type": "variable_statement",
+    "named": true,
+    "fields": {
+      "keyword": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "variable_keyword",
+            "named": true
+          }
+        ]
+      },
+      "value": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "_value",
+            "named": true
+          }
+        ]
+      },
+      "variable": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "hash_variable",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": ";",
+    "named": false
+  },
+  {
+    "type": "bare_value",
+    "named": true
+  },
+  {
+    "type": "command_name",
+    "named": true
+  },
+  {
+    "type": "comment",
+    "named": true,
+    "extra": true
+  },
+  {
+    "type": "continuation",
+    "named": true
+  },
+  {
+    "type": "control_keyword",
+    "named": true
+  },
+  {
+    "type": "dollar_variable",
+    "named": true
+  },
+  {
+    "type": "dynamic_command_name",
+    "named": true
+  },
+  {
+    "type": "enum_value",
+    "named": true
+  },
+  {
+    "type": "expression",
+    "named": true
+  },
+  {
+    "type": "generic_expression",
+    "named": true
+  },
+  {
+    "type": "hash_variable",
+    "named": true
+  },
+  {
+    "type": "invalid_command",
+    "named": true
+  },
+  {
+    "type": "invalid_item",
+    "named": true
+  },
+  {
+    "type": "invalid_module",
+    "named": true
+  },
+  {
+    "type": "item_name",
+    "named": true
+  },
+  {
+    "type": "metadata",
+    "named": true
+  },
+  {
+    "type": "module_name",
+    "named": true
+  },
+  {
+    "type": "number",
+    "named": true
+  },
+  {
+    "type": "number_list",
+    "named": true
+  },
+  {
+    "type": "preprocessor_keyword",
+    "named": true
+  },
+  {
+    "type": "preprocessor_name",
+    "named": true
+  },
+  {
+    "type": "text_content",
+    "named": true
+  },
+  {
+    "type": "text_end",
+    "named": true
+  },
+  {
+    "type": "text_start",
+    "named": true
+  },
+  {
+    "type": "unit",
+    "named": true
+  }
+]

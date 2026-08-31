@@ -55,11 +55,12 @@
     }
   },
   "scripts": {
-    "build": "tree-sitter generate && node-gyp rebuild",
+    "build": "npm run generate && node-gyp rebuild",
     "build:wasm": "tree-sitter build --wasm",
     "check:format": "prettier --check .",
     "check:generated": "node scripts/check-generated.js",
-    "generate": "tree-sitter generate",
+    "generate": "npm run generate:schema --silent && tree-sitter generate",
+    "generate:schema": "node scripts/generate-schema.js",
     "import:schema": "node scripts/import-schema.js",
     "install": "node-gyp-build",
     "lint": "eslint .",

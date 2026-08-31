@@ -1,0 +1,3 @@
+schema/*.json
+src/grammar.json
+src/node-types.json

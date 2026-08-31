@@ -1,0 +1,328 @@
+================
+Program sigils
+================
+PROG AQUA
+END
++PROG AQUA
+END
+-PROG AQUA
+END
+$PROG AQUA
+END
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (end_record)))
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (end_record)))
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (end_record)))
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (end_record))))
+
+========================
+Multiple input blocks
+========================
++PROG AQUA
+HEAD One
+END
+HEAD Two
+END
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (command
+        (command_name)
+        (record
+          (bare_value)))
+      (end_record))
+    (input_block
+      (command
+        (command_name)
+        (record
+          (bare_value)))
+      (end_record))))
+
+================================
+Continuation and implicit record
+================================
++PROG SOFIMSHA
+NODE 1 X 0 $$
+ Y 0 Z 0
+ 2 X 1 Y 0 Z 0
+END
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (command
+        (command_name)
+        (record
+          (number)
+          (item_sequence
+            (item_name)
+            (number))
+          (continuation)
+          (item_sequence
+            (item_name)
+            (number))
+          (item_sequence
+            (item_name)
+            (number)))
+        (implicit_record
+          (number)
+          (item_sequence
+            (item_name)
+            (number))
+          (item_sequence
+            (item_name)
+            (number))
+          (item_sequence
+            (item_name)
+            (number))))
+      (end_record))))
+
+========================
+Semicolon commands
+========================
++PROG WING
+SIZE W 10 H 20; STRU NO 1
+END
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (command
+        (command_name)
+        (record
+          (item_sequence
+            (item_name)
+            (number))
+          (item_sequence
+            (item_name)
+            (number))))
+      (command
+        (command_name)
+        (record
+          (bare_value)
+          (number)))
+      (end_record))))
+
+========================
+Nested control flow
+========================
++PROG SOFIMSHA
+IF #1 > 0
+LOOP 2
+NODE 1 X 0
+EXIT_ITERATION
+ENDLOOP
+ELSE
+NODE 2 X 1
+ENDIF
+END
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (if_block
+        (if_header
+          (control_keyword)
+          (hash_variable)
+          (generic_expression)
+          (number))
+        (loop_block
+          (loop_header
+            (control_keyword)
+            (number))
+          (command
+            (command_name)
+            (record
+              (number)
+              (item_sequence
+                (item_name)
+                (number))))
+          (exit_iteration_record
+            (control_keyword))
+          (endloop_record
+            (control_keyword)))
+        (else_header
+          (control_keyword))
+        (command
+          (command_name)
+          (record
+            (number)
+            (item_sequence
+              (item_name)
+              (number))))
+        (endif_record
+          (control_keyword)))
+      (end_record))))
+
+=========================
+Preprocessor structures
+=========================
+#DEFINE SINGLE=1
+#DEFINE BLOCK
+ANY FOO #1
+#ENDDEF
+#IF #1
++PROG AQUA
+HEAD A
+END
+#ELSE
+SYS echo hi
+#ENDIF
+---
+
+(source_file
+  (preprocessor_define_statement
+    (preprocessor_keyword)
+    (preprocessor_name)
+    (expression))
+  (preprocessor_block
+    (preprocessor_define_block
+      (preprocessor_define_header
+        (preprocessor_keyword)
+        (preprocessor_name))
+      (dynamic_record
+        (dynamic_command_name)
+        (bare_value)
+        (hash_variable))
+      (preprocessor_enddef_record
+        (preprocessor_keyword))))
+  (preprocessor_block
+    (preprocessor_if_header
+      (preprocessor_keyword)
+      (hash_variable))
+    (program
+      (program_header
+        (program_sigil)
+        (module_name))
+      (input_block
+        (command
+          (command_name)
+          (record
+            (bare_value)))
+        (end_record)))
+    (preprocessor_else_header
+      (preprocessor_keyword))
+    (sys_statement
+      (sys_sigil)
+      (bare_value)
+      (bare_value))
+    (preprocessor_endif_record
+      (preprocessor_keyword))))
+
+===================================
+Variable keeps the inherited record
+===================================
++PROG SOFIMSHA
+NODE 1 X 0
+LET#A =1
+X 2 Y 0
+END
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (command
+        (command_name)
+        (record
+          (number)
+          (item_sequence
+            (item_name)
+            (number))))
+      (variable_statement
+        (variable_keyword)
+        (hash_variable)
+        (expression))
+      (implicit_record
+        (item_sequence
+          (item_name)
+          (number))
+        (item_sequence
+          (item_name)
+          (number)))
+      (end_record))))
+
+===========================
+Opaque text and string body
+===========================
++PROG AQUA
+HEAD 'a; $ PROG'
+<TEXT>
+PROG not parsed; $ not comment
+</TEXT>
+END
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (command
+        (command_name)
+        (record
+          (string)))
+      (text_block
+        (text_start)
+        (text_content)
+        (text_end))
+      (end_record))))
+
+========================
+Apply and system records
+========================
+APPLY file.dat
+SYS command args
+---
+
+(source_file
+  (apply_statement
+    (apply_sigil)
+    (bare_value))
+  (sys_statement
+    (sys_sigil)
+    (bare_value)
+    (bare_value)))

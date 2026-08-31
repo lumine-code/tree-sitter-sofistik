@@ -2,7 +2,6 @@ const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 
 const root = path.join(__dirname, "..");
-const npm = process.platform === "win32" ? "npm.cmd" : "npm";
 
 function run(command, args) {
   const result = spawnSync(command, args, {
@@ -14,7 +13,8 @@ function run(command, args) {
   if (result.status !== 0) process.exit(result.status || 1);
 }
 
-run(npm, ["run", "generate", "--silent"]);
+run(process.execPath, [path.join(root, "scripts", "generate-schema.js")]);
+run(process.execPath, [require.resolve("tree-sitter-cli/cli.js"), "generate"]);
 run("git", [
   "diff",
   "--exit-code",
@@ -22,4 +22,5 @@ run("git", [
   "src/grammar.json",
   "src/node-types.json",
   "src/parser.c",
+  "src/schema.h",
 ]);

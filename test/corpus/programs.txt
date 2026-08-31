@@ -1,0 +1,135 @@
+==================
+Program and command
+==================
++PROG SOFIMSHA
+NODE 1 X 0 Y 0 Z 0
+END
+---
+
+(source_file
+  (program
+    header: (program_header
+      sigil: (program_sigil)
+      module: (module_name))
+    body: (input_block
+      (command
+        name: (command_name)
+        record: (record
+          (number)
+          (item_sequence
+            item: (item_name)
+            value: (number))
+          (item_sequence
+            item: (item_name)
+            value: (number))
+          (item_sequence
+            item: (item_name)
+            value: (number))))
+      (end_record))))
+
+==============================
+Item and enum name collision
+==============================
++PROG ASE
+GRP VAL NO
+END
+---
+
+(source_file
+  (program
+    header: (program_header
+      sigil: (program_sigil)
+      module: (module_name))
+    body: (input_block
+      (command
+        name: (command_name)
+        record: (record
+          (item_sequence
+            item: (item_name)
+            value: (enum_value))))
+      (end_record))))
+
+================
+Table records
+================
++PROG SOFIMSHA
+NODE NO X Y Z
+1 0 0 0
+2 1 0 0
+END
+---
+
+(source_file
+  (program
+    header: (program_header
+      sigil: (program_sigil)
+      module: (module_name))
+    body: (input_block
+      (command
+        name: (command_name)
+        record: (table_definition
+          item: (item_name)
+          item: (item_name)
+          item: (item_name)
+          item: (item_name))
+        record: (table_row
+          value: (number)
+          value: (number)
+          value: (number)
+          value: (number))
+        record: (table_row
+          value: (number)
+          value: (number)
+          value: (number)
+          value: (number)))
+      (end_record))))
+
+==========================
+Invalid contextual names
+==========================
++PROG AQUA
+NODE 1
+END
++PROG UNKNOWN
+END
+---
+
+(source_file
+  (program
+    header: (program_header
+      sigil: (program_sigil)
+      module: (module_name))
+    body: (input_block
+      (invalid_command_record
+        name: (invalid_command)
+        (number))
+      (end_record)))
+  (program
+    header: (program_header
+      sigil: (program_sigil)
+      module: (invalid_module))
+    body: (input_block
+      (end_record))))
+
+=======================
+Dynamic template record
+=======================
++PROG TEMPLATE
+WHATEVER A B C
+@KEY VALUE
+END
+---
+
+(source_file
+  (program
+    header: (program_header
+      sigil: (program_sigil)
+      module: (module_name))
+    body: (input_block
+      (dynamic_record
+        name: (dynamic_command_name)
+        value: (bare_value)
+        value: (bare_value)
+        value: (bare_value))
+      (metadata)
+      (end_record))))
