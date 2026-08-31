@@ -825,12 +825,25 @@
           "type": "REPEAT",
           "content": {
             "type": "SYMBOL",
-            "name": "_program_body"
+            "name": "_control_body"
           }
         },
         {
           "type": "SYMBOL",
           "name": "endloop_record"
+        }
+      ]
+    },
+    "_control_body": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "_program_body"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "end_record"
         }
       ]
     },
@@ -925,7 +938,7 @@
           "type": "REPEAT",
           "content": {
             "type": "SYMBOL",
-            "name": "_program_body"
+            "name": "_control_body"
           }
         },
         {
@@ -941,7 +954,7 @@
                 "type": "REPEAT",
                 "content": {
                   "type": "SYMBOL",
-                  "name": "_program_body"
+                  "name": "_control_body"
                 }
               }
             ]
@@ -961,7 +974,7 @@
                   "type": "REPEAT",
                   "content": {
                     "type": "SYMBOL",
-                    "name": "_program_body"
+                    "name": "_control_body"
                   }
                 }
               ]
@@ -1274,7 +1287,7 @@
           "type": "REPEAT",
           "content": {
             "type": "SYMBOL",
-            "name": "_program_body"
+            "name": "_control_body"
           }
         },
         {
@@ -1290,7 +1303,7 @@
                 "type": "REPEAT",
                 "content": {
                   "type": "SYMBOL",
-                  "name": "_program_body"
+                  "name": "_control_body"
                 }
               }
             ]
@@ -1310,7 +1323,7 @@
                   "type": "REPEAT",
                   "content": {
                     "type": "SYMBOL",
-                    "name": "_program_body"
+                    "name": "_control_body"
                   }
                 }
               ]
@@ -1717,8 +1730,17 @@
               "type": "FIELD",
               "name": "argument",
               "content": {
-                "type": "SYMBOL",
-                "name": "_value"
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "SYMBOL",
+                    "name": "preprocessor_name"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "_value"
+                  }
+                ]
               }
             }
           },

@@ -7,24 +7,33 @@
     "nul": 1,
     "invalidUtf8": 0
   },
-  "badFiles": 114,
-  "errorNodes": 82655,
+  "badFiles": 89,
+  "errorNodes": 4065,
   "classifications": {
-    "ERROR": 82617,
+    "ERROR": 4027,
     "MISSING:;": 17,
     "UNLOCATED": 21
   },
+  "fileClassifications": {
+    "fragmentWithoutProgram": {
+      "files": 2,
+      "errorNodes": 3726
+    },
+    "documentWithUnsupportedSyntax": {
+      "files": 87,
+      "errorNodes": 339
+    }
+  },
   "firstFailures": [
-    "aqb.dat/deutsch/heissbemessung/hd_step_2a.dat",
-    "aqb.dat/deutsch/heissbemessung/hd_step_2b.dat",
-    "aqb.dat/deutsch/querschnitt_klasse4_stab.dat",
-    "aqb.dat/english/hotdesign/hd_step_2a.dat",
-    "aqb.dat/english/hotdesign/hd_step_2b.dat",
-    "aqb.dat/english/section_class4_beam.dat",
-    "ase.dat/deutsch/bric/bric_on_fire/lade_on_fire_bewehrung_zugstab.dat",
-    "ase.dat/deutsch/bric/bric_on_fire/lade_on_fire_einstab_ausdehnung_behindert.dat",
-    "ase.dat/deutsch/bric/bric_on_fire/lade_on_fire_einstab_ausdehnung_frei.dat",
     "ase.dat/deutsch/bric/bric_on_fire/temperature_data.dat",
-    "ase.dat/deutsch/bridge/bridge_design_manual_aqb.dat"
+    "ase.dat/deutsch/bridge/bridge_design_manual_aqb.dat",
+    "ase.dat/deutsch/bridge/m_n_interaction_plot.dat",
+    "ase.dat/deutsch/bridge/stahl_verbund_einfeldtraeger.dat",
+    "ase.dat/deutsch/dynamics/ase_dehn_pld_erdbeben_rahmen.dat",
+    "ase.dat/deutsch/dynamics/explosion_on_th3_quad_girder.dat",
+    "ase.dat/deutsch/geometric_nonl/seil_eigenfrequenzen.dat",
+    "ase.dat/deutsch/geometric_nonl/seilkett.dat",
+    "ase.dat/deutsch/geometric_nonl/suspension_bridge_formfinding.dat",
+    "ase.dat/deutsch/kinematic/slip_cable.dat"
   ]
 }

@@ -58,6 +58,21 @@ test("keeps text block contents opaque", () => {
   assert.strictEqual(tree.rootNode.descendantsOfType("comment").length, 0);
 });
 
+test("accepts include names while preserving the current command", () => {
+  const tree = parse("+PROG SOFIMSHA\nNODE 1 X 0\n#INCLUDE blockase\nX 2 Y 0\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  const directive = tree.rootNode.descendantsOfType("preprocessor_directive")[0];
+  assert.strictEqual(directive.childForFieldName("argument").text, "blockase");
+  assert.strictEqual(tree.rootNode.descendantsOfType("implicit_record").length, 1);
+});
+
+test("allows input block terminators inside control flow", () => {
+  const tree = parse("+PROG STAR2\nLOOP#1 1\nCTRL II 50\nEND\nENDLOOP\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.strictEqual(tree.rootNode.descendantsOfType("loop_block").length, 1);
+  assert.strictEqual(tree.rootNode.descendantsOfType("end_record").length, 2);
+});
+
 test("restores contextual scanner state during an incremental reparse", () => {
   const parser = new Parser();
   parser.setLanguage(SOFiSTiK);

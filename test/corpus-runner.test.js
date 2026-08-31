@@ -1,6 +1,6 @@
 const assert = require("node:assert");
 const { test } = require("node:test");
-const { decode } = require("../scripts/test-corpus");
+const { decode, hasProgramHeader } = require("../scripts/test-corpus");
 
 test("corpus decoder rejects NUL and invalid UTF-8 input", () => {
   assert.deepStrictEqual(decode(Buffer.from([65, 0, 66])), { skipped: "nul" });
@@ -8,4 +8,9 @@ test("corpus decoder rejects NUL and invalid UTF-8 input", () => {
   assert.deepStrictEqual(decode(Buffer.from("PROG AQUA\nEND")), {
     source: "PROG AQUA\nEND",
   });
+});
+
+test("distinguishes complete documents from include fragments", () => {
+  assert.strictEqual(hasProgramHeader("+PROG AQUA\nEND"), true);
+  assert.strictEqual(hasProgramHeader("NODE 1 X 0\nNODE 2 X 1"), false);
 });

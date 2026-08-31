@@ -325,6 +325,10 @@
           "named": true
         },
         {
+          "type": "end_record",
+          "named": true
+        },
+        {
           "type": "endif_record",
           "named": true
         },
@@ -577,6 +581,10 @@
         },
         {
           "type": "dynamic_record",
+          "named": true
+        },
+        {
+          "type": "end_record",
           "named": true
         },
         {
@@ -841,6 +849,10 @@
           {
             "type": "_value",
             "named": true
+          },
+          {
+            "type": "preprocessor_name",
+            "named": true
           }
         ]
       },
@@ -970,6 +982,10 @@
         },
         {
           "type": "dynamic_record",
+          "named": true
+        },
+        {
+          "type": "end_record",
           "named": true
         },
         {

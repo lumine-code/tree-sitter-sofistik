@@ -33,6 +33,10 @@ function normalize(file) {
   return file.split(path.sep).join("/");
 }
 
+function hasProgramHeader(source) {
+  return /^[ \t]*[+\-$]?PROG\b/im.test(source);
+}
+
 function run(root) {
   const absoluteRoot = path.resolve(root);
   const files = collectFiles(absoluteRoot).sort((left, right) => left.localeCompare(right));
@@ -46,6 +50,10 @@ function run(root) {
     badFiles: 0,
     errorNodes: 0,
     classifications: {},
+    fileClassifications: {
+      fragmentWithoutProgram: { files: 0, errorNodes: 0 },
+      documentWithUnsupportedSyntax: { files: 0, errorNodes: 0 },
+    },
     firstFailures: [],
     elapsedMs: 0,
   };
@@ -65,6 +73,11 @@ function run(root) {
     const failures = collectFailures(tree.rootNode);
     if (failures.length === 0) failures.push({ type: "UNLOCATED", node: tree.rootNode });
     summary.errorNodes += failures.length;
+    const fileClassification = hasProgramHeader(decoded.source)
+      ? "documentWithUnsupportedSyntax"
+      : "fragmentWithoutProgram";
+    summary.fileClassifications[fileClassification].files++;
+    summary.fileClassifications[fileClassification].errorNodes += failures.length;
 
     for (const failure of failures) {
       summary.classifications[failure.type] = (summary.classifications[failure.type] || 0) + 1;
@@ -99,4 +112,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { collectFailures, collectFiles, decode, run };
+module.exports = { collectFailures, collectFiles, decode, hasProgramHeader, run };

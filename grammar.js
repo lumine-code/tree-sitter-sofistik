@@ -180,7 +180,9 @@ module.exports = grammar({
 
     end_record: ($) => prec.right(seq(field("keyword", $._end_keyword), optional($._record_end))),
 
-    loop_block: ($) => seq($.loop_header, repeat($._program_body), $.endloop_record),
+    loop_block: ($) => seq($.loop_header, repeat($._control_body), $.endloop_record),
+
+    _control_body: ($) => choice($._program_body, $.end_record),
 
     loop_header: ($) =>
       seq(
@@ -199,9 +201,9 @@ module.exports = grammar({
     if_block: ($) =>
       seq(
         $.if_header,
-        repeat($._program_body),
-        repeat(seq($.elseif_header, repeat($._program_body))),
-        optional(seq($.else_header, repeat($._program_body))),
+        repeat($._control_body),
+        repeat(seq($.elseif_header, repeat($._control_body))),
+        optional(seq($.else_header, repeat($._control_body))),
         $.endif_record,
       ),
 
@@ -250,9 +252,9 @@ module.exports = grammar({
     preprocessor_program_block: ($) =>
       seq(
         $.preprocessor_if_header,
-        repeat($._program_body),
-        repeat(seq($.preprocessor_elseif_header, repeat($._program_body))),
-        optional(seq($.preprocessor_else_header, repeat($._program_body))),
+        repeat($._control_body),
+        repeat(seq($.preprocessor_elseif_header, repeat($._control_body))),
+        optional(seq($.preprocessor_else_header, repeat($._control_body))),
         $.preprocessor_endif_record,
       ),
 
@@ -320,7 +322,7 @@ module.exports = grammar({
       prec.right(
         seq(
           field("keyword", alias(choice(ci("#INCLUDE"), ci("#UNDEF")), $.preprocessor_keyword)),
-          repeat(field("argument", $._value)),
+          repeat(field("argument", choice($.preprocessor_name, $._value))),
           optional($._record_end),
         ),
       ),
