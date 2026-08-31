@@ -37,12 +37,64 @@ END
     (input_block
       (end_record))))
 
+===============================
+Prefixed positional references
+===============================
+PROG AQUA
+SPT OM 0 0 REFS :AXIS
+    UM 0 0 REFS :A_UM
+    11 0.90 0.00 REFP OR +UR
+    15 0.00 0.00 REFP OM ~OR
+ENDE
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (command
+        (command_name)
+        (record
+          (bare_value)
+          (bare_value)
+          (bare_value)
+          (item_sequence
+            (item_name)
+            (bare_value)))
+        (implicit_record
+          (bare_value)
+          (bare_value)
+          (bare_value)
+          (item_sequence
+            (item_name)
+            (bare_value)))
+        (implicit_record
+          (bare_value)
+          (bare_value)
+          (bare_value)
+          (item_sequence
+            (item_name)
+            (bare_value)
+            (bare_value)))
+        (implicit_record
+          (bare_value)
+          (bare_value)
+          (bare_value)
+          (item_sequence
+            (item_name)
+            (bare_value)
+            (bare_value))))
+      (end_record))))
+
 ========================
 Multiple input blocks
 ========================
 +PROG AQUA
 HEAD One
 END
+
 HEAD Two
 END
 ---
@@ -65,6 +117,68 @@ END
           (bare_value)))
       (end_record))))
 
+====================================
+Variable with semicolon command list
+====================================
+PROG ASE
+HEAD
+sto#lf 13 ; SYST prob TH3 TOL -0.01 PLC #lf-1 ; GRP 12 OFF ; CTRL ITER 3 V2 1 ; CTRL BEAM 5
+LC #lf FACD 1
+END
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (command
+        (command_name)
+        (record)
+        (variable_statement
+          (variable_keyword)
+          (hash_variable)
+          (bare_value)))
+      (command
+        (command_name)
+        (record
+          (item_sequence
+            (item_name)
+            (enum_value))
+          (item_sequence
+            (item_name)
+            (bare_value))
+          (item_sequence
+            (item_name)
+            (operator_expression))))
+      (command
+        (command_name)
+        (record
+          (bare_value)
+          (bare_value)))
+      (command
+        (command_name)
+        (record
+          (bare_value)
+          (bare_value)
+          (item_sequence
+            (item_name)
+            (bare_value))))
+      (command
+        (command_name)
+        (record
+          (bare_value)
+          (bare_value)))
+      (command
+        (command_name)
+        (record
+          (hash_variable)
+          (item_sequence
+            (item_name)
+            (bare_value))))
+      (end_record))))
+
 ================================
 Continuation and implicit record
 ================================
@@ -84,28 +198,28 @@ END
       (command
         (command_name)
         (record
-          (number)
+          (bare_value)
           (item_sequence
             (item_name)
-            (number))
+            (bare_value))
           (continuation)
           (item_sequence
             (item_name)
-            (number))
+            (bare_value))
           (item_sequence
             (item_name)
-            (number)))
+            (bare_value)))
         (implicit_record
-          (number)
+          (bare_value)
           (item_sequence
             (item_name)
-            (number))
+            (bare_value))
           (item_sequence
             (item_name)
-            (number))
+            (bare_value))
           (item_sequence
             (item_name)
-            (number))))
+            (bare_value))))
       (end_record))))
 
 ========================
@@ -127,15 +241,15 @@ END
         (record
           (item_sequence
             (item_name)
-            (number))
+            (bare_value))
           (item_sequence
             (item_name)
-            (number))))
+            (bare_value))))
       (command
         (command_name)
         (record
           (bare_value)
-          (number)))
+          (bare_value)))
       (end_record))))
 
 ========================
@@ -164,18 +278,18 @@ END
           (control_keyword)
           (hash_variable)
           (generic_expression)
-          (number))
+          (bare_value))
         (loop_block
           (loop_header
             (control_keyword)
-            (number))
+            (bare_value))
           (command
             (command_name)
             (record
-              (number)
+              (bare_value)
               (item_sequence
                 (item_name)
-                (number))))
+                (bare_value))))
           (exit_iteration_record
             (control_keyword))
           (endloop_record
@@ -185,10 +299,10 @@ END
         (command
           (command_name)
           (record
-            (number)
+            (bare_value)
             (item_sequence
               (item_name)
-              (number))))
+              (bare_value))))
         (endif_record
           (control_keyword)))
       (end_record))))
@@ -267,21 +381,21 @@ END
       (command
         (command_name)
         (record
-          (number)
+          (bare_value)
           (item_sequence
             (item_name)
-            (number))))
-      (variable_statement
-        (variable_keyword)
-        (hash_variable)
-        (expression))
-      (implicit_record
-        (item_sequence
-          (item_name)
-          (number))
-        (item_sequence
-          (item_name)
-          (number)))
+            (bare_value)))
+        (variable_statement
+          (variable_keyword)
+          (hash_variable)
+          (expression))
+        (implicit_record
+          (item_sequence
+            (item_name)
+            (bare_value))
+          (item_sequence
+            (item_name)
+            (bare_value))))
       (end_record))))
 
 ===========================
@@ -326,3 +440,30 @@ SYS command args
     (sys_sigil)
     (bare_value)
     (bare_value)))
+
+==================================
+Implicit record starts like command
+==================================
+PROG AQUA
+QSP P3 0 86.6
+    P6 0 -86.6
+ENDE
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (command
+        (command_name)
+        (record
+          (bare_value)
+          (bare_value)
+          (bare_value))
+        (implicit_record
+          (bare_value)
+          (bare_value)
+          (bare_value)))
+      (end_record))))

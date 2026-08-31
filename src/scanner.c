@@ -16,9 +16,11 @@ enum TokenType {
   ITEM_NAME,
   INVALID_ITEM,
   ENUM_VALUE,
+  BARE_WORD,
   DYNAMIC_COMMAND_NAME,
   TEMPLATE_COMMAND_NAME,
   END_KEYWORD,
+  VARIABLE_KEYWORD,
   DOLLAR_PROG,
   DOLLAR_APPLY,
   CONTINUATION,
@@ -59,7 +61,46 @@ static bool is_schema_character(int32_t character) {
 
 static bool is_bare_value_suffix(int32_t character) {
   return character == '.' || character == ':' || character == '+' ||
-         character == '-' || character == '/' || character == ',';
+         character == '-' || character == '/' || character == ',' ||
+         character == '\\' || character == '*' || character == '^' ||
+         character == '&' || character == '|' || character == '?';
+}
+
+static bool is_bare_value_delimiter(int32_t character) {
+  return !character || character == ' ' || character == '\t' ||
+         character == '\f' || character == '\r' || character == '\n' ||
+         character == ';' || character == '!' || character == '=' ||
+         character == '#' || character == '@' || character == '\'' ||
+         character == '"' ||
+         character == '[' || character == ']' || character == '(' ||
+         character == ')' || character == '<' || character == '>';
+}
+
+static bool is_reserved_statement_word(const char *word) {
+  static const char *const words[] = {
+    "DBG", "DEL", "ELSE", "ELSEIF", "ENDIF", "ENDLOOP",
+    "EXIT_ITERATION", "IF", "LET", "LOOP", "PRT", "RCL", "STO",
+  };
+  size_t count = sizeof(words) / sizeof(words[0]);
+  for (size_t index = 0; index < count; index++) {
+    if (strcmp(words[index], word) == 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool is_variable_keyword(const char *word) {
+  static const char *const words[] = {
+    "DBG", "DEL", "LET", "PRT", "RCL", "STO",
+  };
+  size_t count = sizeof(words) / sizeof(words[0]);
+  for (size_t index = 0; index < count; index++) {
+    if (strcmp(words[index], word) == 0) {
+      return true;
+    }
+  }
+  return false;
 }
 
 static void reset_command(Scanner *scanner) {
@@ -82,9 +123,17 @@ static void consume_line(TSLexer *lexer) {
   }
 }
 
-static bool scan_slash_comment(TSLexer *lexer) {
+static bool scan_slash_comment(TSLexer *lexer, const bool *valid_symbols) {
   lexer->advance(lexer, false);
   if (lexer->lookahead != '/') {
+    if (valid_symbols[BARE_WORD]) {
+      while (!is_bare_value_delimiter(lexer->lookahead)) {
+        lexer->advance(lexer, false);
+      }
+      lexer->mark_end(lexer);
+      lexer->result_symbol = BARE_WORD;
+      return true;
+    }
     return false;
   }
   lexer->advance(lexer, false);
@@ -144,6 +193,41 @@ static bool is_enum_value(uint32_t item, const char *name) {
   return false;
 }
 
+static bool scan_non_word_bare(TSLexer *lexer, const bool *valid_symbols) {
+  if (
+    !valid_symbols[BARE_WORD] || is_schema_character(lexer->lookahead) ||
+    is_bare_value_delimiter(lexer->lookahead)
+  ) {
+    return false;
+  }
+
+  char prefix[16] = {0};
+  size_t length = 0;
+  while (!is_bare_value_delimiter(lexer->lookahead)) {
+    int32_t character = lexer->lookahead;
+    if (length + 1 < sizeof(prefix) && character < 128) {
+      if (character >= 'a' && character <= 'z') {
+        character -= 'a' - 'A';
+      }
+      prefix[length++] = (char)character;
+    }
+    lexer->advance(lexer, false);
+  }
+  prefix[length] = '\0';
+
+  if (
+    strcmp(prefix, "+PROG") == 0 || strcmp(prefix, "-PROG") == 0 ||
+    strcmp(prefix, "+APPLY") == 0 || strcmp(prefix, "-APPLY") == 0 ||
+    strcmp(prefix, "+SYS") == 0 || strcmp(prefix, "-SYS") == 0
+  ) {
+    return false;
+  }
+
+  lexer->mark_end(lexer);
+  lexer->result_symbol = BARE_WORD;
+  return true;
+}
+
 static bool is_global_command(const char *name) {
   for (uint32_t index = 0; index < SOFISTIK_GLOBAL_COMMAND_COUNT; index++) {
     if (strcmp(SOFISTIK_GLOBAL_COMMANDS[index], name) == 0) {
@@ -158,7 +242,13 @@ static bool is_template_module(uint32_t module) {
          strcmp(SOFISTIK_MODULES[module].name, "TEMPLATE") == 0;
 }
 
-static bool read_word(TSLexer *lexer, char *word, size_t capacity) {
+static bool read_word(
+  TSLexer *lexer,
+  char *word,
+  size_t capacity,
+  bool *contextual,
+  bool *followed_by_hash
+) {
   if (!is_schema_character(lexer->lookahead)) {
     return false;
   }
@@ -179,8 +269,12 @@ static bool read_word(TSLexer *lexer, char *word, size_t capacity) {
   }
   word[length] = '\0';
 
-  if (overflow || is_bare_value_suffix(lexer->lookahead)) {
-    return false;
+  *followed_by_hash = lexer->lookahead == '#';
+  *contextual = !overflow && !is_bare_value_suffix(lexer->lookahead);
+  if (!*contextual) {
+    while (!is_bare_value_delimiter(lexer->lookahead)) {
+      lexer->advance(lexer, false);
+    }
   }
   lexer->mark_end(lexer);
   return true;
@@ -192,7 +286,22 @@ static bool scan_word(
   const bool *valid_symbols
 ) {
   char word[128] = {0};
-  if (!read_word(lexer, word, sizeof(word))) {
+  bool contextual = false;
+  bool followed_by_hash = false;
+  if (!read_word(
+        lexer,
+        word,
+        sizeof(word),
+        &contextual,
+        &followed_by_hash
+      )) {
+    return false;
+  }
+  if (!contextual) {
+    if (valid_symbols[BARE_WORD]) {
+      lexer->result_symbol = BARE_WORD;
+      return true;
+    }
     return false;
   }
   if (valid_symbols[END_KEYWORD] &&
@@ -232,6 +341,22 @@ static bool scan_word(
     return true;
   }
 
+  if (
+    followed_by_hash && valid_symbols[VARIABLE_KEYWORD] &&
+    is_variable_keyword(word)
+  ) {
+    lexer->result_symbol = VARIABLE_KEYWORD;
+    return true;
+  }
+
+  if (
+    scanner->command == SOFISTIK_UNKNOWN_ID &&
+    (strcmp(word, "PROG") == 0 || strcmp(word, "APPLY") == 0 ||
+     strcmp(word, "SYS") == 0)
+  ) {
+    return false;
+  }
+
   if (valid_symbols[COMMAND_NAME] || valid_symbols[INVALID_COMMAND]) {
     uint32_t command = find_command(scanner->module, word);
     if (command != SOFISTIK_UNKNOWN_ID && valid_symbols[COMMAND_NAME]) {
@@ -242,7 +367,10 @@ static bool scan_word(
       lexer->result_symbol = COMMAND_NAME;
       return true;
     }
-    if (valid_symbols[INVALID_COMMAND] && is_global_command(word)) {
+    if (
+      valid_symbols[INVALID_COMMAND] &&
+      scanner->command == SOFISTIK_UNKNOWN_ID && is_global_command(word)
+    ) {
       reset_command(scanner);
       lexer->result_symbol = INVALID_COMMAND;
       return true;
@@ -260,9 +388,22 @@ static bool scan_word(
     }
   }
 
+  if (valid_symbols[VARIABLE_KEYWORD] && is_variable_keyword(word)) {
+    lexer->result_symbol = VARIABLE_KEYWORD;
+    return true;
+  }
+
   // A globally known item can still be a legal positional literal here. The
   // grammar deliberately leaves that irreducible ambiguity to the linter.
   (void)valid_symbols[INVALID_ITEM];
+  if (
+    valid_symbols[BARE_WORD] &&
+    !(valid_symbols[COMMAND_NAME] && is_reserved_statement_word(word)) &&
+    !(scanner->command == SOFISTIK_UNKNOWN_ID && valid_symbols[COMMAND_NAME])
+  ) {
+    lexer->result_symbol = BARE_WORD;
+    return true;
+  }
   return false;
 }
 
@@ -436,9 +577,12 @@ bool tree_sitter_sofistik_external_scanner_scan(
   }
 
   if (valid_symbols[COMMENT] && lexer->lookahead == '/') {
-    return scan_slash_comment(lexer);
+    return scan_slash_comment(lexer, valid_symbols);
   }
 
+  if (scan_non_word_bare(lexer, valid_symbols)) {
+    return true;
+  }
   return scan_word(scanner, lexer, valid_symbols);
 }
 

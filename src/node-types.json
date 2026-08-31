@@ -4,6 +4,10 @@
     "named": true,
     "subtypes": [
       {
+        "type": "at_reference",
+        "named": true
+      },
+      {
         "type": "bare_value",
         "named": true
       },
@@ -29,6 +33,14 @@
       },
       {
         "type": "number_list",
+        "named": true
+      },
+      {
+        "type": "operator_expression",
+        "named": true
+      },
+      {
+        "type": "punctuated_value",
         "named": true
       },
       {
@@ -73,9 +85,24 @@
     }
   },
   {
+    "type": "bare_value",
+    "named": true,
+    "fields": {}
+  },
+  {
     "type": "command",
     "named": true,
     "fields": {
+      "auxiliary": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "variable_statement",
+            "named": true
+          }
+        ]
+      },
       "name": {
         "multiple": false,
         "required": true,
@@ -104,6 +131,22 @@
           },
           {
             "type": "table_row",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "dynamic_line",
+    "named": true,
+    "fields": {
+      "value": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "_value",
             "named": true
           }
         ]
@@ -207,6 +250,16 @@
     "type": "endloop_record",
     "named": true,
     "fields": {
+      "condition": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "_value",
+            "named": true
+          }
+        ]
+      },
       "keyword": {
         "multiple": false,
         "required": true,
@@ -671,6 +724,10 @@
       "required": true,
       "types": [
         {
+          "type": "dynamic_line",
+          "named": true
+        },
+        {
           "type": "dynamic_record",
           "named": true
         },
@@ -705,7 +762,7 @@
       },
       "name": {
         "multiple": false,
-        "required": false,
+        "required": true,
         "types": [
           {
             "type": "preprocessor_name",
@@ -1232,11 +1289,6 @@
     }
   },
   {
-    "type": "variable_keyword",
-    "named": true,
-    "fields": {}
-  },
-  {
     "type": "variable_statement",
     "named": true,
     "fields": {
@@ -1277,7 +1329,7 @@
     "named": false
   },
   {
-    "type": "bare_value",
+    "type": "at_reference",
     "named": true
   },
   {
@@ -1354,11 +1406,19 @@
     "named": true
   },
   {
+    "type": "operator_expression",
+    "named": true
+  },
+  {
     "type": "preprocessor_keyword",
     "named": true
   },
   {
     "type": "preprocessor_name",
+    "named": true
+  },
+  {
+    "type": "punctuated_value",
     "named": true
   },
   {
@@ -1375,6 +1435,10 @@
   },
   {
     "type": "unit",
+    "named": true
+  },
+  {
+    "type": "variable_keyword",
     "named": true
   }
 ]

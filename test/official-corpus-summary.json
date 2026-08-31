@@ -1,0 +1,29 @@
+{
+  "corpus": "SOFiSTiK 2026 installed DAT examples",
+  "schemaDigest": "c9458e5866feba16f0abbbd0e40d7185e3bedbe1ea3f6ce9010aaeadd76d9c56",
+  "discovered": 1392,
+  "parsed": 1391,
+  "skipped": {
+    "nul": 1,
+    "invalidUtf8": 0
+  },
+  "badFiles": 146,
+  "errorNodes": 81088,
+  "classifications": {
+    "ERROR": 81052,
+    "MISSING:;": 17,
+    "UNLOCATED": 19
+  },
+  "firstFailures": [
+    "aqb.dat/deutsch/heissbemessung/hd_step_2a.dat",
+    "aqb.dat/deutsch/heissbemessung/hd_step_2b.dat",
+    "aqb.dat/deutsch/querschnitt_klasse4_stab.dat",
+    "aqb.dat/english/hotdesign/hd_step_2a.dat",
+    "aqb.dat/english/hotdesign/hd_step_2b.dat",
+    "aqb.dat/english/section_class4_beam.dat",
+    "ase.dat/deutsch/bric/bric_on_fire/lade_on_fire_bewehrung_zugstab.dat",
+    "ase.dat/deutsch/bric/bric_on_fire/lade_on_fire_einstab_ausdehnung_behindert.dat",
+    "ase.dat/deutsch/bric/bric_on_fire/lade_on_fire_einstab_ausdehnung_frei.dat",
+    "ase.dat/deutsch/bric/bric_on_fire/temperature_data.dat"
+  ]
+}

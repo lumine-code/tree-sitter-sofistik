@@ -15,16 +15,16 @@ END
       (command
         name: (command_name)
         record: (record
-          (number)
+          (bare_value)
           (item_sequence
             item: (item_name)
-            value: (number))
+            value: (bare_value))
           (item_sequence
             item: (item_name)
-            value: (number))
+            value: (bare_value))
           (item_sequence
             item: (item_name)
-            value: (number))))
+            value: (bare_value))))
       (end_record))))
 
 ==============================
@@ -73,15 +73,15 @@ END
           item: (item_name)
           item: (item_name))
         record: (table_row
-          value: (number)
-          value: (number)
-          value: (number)
-          value: (number))
+          value: (bare_value)
+          value: (bare_value)
+          value: (bare_value)
+          value: (bare_value))
         record: (table_row
-          value: (number)
-          value: (number)
-          value: (number)
-          value: (number)))
+          value: (bare_value)
+          value: (bare_value)
+          value: (bare_value)
+          value: (bare_value)))
       (end_record))))
 
 ==========================
@@ -102,7 +102,7 @@ END
     body: (input_block
       (invalid_command_record
         name: (invalid_command)
-        (number))
+        (bare_value))
       (end_record)))
   (program
     header: (program_header

@@ -64,6 +64,7 @@
     "import:schema": "node scripts/import-schema.js",
     "install": "node-gyp-build",
     "lint": "eslint .",
-    "test": "npm run lint && npm run check:format && node --test bindings/node/binding_test.js test/*.test.js && tree-sitter test"
+    "test": "npm run lint && npm run check:format && node --test bindings/node/binding_test.js test/*.test.js && tree-sitter test",
+    "test:corpus": "node scripts/test-corpus.js"
   }
 }
