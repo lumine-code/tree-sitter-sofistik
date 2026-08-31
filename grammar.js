@@ -22,7 +22,7 @@ module.exports = grammar({
     $._error_sentinel,
   ],
 
-  extras: ($) => [/[ \t\f\uFEFF]+/, $.comment],
+  extras: ($) => [/[ \t\f\uFEFF]+/, /\u00ef\u00bb\u00bf/, $.comment],
 
   supertypes: ($) => [$._value],
 
@@ -102,7 +102,15 @@ module.exports = grammar({
               repeat(
                 choice(
                   field("record", $.implicit_record),
-                  field("auxiliary", $.variable_statement),
+                  field(
+                    "auxiliary",
+                    choice(
+                      $.variable_statement,
+                      $.preprocessor_directive,
+                      $.preprocessor_define_statement,
+                      $.preprocessor_define_block,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -234,9 +242,8 @@ module.exports = grammar({
         seq(
           field("keyword", alias(ci("#DEFINE"), $.preprocessor_keyword)),
           field("name", $.preprocessor_name),
-          field("value", $.expression),
-          repeat(field("value", $._value)),
-          optional($._record_end),
+          field("value", alias(token(prec(10, /=[^\r\n]*/)), $.expression)),
+          optional($._line_end),
         ),
       ),
 
@@ -318,7 +325,7 @@ module.exports = grammar({
         ),
       ),
 
-    preprocessor_name: ($) => /[A-Za-z0-9_]+/,
+    preprocessor_name: ($) => /#?[A-Za-z0-9_]+/,
 
     dynamic_record: ($) =>
       seq(

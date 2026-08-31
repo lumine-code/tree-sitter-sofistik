@@ -368,8 +368,25 @@
                           "type": "FIELD",
                           "name": "auxiliary",
                           "content": {
-                            "type": "SYMBOL",
-                            "name": "variable_statement"
+                            "type": "CHOICE",
+                            "members": [
+                              {
+                                "type": "SYMBOL",
+                                "name": "variable_statement"
+                              },
+                              {
+                                "type": "SYMBOL",
+                                "name": "preprocessor_directive"
+                              },
+                              {
+                                "type": "SYMBOL",
+                                "name": "preprocessor_define_statement"
+                              },
+                              {
+                                "type": "SYMBOL",
+                                "name": "preprocessor_define_block"
+                              }
+                            ]
                           }
                         }
                       ]
@@ -1215,19 +1232,20 @@
             "type": "FIELD",
             "name": "value",
             "content": {
-              "type": "SYMBOL",
-              "name": "expression"
-            }
-          },
-          {
-            "type": "REPEAT",
-            "content": {
-              "type": "FIELD",
-              "name": "value",
+              "type": "ALIAS",
               "content": {
-                "type": "SYMBOL",
-                "name": "_value"
-              }
+                "type": "TOKEN",
+                "content": {
+                  "type": "PREC",
+                  "value": 10,
+                  "content": {
+                    "type": "PATTERN",
+                    "value": "=[^\\r\\n]*"
+                  }
+                }
+              },
+              "named": true,
+              "value": "expression"
             }
           },
           {
@@ -1235,7 +1253,7 @@
             "members": [
               {
                 "type": "SYMBOL",
-                "name": "_record_end"
+                "name": "_line_end"
               },
               {
                 "type": "BLANK"
@@ -1721,7 +1739,7 @@
     },
     "preprocessor_name": {
       "type": "PATTERN",
-      "value": "[A-Za-z0-9_]+"
+      "value": "#?[A-Za-z0-9_]+"
     },
     "dynamic_record": {
       "type": "SEQ",
@@ -2174,6 +2192,10 @@
     {
       "type": "PATTERN",
       "value": "[ \\t\\f\\uFEFF]+"
+    },
+    {
+      "type": "PATTERN",
+      "value": "\\u00ef\\u00bb\\u00bf"
     },
     {
       "type": "SYMBOL",

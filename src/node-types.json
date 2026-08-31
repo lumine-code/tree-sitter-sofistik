@@ -98,6 +98,18 @@
         "required": false,
         "types": [
           {
+            "type": "preprocessor_define_block",
+            "named": true
+          },
+          {
+            "type": "preprocessor_define_statement",
+            "named": true
+          },
+          {
+            "type": "preprocessor_directive",
+            "named": true
+          },
+          {
             "type": "variable_statement",
             "named": true
           }
@@ -807,11 +819,11 @@
         ]
       },
       "value": {
-        "multiple": true,
+        "multiple": false,
         "required": true,
         "types": [
           {
-            "type": "_value",
+            "type": "expression",
             "named": true
           }
         ]

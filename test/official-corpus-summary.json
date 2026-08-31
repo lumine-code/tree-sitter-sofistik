@@ -7,12 +7,12 @@
     "nul": 1,
     "invalidUtf8": 0
   },
-  "badFiles": 146,
-  "errorNodes": 81088,
+  "badFiles": 114,
+  "errorNodes": 82655,
   "classifications": {
-    "ERROR": 81052,
+    "ERROR": 82617,
     "MISSING:;": 17,
-    "UNLOCATED": 19
+    "UNLOCATED": 21
   },
   "firstFailures": [
     "aqb.dat/deutsch/heissbemessung/hd_step_2a.dat",
@@ -24,6 +24,7 @@
     "ase.dat/deutsch/bric/bric_on_fire/lade_on_fire_bewehrung_zugstab.dat",
     "ase.dat/deutsch/bric/bric_on_fire/lade_on_fire_einstab_ausdehnung_behindert.dat",
     "ase.dat/deutsch/bric/bric_on_fire/lade_on_fire_einstab_ausdehnung_frei.dat",
-    "ase.dat/deutsch/bric/bric_on_fire/temperature_data.dat"
+    "ase.dat/deutsch/bric/bric_on_fire/temperature_data.dat",
+    "ase.dat/deutsch/bridge/bridge_design_manual_aqb.dat"
   ]
 }

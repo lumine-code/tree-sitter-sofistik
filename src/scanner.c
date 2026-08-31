@@ -422,6 +422,7 @@ static bool scan_dollar(
     lexer->advance(lexer, false);
     if (valid_symbols[CONTINUATION]) {
       scanner->continued_line = true;
+      consume_line(lexer);
       lexer->mark_end(lexer);
       lexer->result_symbol = CONTINUATION;
       return true;
@@ -560,7 +561,8 @@ bool tree_sitter_sofistik_external_scanner_scan(
 
   while (
     lexer->lookahead == ' ' || lexer->lookahead == '\t' ||
-    lexer->lookahead == '\f'
+    lexer->lookahead == '\f' || lexer->lookahead == 0x00ef ||
+    lexer->lookahead == 0x00bb || lexer->lookahead == 0x00bf
   ) {
     lexer->advance(lexer, true);
   }

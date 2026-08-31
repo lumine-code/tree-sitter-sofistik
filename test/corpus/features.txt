@@ -37,6 +37,88 @@ END
     (input_block
       (end_record))))
 
+=================================
+Annotated physical continuation
+=================================
+PROG AQUA
+QSP P3 0 $$ Spannglieder $ tendon
+    P6 0
+ENDE
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (command
+        (command_name)
+        (record
+          (bare_value)
+          (bare_value)
+          (continuation)
+          (bare_value)
+          (bare_value)))
+      (end_record))))
+
+==========================================
+Preprocessor auxiliaries preserve command
+==========================================
+PROG SOFIMSHA
+NODE 1 X 0
+#INCLUDE stagedesign
+#DEFINE #hs_results=value; Anhang CC
+X 2 Y 0
+END
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (command
+        (command_name)
+        (record
+          (bare_value)
+          (item_sequence
+            (item_name)
+            (bare_value)))
+        (preprocessor_directive
+          (preprocessor_keyword)
+          (bare_value))
+        (preprocessor_define_statement
+          (preprocessor_keyword)
+          (preprocessor_name)
+          (expression))
+        (implicit_record
+          (item_sequence
+            (item_name)
+            (bare_value))
+          (item_sequence
+            (item_name)
+            (bare_value))))
+      (end_record))))
+
+============================
+Mojibake BOM before comment
+============================
+ï»¿!#!Info example
+PROG AQUA
+END
+---
+
+(source_file
+  (comment)
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (end_record))))
+
 ===============================
 Prefixed positional references
 ===============================
