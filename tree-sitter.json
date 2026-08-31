@@ -1,0 +1,28 @@
+{
+  "grammars": [
+    {
+      "name": "sofistik",
+      "camelcase": "SOFiSTiK",
+      "scope": "source.sofistik",
+      "path": ".",
+      "file-types": ["dat", "gra", "grb", "results"]
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "license": "MIT",
+    "description": "Parses SOFiSTiK CADINP input with Tree-sitter.",
+    "authors": [
+      {
+        "name": "lumine-code"
+      }
+    ],
+    "links": {
+      "repository": "https://github.com/lumine-code/tree-sitter-sofistik"
+    }
+  },
+  "bindings": {
+    "node": true
+  }
+}
+

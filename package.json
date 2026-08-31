@@ -1,0 +1,67 @@
+{
+  "name": "@lumine-code/tree-sitter-sofistik",
+  "author": "lumine-code",
+  "version": "1.0.0",
+  "description": "Parses SOFiSTiK CADINP input with Tree-sitter.",
+  "main": "bindings/node",
+  "types": "bindings/node",
+  "repository": "https://github.com/lumine-code/tree-sitter-sofistik",
+  "bugs": "https://github.com/lumine-code/tree-sitter-sofistik/issues",
+  "homepage": "https://github.com/lumine-code/tree-sitter-sofistik",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "npm@11.16.0",
+  "keywords": [
+    "tree-sitter",
+    "sofistik",
+    "cadinp",
+    "structural-engineering",
+    "finite-element-analysis",
+    "lumine"
+  ],
+  "files": [
+    "bindings/node",
+    "grammar.js",
+    "schema/snapshot.json",
+    "schema/provenance.json",
+    "src",
+    "tree-sitter.json",
+    "binding.gyp"
+  ],
+  "dependencies": {
+    "node-addon-api": "^8.9.2",
+    "node-gyp-build": "^4.8.4"
+  },
+  "devDependencies": {
+    "eslint": "^10.0.0",
+    "globals": "^16.4.0",
+    "prettier": "^3.6.2",
+    "tree-sitter": "^0.25.0",
+    "tree-sitter-cli": "0.26.13"
+  },
+  "peerDependencies": {
+    "tree-sitter": "^0.25.0"
+  },
+  "peerDependenciesMeta": {
+    "tree-sitter": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "build": "tree-sitter generate && node-gyp rebuild",
+    "build:wasm": "tree-sitter build --wasm",
+    "check:format": "prettier --check .",
+    "check:generated": "node scripts/check-generated.js",
+    "generate": "tree-sitter generate",
+    "import:schema": "node scripts/import-schema.js",
+    "install": "node-gyp-build",
+    "lint": "eslint .",
+    "test": "npm run lint && npm run check:format && node --test bindings/node/binding_test.js test/*.test.js && tree-sitter test"
+  }
+}
+
