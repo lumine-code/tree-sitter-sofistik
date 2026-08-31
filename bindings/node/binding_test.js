@@ -7,4 +7,3 @@ test("loads the grammar through the Node-API binding", () => {
   assert.ok(SOFiSTiK.language);
   assert.ok(Array.isArray(SOFiSTiK.nodeTypeInfo));
 });
-

@@ -38,9 +38,11 @@
     "node-gyp-build": "^4.8.4"
   },
   "devDependencies": {
-    "eslint": "^10.0.0",
-    "globals": "^16.4.0",
-    "prettier": "^3.6.2",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.9.1",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.11.0",
+    "prettier": "^3.9.6",
     "tree-sitter": "^0.25.0",
     "tree-sitter-cli": "0.26.13"
   },
@@ -64,4 +66,3 @@
     "test": "npm run lint && npm run check:format && node --test bindings/node/binding_test.js test/*.test.js && tree-sitter test"
   }
 }
-

@@ -38,4 +38,3 @@ jobs:
       - run: npm run check:generated
       - run: npm run build:wasm
       - run: npm pack --dry-run
-

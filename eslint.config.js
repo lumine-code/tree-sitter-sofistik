@@ -1,7 +1,10 @@
 const { defineConfig } = require("eslint/config");
+const eslint = require("@eslint/js");
+const prettier = require("eslint-config-prettier");
 const globals = require("globals");
 
 module.exports = defineConfig([
+  eslint.configs.recommended,
   {
     ignores: ["build/**", "node_modules/**", "src/parser.c"],
   },
@@ -33,5 +36,5 @@ module.exports = defineConfig([
       },
     },
   },
+  prettier,
 ]);
-

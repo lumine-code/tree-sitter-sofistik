@@ -24,4 +24,3 @@ type Language = {
 
 declare const language: Language;
 export = language;
-
