@@ -57,3 +57,28 @@ test("keeps text block contents opaque", () => {
   assert.match(tree.rootNode.descendantsOfType("text_content")[0].text, /PROG not parsed/);
   assert.strictEqual(tree.rootNode.descendantsOfType("comment").length, 0);
 });
+
+test("restores contextual scanner state during an incremental reparse", () => {
+  const parser = new Parser();
+  parser.setLanguage(SOFiSTiK);
+  const source = "+PROG SOFIMSHA\nNODE 1 X 0 Y 0\nEND";
+  const changed = "+PROG SOFIMSHA\nNODE 1 X 2 Y 0\nEND";
+  const tree = parser.parse(source);
+  const index = source.indexOf("0", source.indexOf("NODE"));
+  const point = { row: 1, column: index - source.indexOf("NODE") };
+  tree.edit({
+    startIndex: index,
+    oldEndIndex: index + 1,
+    newEndIndex: index + 1,
+    startPosition: point,
+    oldEndPosition: { row: point.row, column: point.column + 1 },
+    newEndPosition: { row: point.row, column: point.column + 1 },
+  });
+
+  const reparsed = parser.parse(changed, tree);
+  assert.strictEqual(reparsed.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    reparsed.rootNode.descendantsOfType("item_name").map((node) => node.text),
+    ["X", "Y"],
+  );
+});
