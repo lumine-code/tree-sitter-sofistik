@@ -13,6 +13,10 @@
           },
           {
             "type": "SYMBOL",
+            "name": "commented_program_header"
+          },
+          {
+            "type": "SYMBOL",
             "name": "apply_statement"
           },
           {
@@ -25,6 +29,14 @@
           },
           {
             "type": "SYMBOL",
+            "name": "preprocessor_define_header"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "preprocessor_enddef_record"
+          },
+          {
+            "type": "SYMBOL",
             "name": "preprocessor_define_statement"
           },
           {
@@ -33,11 +45,19 @@
           },
           {
             "type": "SYMBOL",
+            "name": "_scoped_top_level_statement"
+          },
+          {
+            "type": "SYMBOL",
             "name": "text_block"
           },
           {
             "type": "SYMBOL",
             "name": "metadata"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "ignored_text"
           },
           {
             "type": "SYMBOL",
@@ -144,10 +164,6 @@
       "type": "CHOICE",
       "members": [
         {
-          "type": "SYMBOL",
-          "name": "_dollar_prog"
-        },
-        {
           "type": "TOKEN",
           "content": {
             "type": "PREC",
@@ -170,6 +186,63 @@
           }
         }
       ]
+    },
+    "commented_program_header": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "FIELD",
+          "name": "sigil",
+          "content": {
+            "type": "SYMBOL",
+            "name": "commented_program_sigil"
+          }
+        },
+        {
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "FIELD",
+              "name": "module",
+              "content": {
+                "type": "CHOICE",
+                "members": [
+                  {
+                    "type": "SYMBOL",
+                    "name": "module_name"
+                  },
+                  {
+                    "type": "SYMBOL",
+                    "name": "invalid_module"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "BLANK"
+            }
+          ]
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "FIELD",
+            "name": "option",
+            "content": {
+              "type": "SYMBOL",
+              "name": "program_option"
+            }
+          }
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_record_end"
+        }
+      ]
+    },
+    "commented_program_sigil": {
+      "type": "SYMBOL",
+      "name": "_dollar_prog"
     },
     "program_option": {
       "type": "SYMBOL",
@@ -203,7 +276,7 @@
           "members": [
             {
               "type": "SYMBOL",
-              "name": "_nonblank_program_body"
+              "name": "_program_body_start"
             },
             {
               "type": "REPEAT",
@@ -238,6 +311,19 @@
       "members": [
         {
           "type": "SYMBOL",
+          "name": "_program_body_start"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "implicit_record"
+        }
+      ]
+    },
+    "_program_body_start": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
           "name": "command"
         },
         {
@@ -262,7 +348,11 @@
         },
         {
           "type": "SYMBOL",
-          "name": "preprocessor_define_block"
+          "name": "preprocessor_define_header"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "preprocessor_enddef_record"
         },
         {
           "type": "SYMBOL",
@@ -275,10 +365,6 @@
         {
           "type": "SYMBOL",
           "name": "variable_statement"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "implicit_record"
         },
         {
           "type": "ALIAS",
@@ -380,11 +466,11 @@
                               },
                               {
                                 "type": "SYMBOL",
-                                "name": "preprocessor_define_statement"
+                                "name": "preprocessor_define_header"
                               },
                               {
                                 "type": "SYMBOL",
-                                "name": "preprocessor_define_block"
+                                "name": "preprocessor_define_statement"
                               }
                             ]
                           }
@@ -673,16 +759,8 @@
             }
           },
           {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "SYMBOL",
-                "name": "_record_end"
-              },
-              {
-                "type": "BLANK"
-              }
-            ]
+            "type": "SYMBOL",
+            "name": "_statement_end"
           }
         ]
       }
@@ -744,16 +822,8 @@
             }
           },
           {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "SYMBOL",
-                "name": "_record_end"
-              },
-              {
-                "type": "BLANK"
-              }
-            ]
+            "type": "SYMBOL",
+            "name": "_statement_end"
           }
         ]
       }
@@ -795,8 +865,13 @@
             "type": "FIELD",
             "name": "keyword",
             "content": {
-              "type": "SYMBOL",
-              "name": "_end_keyword"
+              "type": "ALIAS",
+              "content": {
+                "type": "SYMBOL",
+                "name": "_end_keyword"
+              },
+              "named": true,
+              "value": "control_keyword"
             }
           },
           {
@@ -1158,54 +1233,8 @@
       ]
     },
     "preprocessor_block": {
-      "type": "CHOICE",
-      "members": [
-        {
-          "type": "SYMBOL",
-          "name": "preprocessor_define_block"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_preprocessor_top_level"
-        }
-      ]
-    },
-    "preprocessor_define_block": {
-      "type": "SEQ",
-      "members": [
-        {
-          "type": "SYMBOL",
-          "name": "preprocessor_define_header"
-        },
-        {
-          "type": "REPEAT",
-          "content": {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "SYMBOL",
-                "name": "dynamic_record"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "dynamic_line"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "text_block"
-              },
-              {
-                "type": "SYMBOL",
-                "name": "_line_end"
-              }
-            ]
-          }
-        },
-        {
-          "type": "SYMBOL",
-          "name": "preprocessor_enddef_record"
-        }
-      ]
+      "type": "SYMBOL",
+      "name": "_preprocessor_top_level"
     },
     "preprocessor_define_statement": {
       "type": "PREC_RIGHT",
@@ -1411,6 +1440,10 @@
         },
         {
           "type": "SYMBOL",
+          "name": "commented_program_header"
+        },
+        {
+          "type": "SYMBOL",
           "name": "apply_statement"
         },
         {
@@ -1420,6 +1453,14 @@
         {
           "type": "SYMBOL",
           "name": "preprocessor_block"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "preprocessor_define_header"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "preprocessor_enddef_record"
         },
         {
           "type": "SYMBOL",
@@ -1439,7 +1480,53 @@
         },
         {
           "type": "SYMBOL",
+          "name": "ignored_text"
+        },
+        {
+          "type": "SYMBOL",
           "name": "_line_end"
+        }
+      ]
+    },
+    "_scoped_top_level_statement": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "command"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "invalid_command_record"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "loop_block"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "if_block"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "exit_iteration_record"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "variable_statement"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_template_record"
+          },
+          "named": true,
+          "value": "dynamic_record"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "end_record"
         }
       ]
     },
@@ -1761,7 +1848,7 @@
     },
     "preprocessor_name": {
       "type": "PATTERN",
-      "value": "#?[A-Za-z0-9_]+"
+      "value": "#?[A-Za-z0-9_][A-Za-z0-9_-]*"
     },
     "dynamic_record": {
       "type": "SEQ",
@@ -1987,6 +2074,10 @@
         },
         {
           "type": "SYMBOL",
+          "name": "sequence_generator"
+        },
+        {
+          "type": "SYMBOL",
           "name": "number_list"
         },
         {
@@ -2026,6 +2117,17 @@
           "name": "unit"
         }
       ]
+    },
+    "sequence_generator": {
+      "type": "TOKEN",
+      "content": {
+        "type": "PREC",
+        "value": 5,
+        "content": {
+          "type": "PATTERN",
+          "value": "\\([ \\t]*[^() \\t\\r\\n;!]+(?:[ \\t]+[^() \\t\\r\\n;!]+)+[ \\t]*\\)"
+        }
+      }
     },
     "string": {
       "type": "CHOICE",
@@ -2158,7 +2260,7 @@
         "value": 4,
         "content": {
           "type": "PATTERN",
-          "value": "[^ \\t\\r\\n;!$'\"]+[*+\\u002d/^&|][^ \\t\\r\\n;!$'\"]+"
+          "value": "[^ \\t\\r\\n;!$'\"#\\[\\]]+[*+\\u002d/^&|][^ \\t\\r\\n;!$'\"#\\[\\]]+"
         }
       }
     },
@@ -2191,6 +2293,19 @@
     "bare_value": {
       "type": "SYMBOL",
       "name": "_bare_word"
+    },
+    "_statement_end": {
+      "type": "CHOICE",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "_record_end"
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_end_of_file"
+        }
+      ]
     },
     "_record_end": {
       "type": "CHOICE",
@@ -2302,6 +2417,14 @@
     {
       "type": "SYMBOL",
       "name": "text_content"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_end_of_file"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "ignored_text"
     },
     {
       "type": "SYMBOL",

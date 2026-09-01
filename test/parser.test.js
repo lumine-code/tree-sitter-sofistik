@@ -10,10 +10,120 @@ function parse(source) {
 }
 
 test("parses CRLF input without a final newline", () => {
-  const tree = parse("$PROG AQUA\r\nHEAD Example\r\nEND");
+  const tree = parse("+PROG AQUA\r\nHEAD Example\r\nEND");
   assert.strictEqual(tree.rootNode.hasError, false);
   assert.strictEqual(tree.rootNode.descendantsOfType("program").length, 1);
   assert.strictEqual(tree.rootNode.descendantsOfType("command_name")[0].text, "HEAD");
+});
+
+test("uses schema commands before the dynamic TEMPLATE fallback", () => {
+  const tree = parse("+PROG TEMPLATE\nHEAD Variables\nWHATEVER A B\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("command_name").map((node) => node.text),
+    ["HEAD"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("dynamic_command_name").map((node) => node.text),
+    ["WHATEVER"],
+  );
+});
+
+test("exposes END and ENDE as control keywords", () => {
+  const tree = parse("+PROG AQUA\nEND\nHEAD Again\nENDE");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("control_keyword").map((node) => node.text),
+    ["END", "ENDE"],
+  );
+});
+
+test("keeps hash variables visible next to units and inside calculations", () => {
+  const tree = parse("+PROG SOFILOAD\nLINE QGRP 'PP' TYPE PG #q_bk[N/m] X1 #x1-#l_w/2 X2 #x2\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("hash_variable").map((node) => node.text),
+    ["#q_bk", "#x1", "#l_w", "#x2"],
+  );
+  assert.strictEqual(tree.rootNode.descendantsOfType("unit")[0].text, "[N/m]");
+});
+
+test("keeps a SOFiSTiK sequence generator in one node", () => {
+  const tree = parse("+PROG ASE\nGRP (80 89 1) ICS1 11 PHIF 0\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  const generators = tree.rootNode.descendantsOfType("sequence_generator");
+  assert.strictEqual(generators.length, 1);
+  assert.strictEqual(generators[0].text, "(80 89 1)");
+});
+
+test("treats block DEFINE markers as transparent to the active module", () => {
+  const tree = parse(
+    "$prog maxima\n#define maxima-supp\nsupp $(no) mami auto\n#enddef\n+prog aqua\nend",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.strictEqual(tree.rootNode.descendantsOfType("preprocessor_define_block").length, 0);
+  assert.strictEqual(
+    tree.rootNode.descendantsOfType("preprocessor_define_header")[0].childForFieldName("name").text,
+    "maxima-supp",
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("command_name").map((node) => node.text),
+    ["supp"],
+  );
+});
+
+test("keeps block DEFINE markers transparent after a command inside a program", () => {
+  const tree = parse(
+    "+prog maxima\nhead macro\n#define maxima-supp\nsupp $(no) mami auto\n#enddef\nend",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("command_name").map((node) => node.text),
+    ["head", "supp"],
+  );
+  assert.strictEqual(tree.rootNode.descendantsOfType("preprocessor_define_header").length, 1);
+  assert.strictEqual(tree.rootNode.descendantsOfType("preprocessor_enddef_record").length, 1);
+});
+
+test("uses dollar PROG only as a standalone scope directive", () => {
+  const tree = parse("$prog maxima\nsupp 1\n$PROG\nplain text\n+prog aqua\nend");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.strictEqual(tree.rootNode.descendantsOfType("commented_program_header").length, 2);
+  assert.strictEqual(tree.rootNode.descendantsOfType("program").length, 1);
+  assert.strictEqual(tree.rootNode.descendantsOfType("command_name")[0].text, "supp");
+});
+
+test("accepts descriptive text between program scopes", () => {
+  const tree = parse(
+    "11 Belki prefabrykowane\n21 Poprzecznice podporowe\n+PROG AQUA\nEND\nDescription after a module",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("ignored_text").map((node) => node.text.trim()),
+    ["11 Belki prefabrykowane", "21 Poprzecznice podporowe", "Description after a module"],
+  );
+});
+
+test("keeps SYS and APPLY arguments ahead of the flat-text fallback", () => {
+  const tree = parse('SYS command args\n+SYS wait copy "a.cdb" "b.cdb"\nAPPLY file.dat');
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode
+      .descendantsOfType("sys_statement")
+      .map((node) => node.childrenForFieldName("argument").map((argument) => argument.text)),
+    [
+      ["command", "args"],
+      ["wait", "copy", '"a.cdb"', '"b.cdb"'],
+    ],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode
+      .descendantsOfType("apply_statement")[0]
+      .childrenForFieldName("argument")
+      .map((argument) => argument.text),
+    ["file.dat"],
+  );
+  assert.strictEqual(tree.rootNode.descendantsOfType("ignored_text").length, 0);
 });
 
 test("keeps the module inside the stable program header field", () => {

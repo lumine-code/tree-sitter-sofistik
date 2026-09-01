@@ -26,6 +26,8 @@ enum TokenType {
   CONTINUATION,
   COMMENT,
   TEXT_CONTENT,
+  END_OF_FILE,
+  IGNORED_TEXT,
   ERROR_SENTINEL,
 };
 
@@ -193,7 +195,11 @@ static bool is_enum_value(uint32_t item, const char *name) {
   return false;
 }
 
-static bool scan_non_word_bare(TSLexer *lexer, const bool *valid_symbols) {
+static bool scan_non_word_bare(
+  TSLexer *lexer,
+  const bool *valid_symbols,
+  bool *reserved_root_word
+) {
   if (
     !valid_symbols[BARE_WORD] || is_schema_character(lexer->lookahead) ||
     is_bare_value_delimiter(lexer->lookahead)
@@ -220,6 +226,7 @@ static bool scan_non_word_bare(TSLexer *lexer, const bool *valid_symbols) {
     strcmp(prefix, "+APPLY") == 0 || strcmp(prefix, "-APPLY") == 0 ||
     strcmp(prefix, "+SYS") == 0 || strcmp(prefix, "-SYS") == 0
   ) {
+    *reserved_root_word = true;
     return false;
   }
 
@@ -283,7 +290,8 @@ static bool read_word(
 static bool scan_word(
   Scanner *scanner,
   TSLexer *lexer,
-  const bool *valid_symbols
+  const bool *valid_symbols,
+  bool *reserved_root_word
 ) {
   char word[128] = {0};
   bool contextual = false;
@@ -330,11 +338,6 @@ static bool scan_word(
     return true;
   }
 
-  if (valid_symbols[TEMPLATE_COMMAND_NAME] && is_template_module(scanner->module)) {
-    lexer->result_symbol = TEMPLATE_COMMAND_NAME;
-    return true;
-  }
-
   if (valid_symbols[ENUM_VALUE] && is_enum_value(scanner->item, word)) {
     scanner->record_state = IN_RECORD;
     lexer->result_symbol = ENUM_VALUE;
@@ -354,10 +357,20 @@ static bool scan_word(
     (strcmp(word, "PROG") == 0 || strcmp(word, "APPLY") == 0 ||
      strcmp(word, "SYS") == 0)
   ) {
+    *reserved_root_word = true;
     return false;
   }
 
-  if (valid_symbols[COMMAND_NAME] || valid_symbols[INVALID_COMMAND]) {
+  if (valid_symbols[IGNORED_TEXT] && is_reserved_statement_word(word)) {
+    *reserved_root_word = true;
+    return false;
+  }
+
+  if (
+    (valid_symbols[COMMAND_NAME] || valid_symbols[INVALID_COMMAND]) &&
+    !(valid_symbols[BARE_WORD] && valid_symbols[IGNORED_TEXT]) &&
+    !(valid_symbols[IGNORED_TEXT] && scanner->module == SOFISTIK_UNKNOWN_ID)
+  ) {
     uint32_t command = find_command(scanner->module, word);
     if (command != SOFISTIK_UNKNOWN_ID && valid_symbols[COMMAND_NAME]) {
       scanner->command = command;
@@ -365,6 +378,10 @@ static bool scan_word(
       scanner->record_state = IN_RECORD;
       scanner->continued_line = false;
       lexer->result_symbol = COMMAND_NAME;
+      return true;
+    }
+    if (valid_symbols[TEMPLATE_COMMAND_NAME] && is_template_module(scanner->module)) {
+      lexer->result_symbol = TEMPLATE_COMMAND_NAME;
       return true;
     }
     if (
@@ -375,6 +392,11 @@ static bool scan_word(
       lexer->result_symbol = INVALID_COMMAND;
       return true;
     }
+  }
+
+  if (valid_symbols[TEMPLATE_COMMAND_NAME] && is_template_module(scanner->module)) {
+    lexer->result_symbol = TEMPLATE_COMMAND_NAME;
+    return true;
   }
 
   if (valid_symbols[ITEM_NAME]) {
@@ -399,7 +421,8 @@ static bool scan_word(
   if (
     valid_symbols[BARE_WORD] &&
     !(valid_symbols[COMMAND_NAME] && is_reserved_statement_word(word)) &&
-    !(scanner->command == SOFISTIK_UNKNOWN_ID && valid_symbols[COMMAND_NAME])
+    (!(scanner->command == SOFISTIK_UNKNOWN_ID && valid_symbols[COMMAND_NAME]) ||
+     valid_symbols[IGNORED_TEXT])
   ) {
     lexer->result_symbol = BARE_WORD;
     return true;
@@ -559,6 +582,11 @@ bool tree_sitter_sofistik_external_scanner_scan(
     return scan_text_content(lexer);
   }
 
+  if (valid_symbols[END_OF_FILE] && !lexer->lookahead) {
+    lexer->result_symbol = END_OF_FILE;
+    return true;
+  }
+
   while (
     lexer->lookahead == ' ' || lexer->lookahead == '\t' ||
     lexer->lookahead == '\f' || lexer->lookahead == 0x00ef ||
@@ -582,10 +610,28 @@ bool tree_sitter_sofistik_external_scanner_scan(
     return scan_slash_comment(lexer, valid_symbols);
   }
 
-  if (scan_non_word_bare(lexer, valid_symbols)) {
+  int32_t initial_lookahead = lexer->lookahead;
+  bool has_ignored_text_start =
+    lexer->lookahead && lexer->lookahead != '\r' && lexer->lookahead != '\n';
+  bool reserved_root_word = false;
+  if (scan_non_word_bare(lexer, valid_symbols, &reserved_root_word)) {
     return true;
   }
-  return scan_word(scanner, lexer, valid_symbols);
+  if (scan_word(scanner, lexer, valid_symbols, &reserved_root_word)) {
+    return true;
+  }
+  if (
+    valid_symbols[IGNORED_TEXT] && has_ignored_text_start &&
+    !reserved_root_word && initial_lookahead != '#' &&
+    initial_lookahead != '<' && initial_lookahead != '@' &&
+    initial_lookahead != '+' && initial_lookahead != '-'
+  ) {
+    consume_line(lexer);
+    lexer->mark_end(lexer);
+    lexer->result_symbol = IGNORED_TEXT;
+    return true;
+  }
+  return false;
 }
 
 unsigned tree_sitter_sofistik_external_scanner_serialize(

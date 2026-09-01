@@ -19,6 +19,8 @@ module.exports = grammar({
     $.continuation,
     $.comment,
     $.text_content,
+    $._end_of_file,
+    $.ignored_text,
     $._error_sentinel,
   ],
 
@@ -33,13 +35,18 @@ module.exports = grammar({
       repeat(
         choice(
           $.program,
+          $.commented_program_header,
           $.apply_statement,
           $.sys_statement,
           $.preprocessor_block,
+          $.preprocessor_define_header,
+          $.preprocessor_enddef_record,
           $.preprocessor_define_statement,
           $.preprocessor_directive,
+          $._scoped_top_level_statement,
           $.text_block,
           $.metadata,
+          $.ignored_text,
           $._line_end,
         ),
       ),
@@ -61,19 +68,30 @@ module.exports = grammar({
         $._record_end,
       ),
 
-    program_sigil: ($) =>
-      choice($._dollar_prog, ci("PROG"), token(prec(10, /[+-][pP][rR][oO][gG]/))),
+    program_sigil: ($) => choice(ci("PROG"), token(prec(10, /[+-][pP][rR][oO][gG]/))),
+
+    commented_program_header: ($) =>
+      seq(
+        field("sigil", $.commented_program_sigil),
+        optional(field("module", choice($.module_name, $.invalid_module))),
+        repeat(field("option", $.program_option)),
+        $._record_end,
+      ),
+
+    commented_program_sigil: ($) => $._dollar_prog,
 
     program_option: ($) => $._value,
 
     input_block: ($) => seq(repeat($._program_body), $.end_record),
 
     _continued_input_block: ($) =>
-      choice($.end_record, seq($._nonblank_program_body, repeat($._program_body), $.end_record)),
+      choice($.end_record, seq($._program_body_start, repeat($._program_body), $.end_record)),
 
     _program_body: ($) => choice($._nonblank_program_body, $._line_end),
 
-    _nonblank_program_body: ($) =>
+    _nonblank_program_body: ($) => choice($._program_body_start, $.implicit_record),
+
+    _program_body_start: ($) =>
       choice(
         $.command,
         $.invalid_command_record,
@@ -81,11 +99,11 @@ module.exports = grammar({
         $.if_block,
         $.exit_iteration_record,
         $.preprocessor_program_block,
-        $.preprocessor_define_block,
+        $.preprocessor_define_header,
+        $.preprocessor_enddef_record,
         $.preprocessor_define_statement,
         $.preprocessor_directive,
         $.variable_statement,
-        $.implicit_record,
         alias($._template_record, $.dynamic_record),
         $.text_block,
         $.metadata,
@@ -107,8 +125,8 @@ module.exports = grammar({
                     choice(
                       $.variable_statement,
                       $.preprocessor_directive,
+                      $.preprocessor_define_header,
                       $.preprocessor_define_statement,
-                      $.preprocessor_define_block,
                     ),
                   ),
                 ),
@@ -157,11 +175,7 @@ module.exports = grammar({
 
     apply_statement: ($) =>
       prec.right(
-        seq(
-          field("sigil", $.apply_sigil),
-          repeat(field("argument", $._value)),
-          optional($._record_end),
-        ),
+        seq(field("sigil", $.apply_sigil), repeat(field("argument", $._value)), $._statement_end),
       ),
 
     apply_sigil: ($) =>
@@ -169,16 +183,15 @@ module.exports = grammar({
 
     sys_statement: ($) =>
       prec.right(
-        seq(
-          field("sigil", $.sys_sigil),
-          repeat(field("argument", $._value)),
-          optional($._record_end),
-        ),
+        seq(field("sigil", $.sys_sigil), repeat(field("argument", $._value)), $._statement_end),
       ),
 
     sys_sigil: ($) => choice(ci("SYS"), token(prec(10, /[+-][sS][yY][sS]/))),
 
-    end_record: ($) => prec.right(seq(field("keyword", $._end_keyword), optional($._record_end))),
+    end_record: ($) =>
+      prec.right(
+        seq(field("keyword", alias($._end_keyword, $.control_keyword)), optional($._record_end)),
+      ),
 
     loop_block: ($) => seq($.loop_header, repeat($._control_body), $.endloop_record),
 
@@ -229,14 +242,7 @@ module.exports = grammar({
     exit_iteration_record: ($) =>
       seq(field("keyword", alias(ci("EXIT_ITERATION"), $.control_keyword)), $._record_end),
 
-    preprocessor_block: ($) => choice($.preprocessor_define_block, $._preprocessor_top_level),
-
-    preprocessor_define_block: ($) =>
-      seq(
-        $.preprocessor_define_header,
-        repeat(choice($.dynamic_record, $.dynamic_line, $.text_block, $._line_end)),
-        $.preprocessor_enddef_record,
-      ),
+    preprocessor_block: ($) => $._preprocessor_top_level,
 
     preprocessor_define_statement: ($) =>
       prec.right(
@@ -270,14 +276,30 @@ module.exports = grammar({
     _top_level_preprocessor_body: ($) =>
       choice(
         $.program,
+        $.commented_program_header,
         $.apply_statement,
         $.sys_statement,
         $.preprocessor_block,
+        $.preprocessor_define_header,
+        $.preprocessor_enddef_record,
         $.preprocessor_define_statement,
         $.preprocessor_directive,
         $.text_block,
         $.metadata,
+        $.ignored_text,
         $._line_end,
+      ),
+
+    _scoped_top_level_statement: ($) =>
+      choice(
+        $.command,
+        $.invalid_command_record,
+        $.loop_block,
+        $.if_block,
+        $.exit_iteration_record,
+        $.variable_statement,
+        alias($._template_record, $.dynamic_record),
+        $.end_record,
       ),
 
     preprocessor_define_header: ($) =>
@@ -327,7 +349,7 @@ module.exports = grammar({
         ),
       ),
 
-    preprocessor_name: ($) => /#?[A-Za-z0-9_]+/,
+    preprocessor_name: ($) => /#?[A-Za-z0-9_][A-Za-z0-9_-]*/,
 
     dynamic_record: ($) =>
       seq(
@@ -367,6 +389,7 @@ module.exports = grammar({
     _non_bare_value: ($) =>
       choice(
         $.string,
+        $.sequence_generator,
         $.number_list,
         $.number,
         $.dollar_variable,
@@ -378,6 +401,9 @@ module.exports = grammar({
         $.punctuated_value,
         $.unit,
       ),
+
+    sequence_generator: ($) =>
+      token(prec(5, /\([ \t]*[^() \t\r\n;!]+(?:[ \t]+[^() \t\r\n;!]+)+[ \t]*\)/)),
 
     string: ($) =>
       choice(
@@ -403,7 +429,13 @@ module.exports = grammar({
 
     expression: ($) => token(prec(6, seq("=", optional(/[^\s;!]+/)))),
 
-    operator_expression: ($) => token(prec(4, /[^ \t\r\n;!$'"]+[*+\u002d/^&|][^ \t\r\n;!$'"]+/)),
+    operator_expression: ($) =>
+      token(
+        prec(
+          4,
+          new RegExp("[^ \\t\\r\\n;!$'\"#\\[\\]]+[*+\\u002d/^&|][^ \\t\\r\\n;!$'\"#\\[\\]]+"),
+        ),
+      ),
 
     generic_expression: ($) => token(prec(2, /[^ \t\r\n;!$'"]*[()<>][^ \t\r\n;!$'"]*/)),
 
@@ -412,6 +444,8 @@ module.exports = grammar({
     unit: ($) => /\[[^\]\r\n]+\]/,
 
     bare_value: ($) => $._bare_word,
+
+    _statement_end: ($) => choice($._record_end, $._end_of_file),
 
     _record_end: ($) => choice(";", $._line_end),
 

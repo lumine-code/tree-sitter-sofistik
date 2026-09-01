@@ -44,6 +44,10 @@
         "named": true
       },
       {
+        "type": "sequence_generator",
+        "named": true
+      },
+      {
         "type": "string",
         "named": true
       },
@@ -98,7 +102,7 @@
         "required": false,
         "types": [
           {
-            "type": "preprocessor_define_block",
+            "type": "preprocessor_define_header",
             "named": true
           },
           {
@@ -150,20 +154,49 @@
     }
   },
   {
-    "type": "dynamic_line",
+    "type": "commented_program_header",
     "named": true,
     "fields": {
-      "value": {
+      "module": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "invalid_module",
+            "named": true
+          },
+          {
+            "type": "module_name",
+            "named": true
+          }
+        ]
+      },
+      "option": {
         "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "program_option",
+            "named": true
+          }
+        ]
+      },
+      "sigil": {
+        "multiple": false,
         "required": true,
         "types": [
           {
-            "type": "_value",
+            "type": "commented_program_sigil",
             "named": true
           }
         ]
       }
     }
+  },
+  {
+    "type": "commented_program_sigil",
+    "named": true,
+    "fields": {}
   },
   {
     "type": "dynamic_record",
@@ -240,7 +273,18 @@
   {
     "type": "end_record",
     "named": true,
-    "fields": {}
+    "fields": {
+      "keyword": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "control_keyword",
+            "named": true
+          }
+        ]
+      }
+    }
   },
   {
     "type": "endif_record",
@@ -361,7 +405,7 @@
           "named": true
         },
         {
-          "type": "preprocessor_define_block",
+          "type": "preprocessor_define_header",
           "named": true
         },
         {
@@ -370,6 +414,10 @@
         },
         {
           "type": "preprocessor_directive",
+          "named": true
+        },
+        {
+          "type": "preprocessor_enddef_record",
           "named": true
         },
         {
@@ -485,7 +533,7 @@
           "named": true
         },
         {
-          "type": "preprocessor_define_block",
+          "type": "preprocessor_define_header",
           "named": true
         },
         {
@@ -494,6 +542,10 @@
         },
         {
           "type": "preprocessor_directive",
+          "named": true
+        },
+        {
+          "type": "preprocessor_enddef_record",
           "named": true
         },
         {
@@ -620,7 +672,7 @@
           "named": true
         },
         {
-          "type": "preprocessor_define_block",
+          "type": "preprocessor_define_header",
           "named": true
         },
         {
@@ -629,6 +681,10 @@
         },
         {
           "type": "preprocessor_directive",
+          "named": true
+        },
+        {
+          "type": "preprocessor_enddef_record",
           "named": true
         },
         {
@@ -685,6 +741,14 @@
           "named": true
         },
         {
+          "type": "commented_program_header",
+          "named": true
+        },
+        {
+          "type": "ignored_text",
+          "named": true
+        },
+        {
           "type": "metadata",
           "named": true
         },
@@ -693,7 +757,7 @@
           "named": true
         },
         {
-          "type": "preprocessor_define_block",
+          "type": "preprocessor_define_header",
           "named": true
         },
         {
@@ -713,6 +777,10 @@
           "named": true
         },
         {
+          "type": "preprocessor_enddef_record",
+          "named": true
+        },
+        {
           "type": "preprocessor_endif_record",
           "named": true
         },
@@ -726,37 +794,6 @@
         },
         {
           "type": "sys_statement",
-          "named": true
-        },
-        {
-          "type": "text_block",
-          "named": true
-        }
-      ]
-    }
-  },
-  {
-    "type": "preprocessor_define_block",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": true,
-      "required": true,
-      "types": [
-        {
-          "type": "dynamic_line",
-          "named": true
-        },
-        {
-          "type": "dynamic_record",
-          "named": true
-        },
-        {
-          "type": "preprocessor_define_header",
-          "named": true
-        },
-        {
-          "type": "preprocessor_enddef_record",
           "named": true
         },
         {
@@ -1013,7 +1050,7 @@
           "named": true
         },
         {
-          "type": "preprocessor_define_block",
+          "type": "preprocessor_define_header",
           "named": true
         },
         {
@@ -1030,6 +1067,10 @@
         },
         {
           "type": "preprocessor_elseif_header",
+          "named": true
+        },
+        {
+          "type": "preprocessor_enddef_record",
           "named": true
         },
         {
@@ -1182,6 +1223,42 @@
           "named": true
         },
         {
+          "type": "command",
+          "named": true
+        },
+        {
+          "type": "commented_program_header",
+          "named": true
+        },
+        {
+          "type": "dynamic_record",
+          "named": true
+        },
+        {
+          "type": "end_record",
+          "named": true
+        },
+        {
+          "type": "exit_iteration_record",
+          "named": true
+        },
+        {
+          "type": "if_block",
+          "named": true
+        },
+        {
+          "type": "ignored_text",
+          "named": true
+        },
+        {
+          "type": "invalid_command_record",
+          "named": true
+        },
+        {
+          "type": "loop_block",
+          "named": true
+        },
+        {
           "type": "metadata",
           "named": true
         },
@@ -1190,11 +1267,19 @@
           "named": true
         },
         {
+          "type": "preprocessor_define_header",
+          "named": true
+        },
+        {
           "type": "preprocessor_define_statement",
           "named": true
         },
         {
           "type": "preprocessor_directive",
+          "named": true
+        },
+        {
+          "type": "preprocessor_enddef_record",
           "named": true
         },
         {
@@ -1207,6 +1292,10 @@
         },
         {
           "type": "text_block",
+          "named": true
+        },
+        {
+          "type": "variable_statement",
           "named": true
         }
       ]
@@ -1402,6 +1491,10 @@
     "named": true
   },
   {
+    "type": "ignored_text",
+    "named": true
+  },
+  {
     "type": "invalid_command",
     "named": true
   },
@@ -1447,6 +1540,10 @@
   },
   {
     "type": "punctuated_value",
+    "named": true
+  },
+  {
+    "type": "sequence_generator",
     "named": true
   },
   {

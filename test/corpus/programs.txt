@@ -25,7 +25,8 @@ END
           (item_sequence
             item: (item_name)
             value: (bare_value))))
-      (end_record))))
+      (end_record
+        keyword: (control_keyword)))))
 
 ==============================
 Item and enum name collision
@@ -47,7 +48,8 @@ END
           (item_sequence
             item: (item_name)
             value: (enum_value))))
-      (end_record))))
+      (end_record
+        keyword: (control_keyword)))))
 
 ================
 Table records
@@ -82,7 +84,8 @@ END
           value: (bare_value)
           value: (bare_value)
           value: (bare_value)))
-      (end_record))))
+      (end_record
+        keyword: (control_keyword)))))
 
 ==========================
 Invalid contextual names
@@ -103,13 +106,15 @@ END
       (invalid_command_record
         name: (invalid_command)
         (bare_value))
-      (end_record)))
+      (end_record
+        keyword: (control_keyword))))
   (program
     header: (program_header
       sigil: (program_sigil)
       module: (invalid_module))
     body: (input_block
-      (end_record))))
+      (end_record
+        keyword: (control_keyword)))))
 
 =======================
 Dynamic template record
@@ -132,4 +137,5 @@ END
         value: (bare_value)
         value: (bare_value))
       (metadata)
-      (end_record))))
+      (end_record
+        keyword: (control_keyword)))))

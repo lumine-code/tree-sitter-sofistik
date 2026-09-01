@@ -17,25 +17,110 @@ END
       (program_sigil)
       (module_name))
     (input_block
-      (end_record)))
+      (end_record
+        (control_keyword))))
   (program
     (program_header
       (program_sigil)
       (module_name))
     (input_block
-      (end_record)))
+      (end_record
+        (control_keyword))))
   (program
     (program_header
       (program_sigil)
       (module_name))
     (input_block
-      (end_record)))
+      (end_record
+        (control_keyword))))
+  (commented_program_header
+    (commented_program_sigil)
+    (module_name))
+  (end_record
+    (control_keyword)))
+
+=========================================
+Transparent scope directives and values
+=========================================
+11 Belki prefabrykowane
+$prog maxima
+#define maxima-supp
+supp $(no) mami auto
+#enddef
++prog template
+head variables
+end
++prog sofiload
+line qgrp 'PP' type pg #q_bk[N/m] x1 #x1
+end
++prog ase
+grp (80 89 1) ics1 11 phif 0
+ende
+---
+
+(source_file
+  (ignored_text)
+  (commented_program_header
+    (commented_program_sigil)
+    (module_name))
+  (preprocessor_define_header
+    (preprocessor_keyword)
+    (preprocessor_name))
+  (command
+    (command_name)
+    (record
+      (dollar_variable)
+      (bare_value)
+      (bare_value)))
+  (preprocessor_enddef_record
+    (preprocessor_keyword))
   (program
     (program_header
       (program_sigil)
       (module_name))
     (input_block
-      (end_record))))
+      (command
+        (command_name)
+        (record
+          (bare_value)))
+      (end_record
+        (control_keyword))))
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (command
+        (command_name)
+        (record
+          (bare_value)
+          (string)
+          (item_sequence
+            (item_name)
+            (enum_value)
+            (hash_variable)
+            (unit))
+          (item_sequence
+            (item_name)
+            (hash_variable))))
+      (end_record
+        (control_keyword))))
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (command
+        (command_name)
+        (record
+          (sequence_generator)
+          (bare_value)
+          (bare_value)
+          (item_sequence
+            (item_name)
+            (bare_value))))
+      (end_record
+        (control_keyword)))))
 
 =================================
 Annotated physical continuation
@@ -60,7 +145,8 @@ ENDE
           (continuation)
           (bare_value)
           (bare_value)))
-      (end_record))))
+      (end_record
+        (control_keyword)))))
 
 ==========================================
 Preprocessor auxiliaries preserve command
@@ -100,7 +186,8 @@ END
           (item_sequence
             (item_name)
             (bare_value))))
-      (end_record))))
+      (end_record
+        (control_keyword)))))
 
 ============================
 Mojibake BOM before comment
@@ -117,7 +204,8 @@ END
       (program_sigil)
       (module_name))
     (input_block
-      (end_record))))
+      (end_record
+        (control_keyword)))))
 
 ===============================
 Prefixed positional references
@@ -168,7 +256,8 @@ ENDE
             (item_name)
             (bare_value)
             (bare_value))))
-      (end_record))))
+      (end_record
+        (control_keyword)))))
 
 ========================
 Multiple input blocks
@@ -191,13 +280,15 @@ END
         (command_name)
         (record
           (bare_value)))
-      (end_record))
+      (end_record
+        (control_keyword)))
     (input_block
       (command
         (command_name)
         (record
           (bare_value)))
-      (end_record))))
+      (end_record
+        (control_keyword)))))
 
 ====================================
 Variable with semicolon command list
@@ -233,7 +324,8 @@ END
             (bare_value))
           (item_sequence
             (item_name)
-            (operator_expression))))
+            (hash_variable)
+            (bare_value))))
       (command
         (command_name)
         (record
@@ -259,7 +351,8 @@ END
           (item_sequence
             (item_name)
             (bare_value))))
-      (end_record))))
+      (end_record
+        (control_keyword)))))
 
 ================================
 Continuation and implicit record
@@ -302,7 +395,8 @@ END
           (item_sequence
             (item_name)
             (bare_value))))
-      (end_record))))
+      (end_record
+        (control_keyword)))))
 
 ========================
 Semicolon commands
@@ -332,7 +426,8 @@ END
         (record
           (bare_value)
           (bare_value)))
-      (end_record))))
+      (end_record
+        (control_keyword)))))
 
 ========================
 Nested control flow
@@ -387,7 +482,8 @@ END
               (bare_value))))
         (endif_record
           (control_keyword)))
-      (end_record))))
+      (end_record
+        (control_keyword)))))
 
 =========================
 Preprocessor structures
@@ -410,17 +506,12 @@ SYS echo hi
     (preprocessor_keyword)
     (preprocessor_name)
     (expression))
-  (preprocessor_block
-    (preprocessor_define_block
-      (preprocessor_define_header
-        (preprocessor_keyword)
-        (preprocessor_name))
-      (dynamic_record
-        (dynamic_command_name)
-        (bare_value)
-        (hash_variable))
-      (preprocessor_enddef_record
-        (preprocessor_keyword))))
+  (preprocessor_define_header
+    (preprocessor_keyword)
+    (preprocessor_name))
+  (ignored_text)
+  (preprocessor_enddef_record
+    (preprocessor_keyword))
   (preprocessor_block
     (preprocessor_if_header
       (preprocessor_keyword)
@@ -434,7 +525,8 @@ SYS echo hi
           (command_name)
           (record
             (bare_value)))
-        (end_record)))
+        (end_record
+          (control_keyword))))
     (preprocessor_else_header
       (preprocessor_keyword))
     (sys_statement
@@ -478,7 +570,8 @@ END
           (item_sequence
             (item_name)
             (bare_value))))
-      (end_record))))
+      (end_record
+        (control_keyword)))))
 
 ===========================
 Opaque text and string body
@@ -505,7 +598,8 @@ END
         (text_start)
         (text_content)
         (text_end))
-      (end_record))))
+      (end_record
+        (control_keyword)))))
 
 ========================
 Apply and system records
@@ -548,4 +642,5 @@ ENDE
           (bare_value)
           (bare_value)
           (bare_value)))
-      (end_record))))
+      (end_record
+        (control_keyword)))))
