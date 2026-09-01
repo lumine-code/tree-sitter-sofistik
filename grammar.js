@@ -412,7 +412,8 @@ module.exports = grammar({
         ),
       ),
 
-    generic_expression: ($) => token(prec(2, /[^ \t\r\n;!$'"]*[()<>][^ \t\r\n;!$'"]*/)),
+    generic_expression: ($) =>
+      token(prec(2, /[^ \t\r\n;!$'"\x5b\x5d]*[()<>][^ \t\r\n;!$'"\x5b\x5d]*/)),
 
     punctuated_value: ($) => token(prec(2, /[:~\\][A-Za-z_][A-Za-z0-9_]*/)),
 
