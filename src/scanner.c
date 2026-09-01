@@ -15,7 +15,6 @@ enum TokenType {
   INVALID_COMMAND,
   ITEM_NAME,
   INVALID_ITEM,
-  ENUM_VALUE,
   BARE_WORD,
   DYNAMIC_COMMAND_NAME,
   TEMPLATE_COMMAND_NAME,
@@ -23,6 +22,7 @@ enum TokenType {
   VARIABLE_KEYWORD,
   DOLLAR_PROG,
   DOLLAR_APPLY,
+  SEQUENCE_GENERATOR_START,
   CONTINUATION,
   COMMENT,
   TEXT_CONTENT,
@@ -182,19 +182,6 @@ static uint32_t find_item(uint32_t command, const char *name) {
   return SOFISTIK_UNKNOWN_ID;
 }
 
-static bool is_enum_value(uint32_t item, const char *name) {
-  if (item >= SOFISTIK_ITEM_COUNT) {
-    return false;
-  }
-  const SofistikItemSchema *schema = &SOFISTIK_ITEMS[item];
-  for (uint32_t offset = 0; offset < schema->enum_count; offset++) {
-    if (strcmp(SOFISTIK_ENUMS[schema->enum_start + offset], name) == 0) {
-      return true;
-    }
-  }
-  return false;
-}
-
 static bool scan_non_word_bare(
   TSLexer *lexer,
   const bool *valid_symbols,
@@ -335,12 +322,6 @@ static bool scan_word(
 
   if (valid_symbols[DYNAMIC_COMMAND_NAME]) {
     lexer->result_symbol = DYNAMIC_COMMAND_NAME;
-    return true;
-  }
-
-  if (valid_symbols[ENUM_VALUE] && is_enum_value(scanner->item, word)) {
-    scanner->record_state = IN_RECORD;
-    lexer->result_symbol = ENUM_VALUE;
     return true;
   }
 
@@ -501,6 +482,123 @@ static bool scan_dollar(
   return true;
 }
 
+static bool is_generator_space(int32_t character) {
+  return character == ' ' || character == '\t' || character == '\f';
+}
+
+static bool scan_sequence_generator_start(TSLexer *lexer) {
+  if (lexer->lookahead != '(') {
+    return false;
+  }
+
+  lexer->advance(lexer, false);
+  lexer->mark_end(lexer);
+  unsigned component_count = 0;
+
+  while (is_generator_space(lexer->lookahead)) {
+    lexer->advance(lexer, false);
+  }
+
+  for (;;) {
+    if (lexer->lookahead == ')') {
+      if (component_count < 2) {
+        return false;
+      }
+      lexer->result_symbol = SEQUENCE_GENERATOR_START;
+      return true;
+    }
+    if (
+      !lexer->lookahead || lexer->lookahead == '\r' ||
+      lexer->lookahead == '\n' || lexer->lookahead == '!' ||
+      lexer->lookahead == ';' || lexer->lookahead == '('
+    ) {
+      return false;
+    }
+
+    bool has_component = false;
+    while (!is_generator_space(lexer->lookahead) && lexer->lookahead != ')') {
+      if (
+        !lexer->lookahead || lexer->lookahead == '\r' ||
+        lexer->lookahead == '\n' || lexer->lookahead == '!' ||
+        lexer->lookahead == ';' || lexer->lookahead == '('
+      ) {
+        return false;
+      }
+
+      if (lexer->lookahead == '#') {
+        lexer->advance(lexer, false);
+        if (!is_schema_character(lexer->lookahead)) {
+          return false;
+        }
+        while (is_schema_character(lexer->lookahead)) {
+          lexer->advance(lexer, false);
+        }
+        if (lexer->lookahead == '(') {
+          lexer->advance(lexer, false);
+          while (
+            lexer->lookahead && lexer->lookahead != ')' &&
+            lexer->lookahead != '\r' && lexer->lookahead != '\n'
+          ) {
+            lexer->advance(lexer, false);
+          }
+          if (lexer->lookahead != ')') {
+            return false;
+          }
+          lexer->advance(lexer, false);
+        }
+        has_component = true;
+        continue;
+      }
+
+      if (lexer->lookahead == '$') {
+        lexer->advance(lexer, false);
+        if (lexer->lookahead != '(') {
+          return false;
+        }
+        lexer->advance(lexer, false);
+        bool has_content = false;
+        while (
+          lexer->lookahead && lexer->lookahead != ')' &&
+          lexer->lookahead != '\r' && lexer->lookahead != '\n'
+        ) {
+          lexer->advance(lexer, false);
+          has_content = true;
+        }
+        if (!has_content || lexer->lookahead != ')') {
+          return false;
+        }
+        lexer->advance(lexer, false);
+        has_component = true;
+        continue;
+      }
+
+      bool has_literal = false;
+      while (
+        lexer->lookahead && !is_generator_space(lexer->lookahead) &&
+        lexer->lookahead != '\r' && lexer->lookahead != '\n' &&
+        lexer->lookahead != '(' && lexer->lookahead != ')' &&
+        lexer->lookahead != '!' && lexer->lookahead != '#' &&
+        lexer->lookahead != '$' && lexer->lookahead != ';'
+      ) {
+        lexer->advance(lexer, false);
+        has_literal = true;
+      }
+      if (!has_literal) {
+        return false;
+      }
+      has_component = true;
+    }
+
+    if (!has_component) {
+      return false;
+    }
+    component_count++;
+    while (is_generator_space(lexer->lookahead)) {
+      lexer->advance(lexer, false);
+    }
+  }
+}
+
 static bool scan_text_content(TSLexer *lexer) {
   bool has_content = false;
 
@@ -597,6 +695,10 @@ bool tree_sitter_sofistik_external_scanner_scan(
 
   if (lexer->lookahead == '$') {
     return scan_dollar(scanner, lexer, valid_symbols);
+  }
+
+  if (valid_symbols[SEQUENCE_GENERATOR_START] && lexer->lookahead == '(') {
+    return scan_sequence_generator_start(lexer);
   }
 
   if (valid_symbols[COMMENT] && lexer->lookahead == '!') {

@@ -55,6 +55,7 @@ line qgrp 'PP' type pg #q_bk[N/m] x1 #x1
 end
 +prog ase
 grp (80 89 1) ics1 11 phif 0
+grp (24001 24000+#idt 1)
 ende
 ---
 
@@ -97,7 +98,7 @@ ende
           (string)
           (item_sequence
             (item_name)
-            (enum_value)
+            (bare_value)
             (hash_variable)
             (unit))
           (item_sequence
@@ -113,12 +114,23 @@ ende
       (command
         (command_name)
         (record
-          (sequence_generator)
+          (sequence_generator
+            (generator_literal)
+            (generator_literal)
+            (generator_literal))
           (bare_value)
           (bare_value)
           (item_sequence
             (item_name)
             (bare_value))))
+      (command
+        (command_name)
+        (record
+          (sequence_generator
+            (generator_literal)
+            (generator_literal)
+            (hash_variable)
+            (generator_literal))))
       (end_record
         (control_keyword)))))
 
@@ -318,7 +330,7 @@ END
         (record
           (item_sequence
             (item_name)
-            (enum_value))
+            (bare_value))
           (item_sequence
             (item_name)
             (bare_value))
@@ -492,9 +504,13 @@ Preprocessor structures
 #DEFINE BLOCK
 ANY FOO #1
 #ENDDEF
-#IF #1
+#IF #version >= 2024 & (#enabled)
 +PROG AQUA
 HEAD A
+END
+#ELSEIF #version = 2023
++PROG SOFIMSHA
+NODE 1 X 0
 END
 #ELSE
 SYS echo hi
@@ -512,29 +528,45 @@ SYS echo hi
   (ignored_text)
   (preprocessor_enddef_record
     (preprocessor_keyword))
-  (preprocessor_block
-    (preprocessor_if_header
-      (preprocessor_keyword)
-      (hash_variable))
-    (program
-      (program_header
-        (program_sigil)
-        (module_name))
-      (input_block
-        (command
-          (command_name)
-          (record
-            (bare_value)))
-        (end_record
-          (control_keyword))))
-    (preprocessor_else_header
-      (preprocessor_keyword))
-    (sys_statement
-      (sys_sigil)
-      (bare_value)
-      (bare_value))
-    (preprocessor_endif_record
-      (preprocessor_keyword))))
+  (preprocessor_if_header
+    (preprocessor_keyword)
+    (preprocessor_condition))
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (command
+        (command_name)
+        (record
+          (bare_value)))
+      (end_record
+        (control_keyword))))
+  (preprocessor_elseif_header
+    (preprocessor_keyword)
+    (preprocessor_condition))
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (command
+        (command_name)
+        (record
+          (bare_value)
+          (item_sequence
+            (item_name)
+            (bare_value))))
+      (end_record
+        (control_keyword))))
+  (preprocessor_else_header
+    (preprocessor_keyword))
+  (sys_statement
+    (sys_sigil)
+    (bare_value)
+    (bare_value))
+  (preprocessor_endif_record
+    (preprocessor_keyword)))
 
 ===================================
 Variable keeps the inherited record

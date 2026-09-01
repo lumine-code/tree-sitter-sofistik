@@ -417,11 +417,23 @@
           "named": true
         },
         {
+          "type": "preprocessor_else_header",
+          "named": true
+        },
+        {
+          "type": "preprocessor_elseif_header",
+          "named": true
+        },
+        {
           "type": "preprocessor_enddef_record",
           "named": true
         },
         {
-          "type": "preprocessor_program_block",
+          "type": "preprocessor_endif_record",
+          "named": true
+        },
+        {
+          "type": "preprocessor_if_header",
           "named": true
         },
         {
@@ -545,11 +557,23 @@
           "named": true
         },
         {
+          "type": "preprocessor_else_header",
+          "named": true
+        },
+        {
+          "type": "preprocessor_elseif_header",
+          "named": true
+        },
+        {
           "type": "preprocessor_enddef_record",
           "named": true
         },
         {
-          "type": "preprocessor_program_block",
+          "type": "preprocessor_endif_record",
+          "named": true
+        },
+        {
+          "type": "preprocessor_if_header",
           "named": true
         },
         {
@@ -609,10 +633,6 @@
         "types": [
           {
             "type": "_value",
-            "named": true
-          },
-          {
-            "type": "enum_value",
             "named": true
           }
         ]
@@ -684,11 +704,23 @@
           "named": true
         },
         {
+          "type": "preprocessor_else_header",
+          "named": true
+        },
+        {
+          "type": "preprocessor_elseif_header",
+          "named": true
+        },
+        {
           "type": "preprocessor_enddef_record",
           "named": true
         },
         {
-          "type": "preprocessor_program_block",
+          "type": "preprocessor_endif_record",
+          "named": true
+        },
+        {
+          "type": "preprocessor_if_header",
           "named": true
         },
         {
@@ -726,81 +758,6 @@
           }
         ]
       }
-    }
-  },
-  {
-    "type": "preprocessor_block",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": true,
-      "required": true,
-      "types": [
-        {
-          "type": "apply_statement",
-          "named": true
-        },
-        {
-          "type": "commented_program_header",
-          "named": true
-        },
-        {
-          "type": "ignored_text",
-          "named": true
-        },
-        {
-          "type": "metadata",
-          "named": true
-        },
-        {
-          "type": "preprocessor_block",
-          "named": true
-        },
-        {
-          "type": "preprocessor_define_header",
-          "named": true
-        },
-        {
-          "type": "preprocessor_define_statement",
-          "named": true
-        },
-        {
-          "type": "preprocessor_directive",
-          "named": true
-        },
-        {
-          "type": "preprocessor_else_header",
-          "named": true
-        },
-        {
-          "type": "preprocessor_elseif_header",
-          "named": true
-        },
-        {
-          "type": "preprocessor_enddef_record",
-          "named": true
-        },
-        {
-          "type": "preprocessor_endif_record",
-          "named": true
-        },
-        {
-          "type": "preprocessor_if_header",
-          "named": true
-        },
-        {
-          "type": "program",
-          "named": true
-        },
-        {
-          "type": "sys_statement",
-          "named": true
-        },
-        {
-          "type": "text_block",
-          "named": true
-        }
-      ]
     }
   },
   {
@@ -926,11 +883,11 @@
     "named": true,
     "fields": {
       "condition": {
-        "multiple": true,
+        "multiple": false,
         "required": false,
         "types": [
           {
-            "type": "_value",
+            "type": "preprocessor_condition",
             "named": true
           }
         ]
@@ -984,11 +941,11 @@
     "named": true,
     "fields": {
       "condition": {
-        "multiple": true,
+        "multiple": false,
         "required": false,
         "types": [
           {
-            "type": "_value",
+            "type": "preprocessor_condition",
             "named": true
           }
         ]
@@ -1003,97 +960,6 @@
           }
         ]
       }
-    }
-  },
-  {
-    "type": "preprocessor_program_block",
-    "named": true,
-    "fields": {},
-    "children": {
-      "multiple": true,
-      "required": true,
-      "types": [
-        {
-          "type": "command",
-          "named": true
-        },
-        {
-          "type": "dynamic_record",
-          "named": true
-        },
-        {
-          "type": "end_record",
-          "named": true
-        },
-        {
-          "type": "exit_iteration_record",
-          "named": true
-        },
-        {
-          "type": "if_block",
-          "named": true
-        },
-        {
-          "type": "implicit_record",
-          "named": true
-        },
-        {
-          "type": "invalid_command_record",
-          "named": true
-        },
-        {
-          "type": "loop_block",
-          "named": true
-        },
-        {
-          "type": "metadata",
-          "named": true
-        },
-        {
-          "type": "preprocessor_define_header",
-          "named": true
-        },
-        {
-          "type": "preprocessor_define_statement",
-          "named": true
-        },
-        {
-          "type": "preprocessor_directive",
-          "named": true
-        },
-        {
-          "type": "preprocessor_else_header",
-          "named": true
-        },
-        {
-          "type": "preprocessor_elseif_header",
-          "named": true
-        },
-        {
-          "type": "preprocessor_enddef_record",
-          "named": true
-        },
-        {
-          "type": "preprocessor_endif_record",
-          "named": true
-        },
-        {
-          "type": "preprocessor_if_header",
-          "named": true
-        },
-        {
-          "type": "preprocessor_program_block",
-          "named": true
-        },
-        {
-          "type": "text_block",
-          "named": true
-        },
-        {
-          "type": "variable_statement",
-          "named": true
-        }
-      ]
     }
   },
   {
@@ -1210,6 +1076,30 @@
     }
   },
   {
+    "type": "sequence_generator",
+    "named": true,
+    "fields": {
+      "part": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "dollar_variable",
+            "named": true
+          },
+          {
+            "type": "generator_literal",
+            "named": true
+          },
+          {
+            "type": "hash_variable",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "source_file",
     "named": true,
     "root": true,
@@ -1263,10 +1153,6 @@
           "named": true
         },
         {
-          "type": "preprocessor_block",
-          "named": true
-        },
-        {
           "type": "preprocessor_define_header",
           "named": true
         },
@@ -1279,7 +1165,23 @@
           "named": true
         },
         {
+          "type": "preprocessor_else_header",
+          "named": true
+        },
+        {
+          "type": "preprocessor_elseif_header",
+          "named": true
+        },
+        {
           "type": "preprocessor_enddef_record",
+          "named": true
+        },
+        {
+          "type": "preprocessor_endif_record",
+          "named": true
+        },
+        {
+          "type": "preprocessor_if_header",
           "named": true
         },
         {
@@ -1442,6 +1344,10 @@
     }
   },
   {
+    "type": ")",
+    "named": false
+  },
+  {
     "type": ";",
     "named": false
   },
@@ -1475,11 +1381,11 @@
     "named": true
   },
   {
-    "type": "enum_value",
+    "type": "expression",
     "named": true
   },
   {
-    "type": "expression",
+    "type": "generator_literal",
     "named": true
   },
   {
@@ -1531,6 +1437,10 @@
     "named": true
   },
   {
+    "type": "preprocessor_condition",
+    "named": true
+  },
+  {
     "type": "preprocessor_keyword",
     "named": true
   },
@@ -1544,10 +1454,6 @@
   },
   {
     "type": "punctuated_value",
-    "named": true
-  },
-  {
-    "type": "sequence_generator",
     "named": true
   },
   {

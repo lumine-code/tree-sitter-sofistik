@@ -9,9 +9,10 @@ Parses SOFiSTiK CADINP input with Tree-sitter.
 - **Grammar**: provides a Tree-sitter grammar for CADINP input.
 - **Context**: restricts commands and items to the program that owns them.
 - **Scope directives**: treats `$PROG` as a module context marker for include fragments rather than an executable program.
-- **Transparent definitions**: preserves the active module across `#DEFINE` and `#ENDDEF` markers.
+- **Transparent preprocessing**: preserves the active module across definition and conditional markers.
 - **Structure**: exposes programs, commands, records, control flow, and preprocessors.
 - **Descriptive text**: accepts ignored prose between program scopes without weakening command validation inside them.
+- **Neutral values**: leaves enum-like values and generator literals unclassified while retaining variable nodes.
 - **Generated schema**: derives its accepted vocabulary from the language data snapshot.
 - **Bindings**: supports Node-API, source, and WebAssembly builds.
 

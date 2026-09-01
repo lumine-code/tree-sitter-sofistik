@@ -8,7 +8,6 @@ module.exports = grammar({
     $.invalid_command,
     $.item_name,
     $.invalid_item,
-    $.enum_value,
     $._bare_word,
     $.dynamic_command_name,
     $._template_command_name,
@@ -16,6 +15,7 @@ module.exports = grammar({
     $.variable_keyword,
     $._dollar_prog,
     $._dollar_apply,
+    $._sequence_generator_start,
     $.continuation,
     $.comment,
     $.text_content,
@@ -38,7 +38,10 @@ module.exports = grammar({
           $.commented_program_header,
           $.apply_statement,
           $.sys_statement,
-          $.preprocessor_block,
+          $.preprocessor_if_header,
+          $.preprocessor_elseif_header,
+          $.preprocessor_else_header,
+          $.preprocessor_endif_record,
           $.preprocessor_define_header,
           $.preprocessor_enddef_record,
           $.preprocessor_define_statement,
@@ -98,7 +101,10 @@ module.exports = grammar({
         $.loop_block,
         $.if_block,
         $.exit_iteration_record,
-        $.preprocessor_program_block,
+        $.preprocessor_if_header,
+        $.preprocessor_elseif_header,
+        $.preprocessor_else_header,
+        $.preprocessor_endif_record,
         $.preprocessor_define_header,
         $.preprocessor_enddef_record,
         $.preprocessor_define_statement,
@@ -156,15 +162,7 @@ module.exports = grammar({
     _record_element: ($) => choice($.item_sequence, $.invalid_item, $._value, $._continued_line),
 
     item_sequence: ($) =>
-      prec.right(
-        seq(
-          field("item", $.item_name),
-          choice(
-            seq(field("value", $.enum_value), repeat(field("value", $._value))),
-            repeat(field("value", $._value)),
-          ),
-        ),
-      ),
+      prec.right(seq(field("item", $.item_name), repeat(field("value", $._value)))),
 
     table_definition: ($) =>
       prec.dynamic(2, seq(repeat1(field("item", $.item_name)), $._record_end)),
@@ -242,8 +240,6 @@ module.exports = grammar({
     exit_iteration_record: ($) =>
       seq(field("keyword", alias(ci("EXIT_ITERATION"), $.control_keyword)), $._record_end),
 
-    preprocessor_block: ($) => $._preprocessor_top_level,
-
     preprocessor_define_statement: ($) =>
       prec.right(
         5,
@@ -255,42 +251,7 @@ module.exports = grammar({
         ),
       ),
 
-    preprocessor_value: ($) => token(prec(10, /=[^\r\n]*/)),
-
-    preprocessor_program_block: ($) =>
-      seq(
-        $.preprocessor_if_header,
-        repeat($._control_body),
-        repeat(seq($.preprocessor_elseif_header, repeat($._control_body))),
-        optional(seq($.preprocessor_else_header, repeat($._control_body))),
-        $.preprocessor_endif_record,
-      ),
-
-    _preprocessor_top_level: ($) =>
-      seq(
-        $.preprocessor_if_header,
-        repeat($._top_level_preprocessor_body),
-        repeat(seq($.preprocessor_elseif_header, repeat($._top_level_preprocessor_body))),
-        optional(seq($.preprocessor_else_header, repeat($._top_level_preprocessor_body))),
-        $.preprocessor_endif_record,
-      ),
-
-    _top_level_preprocessor_body: ($) =>
-      choice(
-        $.program,
-        $.commented_program_header,
-        $.apply_statement,
-        $.sys_statement,
-        $.preprocessor_block,
-        $.preprocessor_define_header,
-        $.preprocessor_enddef_record,
-        $.preprocessor_define_statement,
-        $.preprocessor_directive,
-        $.text_block,
-        $.metadata,
-        $.ignored_text,
-        $._line_end,
-      ),
+    preprocessor_value: ($) => token(prec(10, /=[^!$\r\n]*(?:\$\([^\r\n)]*\)[^!$\r\n]*)*/)),
 
     _scoped_top_level_statement: ($) =>
       choice(
@@ -323,24 +284,24 @@ module.exports = grammar({
     preprocessor_if_header: ($) =>
       seq(
         field("keyword", alias(ci("#IF"), $.preprocessor_keyword)),
-        repeat(field("condition", $._value)),
-        $._record_end,
+        optional(field("condition", $.preprocessor_condition)),
+        $._statement_end,
       ),
 
     preprocessor_elseif_header: ($) =>
       seq(
         field("keyword", alias(ci("#ELSEIF"), $.preprocessor_keyword)),
-        repeat(field("condition", $._value)),
-        $._record_end,
+        optional(field("condition", $.preprocessor_condition)),
+        $._statement_end,
       ),
 
     preprocessor_else_header: ($) =>
-      seq(field("keyword", alias(ci("#ELSE"), $.preprocessor_keyword)), $._record_end),
+      seq(field("keyword", alias(ci("#ELSE"), $.preprocessor_keyword)), $._statement_end),
 
     preprocessor_endif_record: ($) =>
-      prec.right(
-        seq(field("keyword", alias(ci("#ENDIF"), $.preprocessor_keyword)), optional($._record_end)),
-      ),
+      seq(field("keyword", alias(ci("#ENDIF"), $.preprocessor_keyword)), $._statement_end),
+
+    preprocessor_condition: ($) => token(prec(10, /[^ \t\r\n][^\r\n]*/)),
 
     preprocessor_directive: ($) =>
       prec.right(
@@ -405,7 +366,19 @@ module.exports = grammar({
       ),
 
     sequence_generator: ($) =>
-      token(prec(5, /\([ \t]*[^() \t\r\n;!]+(?:[ \t]+[^() \t\r\n;!]+)+[ \t]*\)/)),
+      prec(
+        5,
+        seq(
+          $._sequence_generator_start,
+          field("part", $._generator_part),
+          repeat1(field("part", $._generator_part)),
+          token(prec(10, ")")),
+        ),
+      ),
+
+    _generator_part: ($) => choice($.generator_literal, $.hash_variable, $.dollar_variable),
+
+    generator_literal: ($) => token(prec(5, /[^ \t\r\n()!#$;]+/)),
 
     string: ($) =>
       choice(

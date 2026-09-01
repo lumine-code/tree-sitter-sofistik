@@ -54,6 +54,33 @@ test("keeps a SOFiSTiK sequence generator in one node", () => {
   const generators = tree.rootNode.descendantsOfType("sequence_generator");
   assert.strictEqual(generators.length, 1);
   assert.strictEqual(generators[0].text, "(80 89 1)");
+  assert.deepStrictEqual(
+    generators[0].descendantsOfType("generator_literal").map((node) => node.text),
+    ["80", "89", "1"],
+  );
+  assert.strictEqual(generators[0].descendantsOfType("number").length, 0);
+});
+
+test("keeps hash variables visible inside a sequence generator", () => {
+  const tree = parse("+PROG ASE\nGRP (24001 24000+#idt 1)\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  const generator = tree.rootNode.descendantsOfType("sequence_generator")[0];
+  assert.deepStrictEqual(
+    generator.descendantsOfType("generator_literal").map((node) => node.text),
+    ["24001", "24000+", "1"],
+  );
+  assert.deepStrictEqual(
+    generator.descendantsOfType("hash_variable").map((node) => node.text),
+    ["#idt"],
+  );
+  assert.strictEqual(generator.descendantsOfType("number").length, 0);
+});
+
+test("does not claim single-component parenthesized expressions as generators", () => {
+  const tree = parse("+PROG AQUA\nHEAD (#L_1) (D) (#L_1)+(#L_2-#L_1+#L_0)*(#i/(#L_n-1))\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.strictEqual(tree.rootNode.descendantsOfType("sequence_generator").length, 0);
+  assert.strictEqual(tree.rootNode.descendantsOfType("generator_literal").length, 0);
 });
 
 test("treats block DEFINE markers as transparent to the active module", () => {
@@ -94,6 +121,84 @@ test("keeps a single-line DEFINE value opaque", () => {
   assert.strictEqual(value.text, "= poin qgrp 'PP' type pg p #Q_w x #x y #y");
   assert.strictEqual(value.namedChildCount, 0);
   assert.strictEqual(statement.descendantsOfType("expression").length, 0);
+});
+
+test("ends an opaque DEFINE value before inline comments", () => {
+  const tree = parse(
+    "#define no = 119 ! only vertical live\n#define next = $(no)+1 $ reused value",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("preprocessor_value").map((node) => node.text.trimEnd()),
+    ["= 119", "= $(no)+1"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("comment").map((node) => node.text),
+    ["! only vertical live", "$ reused value"],
+  );
+  assert.strictEqual(tree.rootNode.descendantsOfType("dollar_variable").length, 0);
+});
+
+test("keeps preprocessor conditionals flat across program scopes", () => {
+  const tree = parse(
+    "#if #version >= 2024 & (#enabled)\n+prog sofimsha\nnode 1 x 0\nend\n#elseif #version = 2023\n+prog aqua\nhead fallback\nend\n#else\nsys echo fallback\n#endif",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.strictEqual(tree.rootNode.descendantsOfType("preprocessor_block").length, 0);
+  assert.strictEqual(tree.rootNode.descendantsOfType("preprocessor_program_block").length, 0);
+  assert.deepStrictEqual(
+    tree.rootNode.namedChildren.map((node) => node.type),
+    [
+      "preprocessor_if_header",
+      "program",
+      "preprocessor_elseif_header",
+      "program",
+      "preprocessor_else_header",
+      "sys_statement",
+      "preprocessor_endif_record",
+    ],
+  );
+
+  const conditions = tree.rootNode.descendantsOfType("preprocessor_condition");
+  assert.deepStrictEqual(
+    conditions.map((node) => node.text),
+    ["#version >= 2024 & (#enabled)", "#version = 2023"],
+  );
+  assert.ok(conditions.every((node) => node.namedChildCount === 0));
+  assert.strictEqual(tree.rootNode.descendantsOfType("hash_variable").length, 0);
+  assert.strictEqual(tree.rootNode.descendantsOfType("expression").length, 0);
+});
+
+test("preserves command context through flat preprocessor conditionals", () => {
+  const tree = parse(
+    "+prog sofimsha\nnode 1 x 0\n#if #use_second\nx 2 y 3\n#elseif #use_third\nx 4 y 5\n#else\nx 6 y 7\n#endif\nend",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.strictEqual(
+    tree.rootNode.descendantsOfType("preprocessor_if_header")[0].parent.type,
+    "input_block",
+  );
+  assert.strictEqual(
+    tree.rootNode.descendantsOfType("preprocessor_else_header")[0].parent.type,
+    "input_block",
+  );
+  assert.strictEqual(
+    tree.rootNode.descendantsOfType("preprocessor_endif_record")[0].parent.type,
+    "input_block",
+  );
+  assert.strictEqual(tree.rootNode.descendantsOfType("implicit_record").length, 3);
+  assert.deepStrictEqual(
+    tree.rootNode
+      .descendantsOfType("implicit_record")
+      .map((record) =>
+        record.descendantsOfType("item_name").map((node) => node.text.toUpperCase()),
+      ),
+    [
+      ["X", "Y"],
+      ["X", "Y"],
+      ["X", "Y"],
+    ],
+  );
 });
 
 test("uses dollar PROG only as a standalone scope directive", () => {
@@ -145,11 +250,24 @@ test("keeps the module inside the stable program header field", () => {
   assert.strictEqual(header.childForFieldName("module").text, "SOFIMSHA");
 });
 
-test("selects an enum over a colliding item immediately after its owner", () => {
+test("keeps a colliding enum-like token as a schema item", () => {
   const tree = parse("+PROG ASE\nGRP VAL NO\nEND");
   assert.strictEqual(tree.rootNode.hasError, false);
-  assert.strictEqual(tree.rootNode.descendantsOfType("item_name")[0].text, "VAL");
-  assert.strictEqual(tree.rootNode.descendantsOfType("enum_value")[0].text, "NO");
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("item_name").map((node) => node.text),
+    ["VAL", "NO"],
+  );
+  assert.strictEqual(tree.rootNode.descendantsOfType("enum_value").length, 0);
+});
+
+test("keeps enum-looking TENDON values as ordinary bare values", () => {
+  const tree = parse("+PROG TENDON\nAXES KIND QUAD\nAXES VAL3 11 QUAD\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.strictEqual(tree.rootNode.descendantsOfType("enum_value").length, 0);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("bare_value").map((node) => node.text),
+    ["QUAD", "11", "QUAD"],
+  );
 });
 
 test("marks globally known names that are invalid in the current context", () => {

@@ -29,7 +29,7 @@ END
         keyword: (control_keyword)))))
 
 ==============================
-Item and enum name collision
+Item and enum-like name collision
 ==============================
 +PROG ASE
 GRP VAL NO
@@ -44,10 +44,40 @@ END
     body: (input_block
       (command
         name: (command_name)
+        record: (table_definition
+          item: (item_name)
+          item: (item_name)))
+      (end_record
+        keyword: (control_keyword)))))
+
+===========================
+Enum-looking TENDON values
+===========================
++PROG TENDON
+AXES KIND QUAD
+AXES VAL3 11 QUAD
+END
+---
+
+(source_file
+  (program
+    header: (program_header
+      sigil: (program_sigil)
+      module: (module_name))
+    body: (input_block
+      (command
+        name: (command_name)
         record: (record
           (item_sequence
             item: (item_name)
-            value: (enum_value))))
+            value: (bare_value))))
+      (command
+        name: (command_name)
+        record: (record
+          (item_sequence
+            item: (item_name)
+            value: (bare_value)
+            value: (bare_value))))
       (end_record
         keyword: (control_keyword)))))
 
