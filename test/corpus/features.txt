@@ -33,11 +33,12 @@ END
     (input_block
       (end_record
         (control_keyword))))
-  (commented_program_header
-    (commented_program_sigil)
-    (module_name))
-  (end_record
-    (control_keyword)))
+  (commented_program_scope
+    (commented_program_header
+      (commented_program_sigil)
+      (module_name))
+    (end_record
+      (control_keyword))))
 
 ===================================================
 Embedded variables in neutral preprocessor and math
@@ -124,20 +125,21 @@ ende
 
 (source_file
   (ignored_text)
-  (commented_program_header
-    (commented_program_sigil)
-    (module_name))
-  (preprocessor_define_header
-    (preprocessor_keyword)
-    (preprocessor_name))
-  (command
-    (command_name)
-    (record
-      (dollar_variable)
-      (bare_value)
-      (bare_value)))
-  (preprocessor_enddef_record
-    (preprocessor_keyword))
+  (commented_program_scope
+    (commented_program_header
+      (commented_program_sigil)
+      (module_name))
+    (preprocessor_define_header
+      (preprocessor_keyword)
+      (preprocessor_name))
+    (command
+      (command_name)
+      (record
+        (dollar_variable)
+        (bare_value)
+        (bare_value)))
+    (preprocessor_enddef_record
+      (preprocessor_keyword)))
   (program
     (program_header
       (program_sigil)
@@ -610,12 +612,12 @@ SYS echo hi
         (record
           (bare_value)))
       (end_record
-        (control_keyword))))
-  (preprocessor_elseif_header
-    (preprocessor_keyword)
-    (preprocessor_condition
-      (hash_variable)
-      (preprocessor_literal)))
+        (control_keyword)))
+    (preprocessor_elseif_header
+      (preprocessor_keyword)
+      (preprocessor_condition
+        (hash_variable)
+        (preprocessor_literal))))
   (program
     (program_header
       (program_sigil)
@@ -629,9 +631,9 @@ SYS echo hi
             (item_name)
             (bare_value))))
       (end_record
-        (control_keyword))))
-  (preprocessor_else_header
-    (preprocessor_keyword))
+        (control_keyword)))
+    (preprocessor_else_header
+      (preprocessor_keyword)))
   (sys_statement
     (sys_sigil)
     (bare_value)

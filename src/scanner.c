@@ -338,7 +338,7 @@ static bool scan_word(
   }
 
   if (
-    scanner->command == SOFISTIK_UNKNOWN_ID &&
+    (at_line_start || scanner->command == SOFISTIK_UNKNOWN_ID) &&
     (strcmp(word, "PROG") == 0 || strcmp(word, "APPLY") == 0 ||
      strcmp(word, "SYS") == 0)
   ) {

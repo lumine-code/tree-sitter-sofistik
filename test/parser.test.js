@@ -198,15 +198,16 @@ test("keeps preprocessor conditionals flat across program scopes", () => {
   assert.strictEqual(tree.rootNode.descendantsOfType("preprocessor_program_block").length, 0);
   assert.deepStrictEqual(
     tree.rootNode.namedChildren.map((node) => node.type),
-    [
-      "preprocessor_if_header",
-      "program",
-      "preprocessor_elseif_header",
-      "program",
-      "preprocessor_else_header",
-      "sys_statement",
-      "preprocessor_endif_record",
-    ],
+    ["preprocessor_if_header", "program", "program", "sys_statement", "preprocessor_endif_record"],
+  );
+  const programs = tree.rootNode.descendantsOfType("program");
+  assert.strictEqual(
+    tree.rootNode.descendantsOfType("preprocessor_elseif_header")[0].parent.id,
+    programs[0].id,
+  );
+  assert.strictEqual(
+    tree.rootNode.descendantsOfType("preprocessor_else_header")[0].parent.id,
+    programs[1].id,
   );
 
   const conditions = tree.rootNode.descendantsOfType("preprocessor_condition");
@@ -286,8 +287,70 @@ test("uses dollar PROG only as a standalone scope directive", () => {
   const tree = parse("$prog maxima\nsupp 1\n$PROG\nplain text\n+prog aqua\nend");
   assert.strictEqual(tree.rootNode.hasError, false);
   assert.strictEqual(tree.rootNode.descendantsOfType("commented_program_header").length, 2);
+  assert.strictEqual(tree.rootNode.descendantsOfType("commented_program_scope").length, 2);
   assert.strictEqual(tree.rootNode.descendantsOfType("program").length, 1);
   assert.strictEqual(tree.rootNode.descendantsOfType("command_name")[0].text, "supp");
+});
+
+test("keeps a real program open through its transparent module tail", () => {
+  const source = "+PROG AQB\nEND\n#DEFINE aqblcs\nLC 1\nLC 2\nLC 3\n#ENDDEF\nPROG AQUA\nEND";
+  const tree = parse(source);
+  assert.strictEqual(tree.rootNode.hasError, false);
+
+  const programs = tree.rootNode.descendantsOfType("program");
+  const nextProgramStart = source.indexOf("PROG AQUA");
+  assert.strictEqual(programs.length, 2);
+  assert.strictEqual(programs[0].startIndex, 0);
+  assert.strictEqual(programs[0].endIndex, nextProgramStart);
+  assert.strictEqual(programs[1].startIndex, nextProgramStart);
+  assert.deepStrictEqual(
+    programs[0].childrenForFieldName("tail").map((node) => node.type),
+    ["preprocessor_define_header", "command", "command", "command", "preprocessor_enddef_record"],
+  );
+  assert.deepStrictEqual(
+    programs[0].descendantsOfType("command_name").map((node) => node.text),
+    ["LC", "LC", "LC"],
+  );
+});
+
+test("groups dollar PROG tails into stable commented scopes", () => {
+  const source =
+    "$PROG ASE\n#DEFINE ASE_CTRL\nPAGE UNII 0\n#ENDDEF\n" +
+    "$PROG AQB\n#DEFINE AQB_CTRL\nPAGE UNII 0\n#ENDDEF";
+  const tree = parse(source);
+  assert.strictEqual(tree.rootNode.hasError, false);
+
+  const scopes = tree.rootNode.descendantsOfType("commented_program_scope");
+  const secondScopeStart = source.indexOf("$PROG AQB");
+  assert.strictEqual(scopes.length, 2);
+  assert.strictEqual(scopes[0].startIndex, 0);
+  assert.strictEqual(scopes[0].endIndex, secondScopeStart);
+  assert.strictEqual(scopes[1].startIndex, secondScopeStart);
+  assert.strictEqual(scopes[1].endIndex, source.length);
+  assert.deepStrictEqual(
+    scopes.map((scope) => scope.childForFieldName("header").type),
+    ["commented_program_header", "commented_program_header"],
+  );
+  assert.deepStrictEqual(
+    scopes.map((scope) => scope.descendantsOfType("command_name").map((node) => node.text)),
+    [["PAGE"], ["PAGE"]],
+  );
+});
+
+test("ends module scopes before dollar PROG, APPLY, and SYS statements", () => {
+  const source =
+    "+PROG AQUA\nEND\nDescription\n" +
+    "$PROG AQB\n#DEFINE AQB_CTRL\nPAGE UNII 0\n#ENDDEF\n" +
+    "APPLY first.dat\nSYS echo done";
+  const tree = parse(source);
+  assert.strictEqual(tree.rootNode.hasError, false);
+
+  const program = tree.rootNode.descendantsOfType("program")[0];
+  const commentedScope = tree.rootNode.descendantsOfType("commented_program_scope")[0];
+  assert.strictEqual(program.endIndex, source.indexOf("$PROG"));
+  assert.strictEqual(commentedScope.endIndex, source.indexOf("APPLY"));
+  assert.strictEqual(tree.rootNode.descendantsOfType("apply_statement").length, 1);
+  assert.strictEqual(tree.rootNode.descendantsOfType("sys_statement").length, 1);
 });
 
 test("accepts descriptive text between program scopes", () => {
@@ -407,6 +470,29 @@ test("keeps text block contents opaque", () => {
   assert.strictEqual(tree.rootNode.descendantsOfType("string")[0].text, "'a; $ PROG'");
   assert.match(tree.rootNode.descendantsOfType("text_content")[0].text, /PROG not parsed/);
   assert.strictEqual(tree.rootNode.descendantsOfType("comment").length, 0);
+});
+
+test("keeps quoted and variable assignment values outside the equals token", () => {
+  const tree = parse(
+    "+PROG AQUA\nHEAD TITL=\"Sum_11 G1 activating new\" TITS='single quoted' HASH=#title DOLLAR=$(project)\nEND",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("expression").map((node) => node.text),
+    ["=", "=", "=", "="],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("string").map((node) => node.text),
+    ['"Sum_11 G1 activating new"', "'single quoted'"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("hash_variable").map((node) => node.text),
+    ["#title"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("dollar_variable").map((node) => node.text),
+    ["$(project)"],
+  );
 });
 
 test("accepts include names while preserving the current command", () => {

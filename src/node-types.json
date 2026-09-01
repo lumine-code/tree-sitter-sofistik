@@ -198,6 +198,104 @@
     }
   },
   {
+    "type": "commented_program_scope",
+    "named": true,
+    "fields": {
+      "header": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "commented_program_header",
+            "named": true
+          }
+        ]
+      },
+      "tail": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "command",
+            "named": true
+          },
+          {
+            "type": "dynamic_record",
+            "named": true
+          },
+          {
+            "type": "end_record",
+            "named": true
+          },
+          {
+            "type": "exit_iteration_record",
+            "named": true
+          },
+          {
+            "type": "if_block",
+            "named": true
+          },
+          {
+            "type": "ignored_text",
+            "named": true
+          },
+          {
+            "type": "invalid_command_record",
+            "named": true
+          },
+          {
+            "type": "loop_block",
+            "named": true
+          },
+          {
+            "type": "metadata",
+            "named": true
+          },
+          {
+            "type": "preprocessor_define_header",
+            "named": true
+          },
+          {
+            "type": "preprocessor_define_statement",
+            "named": true
+          },
+          {
+            "type": "preprocessor_directive",
+            "named": true
+          },
+          {
+            "type": "preprocessor_else_header",
+            "named": true
+          },
+          {
+            "type": "preprocessor_elseif_header",
+            "named": true
+          },
+          {
+            "type": "preprocessor_enddef_record",
+            "named": true
+          },
+          {
+            "type": "preprocessor_endif_record",
+            "named": true
+          },
+          {
+            "type": "preprocessor_if_header",
+            "named": true
+          },
+          {
+            "type": "text_block",
+            "named": true
+          },
+          {
+            "type": "variable_statement",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
     "type": "commented_program_sigil",
     "named": true,
     "fields": {}
@@ -1062,6 +1160,88 @@
             "named": true
           }
         ]
+      },
+      "tail": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "command",
+            "named": true
+          },
+          {
+            "type": "dynamic_record",
+            "named": true
+          },
+          {
+            "type": "end_record",
+            "named": true
+          },
+          {
+            "type": "exit_iteration_record",
+            "named": true
+          },
+          {
+            "type": "if_block",
+            "named": true
+          },
+          {
+            "type": "ignored_text",
+            "named": true
+          },
+          {
+            "type": "invalid_command_record",
+            "named": true
+          },
+          {
+            "type": "loop_block",
+            "named": true
+          },
+          {
+            "type": "metadata",
+            "named": true
+          },
+          {
+            "type": "preprocessor_define_header",
+            "named": true
+          },
+          {
+            "type": "preprocessor_define_statement",
+            "named": true
+          },
+          {
+            "type": "preprocessor_directive",
+            "named": true
+          },
+          {
+            "type": "preprocessor_else_header",
+            "named": true
+          },
+          {
+            "type": "preprocessor_elseif_header",
+            "named": true
+          },
+          {
+            "type": "preprocessor_enddef_record",
+            "named": true
+          },
+          {
+            "type": "preprocessor_endif_record",
+            "named": true
+          },
+          {
+            "type": "preprocessor_if_header",
+            "named": true
+          },
+          {
+            "type": "text_block",
+            "named": true
+          },
+          {
+            "type": "variable_statement",
+            "named": true
+          }
+        ]
       }
     }
   },
@@ -1194,7 +1374,7 @@
           "named": true
         },
         {
-          "type": "commented_program_header",
+          "type": "commented_program_scope",
           "named": true
         },
         {

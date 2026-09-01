@@ -31,14 +31,20 @@ module.exports = grammar({
 
   supertypes: ($) => [$._value],
 
-  conflicts: ($) => [[$.item_sequence, $.table_definition], [$.program]],
+  conflicts: ($) => [
+    [$.item_sequence, $.table_definition],
+    [$._program_body_start, $._module_tail_statement],
+    [$._program_body_start, $._scoped_top_level_statement],
+    [$._continued_input_block, $._scoped_top_level_statement],
+    [$._module_tail_statement],
+  ],
 
   rules: {
     source_file: ($) =>
       repeat(
         choice(
           $.program,
-          $.commented_program_header,
+          $.commented_program_scope,
           $.apply_statement,
           $.sys_statement,
           $.preprocessor_if_header,
@@ -58,11 +64,14 @@ module.exports = grammar({
       ),
 
     program: ($) =>
-      seq(
-        field("header", $.program_header),
-        field("body", $.input_block),
-        repeat(
-          seq(repeat($._line_end), field("body", alias($._continued_input_block, $.input_block))),
+      prec.right(
+        seq(
+          field("header", $.program_header),
+          field("body", $.input_block),
+          repeat(
+            seq(repeat($._line_end), field("body", alias($._continued_input_block, $.input_block))),
+          ),
+          repeat(field("tail", $._module_tail_statement)),
         ),
       ),
 
@@ -84,6 +93,14 @@ module.exports = grammar({
         $._record_end,
       ),
 
+    commented_program_scope: ($) =>
+      prec.right(
+        seq(
+          field("header", $.commented_program_header),
+          repeat(field("tail", $._module_tail_statement)),
+        ),
+      ),
+
     commented_program_sigil: ($) => $._dollar_prog,
 
     program_option: ($) => $._value,
@@ -91,7 +108,10 @@ module.exports = grammar({
     input_block: ($) => seq(repeat($._program_body), $.end_record),
 
     _continued_input_block: ($) =>
-      choice($.end_record, seq($._program_body_start, repeat($._program_body), $.end_record)),
+      prec.dynamic(
+        1,
+        choice($.end_record, seq($._program_body_start, repeat($._program_body), $.end_record)),
+      ),
 
     _program_body: ($) => choice($._nonblank_program_body, $._line_end),
 
@@ -278,6 +298,23 @@ module.exports = grammar({
         $.end_record,
       ),
 
+    _module_tail_statement: ($) =>
+      choice(
+        $.preprocessor_if_header,
+        $.preprocessor_elseif_header,
+        $.preprocessor_else_header,
+        $.preprocessor_endif_record,
+        $.preprocessor_define_header,
+        $.preprocessor_enddef_record,
+        $.preprocessor_define_statement,
+        $.preprocessor_directive,
+        $._scoped_top_level_statement,
+        $.text_block,
+        $.metadata,
+        $.ignored_text,
+        $._line_end,
+      ),
+
     preprocessor_define_header: ($) =>
       seq(
         field("keyword", alias(ci("#DEFINE"), $.preprocessor_keyword)),
@@ -437,7 +474,7 @@ module.exports = grammar({
 
     at_reference: ($) => /@[A-Za-z_][A-Za-z0-9_]*/,
 
-    expression: ($) => token(prec(6, seq("=", optional(/[^\s;!]+/)))),
+    expression: ($) => token(prec(6, seq("=", optional(/[^\s;!'"#$]+/)))),
 
     operator_expression: ($) =>
       token(

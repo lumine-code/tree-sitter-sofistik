@@ -28,6 +28,98 @@ END
       (end_record
         keyword: (control_keyword)))))
 
+========================================
+Transparent tail belongs to real program
+========================================
++PROG AQB
+END
+#DEFINE aqblcs
+LC 1
+LC 2
+LC 3
+#ENDDEF
++PROG AQUA
+END
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (end_record
+        (control_keyword)))
+    (preprocessor_define_header
+      (preprocessor_keyword)
+      (preprocessor_name))
+    (command
+      (command_name)
+      (record
+        (bare_value)))
+    (command
+      (command_name)
+      (record
+        (bare_value)))
+    (command
+      (command_name)
+      (record
+        (bare_value)))
+    (preprocessor_enddef_record
+      (preprocessor_keyword)))
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (end_record
+        (control_keyword)))))
+
+============================================
+Dollar program scopes include their full tail
+============================================
+$PROG ASE
+#DEFINE ASE_CTRL
+PAGE UNII 0
+#ENDDEF
+$PROG AQB
+#DEFINE AQB_CTRL
+PAGE UNII 0
+#ENDDEF
+---
+
+(source_file
+  (commented_program_scope
+    (commented_program_header
+      (commented_program_sigil)
+      (module_name))
+    (preprocessor_define_header
+      (preprocessor_keyword)
+      (preprocessor_name))
+    (command
+      (command_name)
+      (record
+        (item_sequence
+          (item_name)
+          (bare_value))))
+    (preprocessor_enddef_record
+      (preprocessor_keyword)))
+  (commented_program_scope
+    (commented_program_header
+      (commented_program_sigil)
+      (module_name))
+    (preprocessor_define_header
+      (preprocessor_keyword)
+      (preprocessor_name))
+    (command
+      (command_name)
+      (record
+        (item_sequence
+          (item_name)
+          (bare_value))))
+    (preprocessor_enddef_record
+      (preprocessor_keyword))))
+
 ==============================
 Item and enum-like name collision
 ==============================
