@@ -76,6 +76,23 @@ test("keeps hash variables visible inside a sequence generator", () => {
   assert.strictEqual(generator.descendantsOfType("number").length, 0);
 });
 
+test("exposes quoted strings inside generators and parenthesized values", () => {
+  const tree = parse("+PROG AQUA\nHEAD ('PP') (\"A B\" #INDEX $(OFFSET))\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("string").map((node) => node.text),
+    ["'PP'", '"A B"'],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("hash_variable").map((node) => node.text),
+    ["#INDEX"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("dollar_variable").map((node) => node.text),
+    ["$(OFFSET)"],
+  );
+});
+
 test("exposes variables in parenthesized expressions without claiming them as generators", () => {
   const tree = parse("+PROG AQUA\nHEAD (#L_1) (D) (#L_1)+(#L_2-#L_1+#L_0)*(#i/(#L_n-1))\nEND");
   assert.strictEqual(tree.rootNode.hasError, false);
@@ -111,6 +128,24 @@ test("keeps formatted hash expressions valid while exposing embedded variables",
   assert.deepStrictEqual(
     tree.rootNode.descendantsOfType("hash_variable").map((node) => node.text),
     ["#lc", "#yscal", "#p_z3"],
+  );
+});
+
+test("separates both variable syntaxes and quoted strings in LET definitions", () => {
+  const tree = parse("+PROG SOFILOAD\nLET#OUT #INPUT+$(OFFSET) \"double\" 'single'\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  const statement = tree.rootNode.descendantsOfType("variable_statement")[0];
+  assert.deepStrictEqual(
+    statement.descendantsOfType("hash_variable").map((node) => node.text),
+    ["#OUT", "#INPUT"],
+  );
+  assert.deepStrictEqual(
+    statement.descendantsOfType("dollar_variable").map((node) => node.text),
+    ["$(OFFSET)"],
+  );
+  assert.deepStrictEqual(
+    statement.descendantsOfType("string").map((node) => node.text),
+    ['"double"', "'single'"],
   );
 });
 
@@ -159,6 +194,10 @@ test("keeps a single-line DEFINE value neutral while exposing variables", () => 
       ["hash_variable", "#x"],
       ["hash_variable", "#y"],
     ],
+  );
+  assert.deepStrictEqual(
+    value.descendantsOfType("string").map((node) => node.text),
+    ["'PP'"],
   );
   assert.strictEqual(statement.descendantsOfType("expression").length, 0);
 });
@@ -257,7 +296,9 @@ test("keeps preprocessor conditionals flat across program scopes", () => {
 });
 
 test("keeps conditional text neutral while exposing dollar and hash variables", () => {
-  const tree = parse("#if $(project)<>$(probase)\n#elseif #condition + 1 ! explanation\n#endif");
+  const tree = parse(
+    "#if $(project)<>$(probase) & \"active\"\n#elseif #condition + 'fallback' ! explanation\n#endif",
+  );
   assert.strictEqual(tree.rootNode.hasError, false);
   assert.deepStrictEqual(
     tree.rootNode.descendantsOfType("dollar_variable").map((node) => node.text),
@@ -270,6 +311,10 @@ test("keeps conditional text neutral while exposing dollar and hash variables", 
   assert.deepStrictEqual(
     tree.rootNode.descendantsOfType("comment").map((node) => node.text),
     ["! explanation"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("string").map((node) => node.text),
+    ['"active"', "'fallback'"],
   );
   assert.strictEqual(tree.rootNode.descendantsOfType("expression").length, 0);
   assert.strictEqual(tree.rootNode.descendantsOfType("number").length, 0);
@@ -379,12 +424,18 @@ test("ends module scopes before dollar PROG, APPLY, and SYS statements", () => {
 
 test("accepts descriptive text between program scopes", () => {
   const tree = parse(
-    "11 Belki prefabrykowane\n21 Poprzecznice podporowe\n+PROG AQUA\nEND\nDescription after a module",
+    "11 Belki prefabrykowane\n-0.1250 20.0000 21.0000\n+0.1250 35.0000 81.0000\n21 Poprzecznice podporowe\n+PROG AQUA\nEND\nDescription after a module",
   );
   assert.strictEqual(tree.rootNode.hasError, false);
   assert.deepStrictEqual(
     tree.rootNode.descendantsOfType("ignored_text").map((node) => node.text.trim()),
-    ["11 Belki prefabrykowane", "21 Poprzecznice podporowe", "Description after a module"],
+    [
+      "11 Belki prefabrykowane",
+      "-0.1250 20.0000 21.0000",
+      "+0.1250 35.0000 81.0000",
+      "21 Poprzecznice podporowe",
+      "Description after a module",
+    ],
   );
 });
 
@@ -499,13 +550,26 @@ test("preserves command state across a variable statement", () => {
   );
 });
 
-test("keeps text block contents opaque", () => {
+test("keeps text syntax opaque while exposing variables and strings", () => {
   const tree = parse(
-    "+PROG AQUA\nHEAD 'a; $ PROG'\n<TEXT>\nPROG not parsed; $ not comment\n</TEXT>\nEND",
+    "+PROG AQUA\nHEAD 'a; $ PROG'\n<TEXT,FILE=+#outfile,PATH=$(folder),TITLE='PP'>\nPROG not parsed; $ not comment\nnatural it's #after\n' unmatched #later\n\" unmatched $(later)\n#title $(project) \"double\" 'single'\n<\\TEXT>\nEND",
   );
   assert.strictEqual(tree.rootNode.hasError, false);
   assert.strictEqual(tree.rootNode.descendantsOfType("string")[0].text, "'a; $ PROG'");
   assert.match(tree.rootNode.descendantsOfType("text_content")[0].text, /PROG not parsed/);
+  const textBlock = tree.rootNode.descendantsOfType("text_block")[0];
+  assert.deepStrictEqual(
+    textBlock.descendantsOfType("hash_variable").map((node) => node.text),
+    ["#outfile", "#after", "#later", "#title"],
+  );
+  assert.deepStrictEqual(
+    textBlock.descendantsOfType("dollar_variable").map((node) => node.text),
+    ["$(folder)", "$(later)", "$(project)"],
+  );
+  assert.deepStrictEqual(
+    textBlock.descendantsOfType("string").map((node) => node.text),
+    ["'PP'", '"double"', "'single'"],
+  );
   assert.strictEqual(tree.rootNode.descendantsOfType("comment").length, 0);
 });
 
@@ -542,7 +606,7 @@ test("accepts include names while preserving the current command", () => {
 
 test("keeps every INCLUDE argument inside its directive", () => {
   const tree = parse(
-    '#INCLUDE maxima-supp\n#INCLUDE "$(project).dat"\n#INCLUDE $(project)\n#UNDEF #temporary',
+    '#INCLUDE maxima-supp\n#INCLUDE "$(project).dat"\n#INCLUDE $(project)\n#INCLUDE #i_results\n#UNDEF #temporary',
   );
   assert.strictEqual(tree.rootNode.hasError, false);
   const directives = tree.rootNode.descendantsOfType("preprocessor_directive");
@@ -555,6 +619,7 @@ test("keeps every INCLUDE argument inside its directive", () => {
       ["bare_value", "maxima-supp"],
       ["string", '"$(project).dat"'],
       ["dollar_variable", "$(project)"],
+      ["hash_variable", "#i_results"],
       ["preprocessor_name", "#temporary"],
     ],
   );
@@ -601,5 +666,36 @@ test("restores contextual scanner state during an incremental reparse", () => {
   assert.deepStrictEqual(
     reparsed.rootNode.descendantsOfType("item_name").map((node) => node.text),
     ["X", "Y"],
+  );
+});
+
+test("restores TEXT scanner state during an incremental reparse", () => {
+  const parser = new Parser();
+  parser.setLanguage(SOFiSTiK);
+  const source = "+PROG AQUA\n<TEXT,FILE=#path>\nvalue #OLD $(NAME)\n</TEXT>\nEND";
+  const changed = "+PROG AQUA\n<TEXT,FILE=#path>\nvalue #NEW $(NAME)\n</TEXT>\nEND";
+  const tree = parser.parse(source);
+  const index = source.indexOf("OLD");
+  const point = { row: 2, column: source.slice(source.lastIndexOf("\n", index) + 1, index).length };
+  tree.edit({
+    startIndex: index,
+    oldEndIndex: index + 3,
+    newEndIndex: index + 3,
+    startPosition: point,
+    oldEndPosition: { row: point.row, column: point.column + 3 },
+    newEndPosition: { row: point.row, column: point.column + 3 },
+  });
+
+  const reparsed = parser.parse(changed, tree);
+  const fresh = parser.parse(changed);
+  assert.strictEqual(reparsed.rootNode.hasError, false);
+  assert.strictEqual(reparsed.rootNode.toString(), fresh.rootNode.toString());
+  assert.deepStrictEqual(
+    reparsed.rootNode.descendantsOfType("hash_variable").map((node) => node.text),
+    ["#path", "#NEW"],
+  );
+  assert.deepStrictEqual(
+    reparsed.rootNode.descendantsOfType("dollar_variable").map((node) => node.text),
+    ["$(NAME)"],
   );
 });

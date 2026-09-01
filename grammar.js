@@ -20,6 +20,10 @@ module.exports = grammar({
     $.preprocessor_literal,
     $.continuation,
     $.comment,
+    $._text_start_open,
+    $._text_start_close,
+    $.text_end,
+    $.text_fragment,
     $.text_content,
     $._end_of_file,
     $.ignored_text,
@@ -256,7 +260,7 @@ module.exports = grammar({
           field("keyword", alias(ci("#DEFINE"), $.preprocessor_keyword)),
           field("name", $.preprocessor_name),
           field("value", $.preprocessor_value),
-          optional($._line_end),
+          $._statement_end,
         ),
       ),
 
@@ -266,7 +270,7 @@ module.exports = grammar({
         choice(
           seq(
             token(prec(20, "=")),
-            repeat1(choice($.dollar_variable, $.hash_variable, $.preprocessor_literal)),
+            repeat1(choice($.dollar_variable, $.hash_variable, $.string, $.preprocessor_literal)),
           ),
           $._preprocessor_recovery_value,
         ),
@@ -312,14 +316,21 @@ module.exports = grammar({
       seq(field("keyword", alias(ci("#ENDIF"), $.preprocessor_keyword)), $._statement_end),
 
     preprocessor_condition: ($) =>
-      repeat1(choice($.dollar_variable, $.hash_variable, $.preprocessor_literal)),
+      repeat1(choice($.dollar_variable, $.hash_variable, $.string, $.preprocessor_literal)),
 
     preprocessor_directive: ($) =>
       prec.right(
-        seq(
-          field("keyword", alias(choice(ci("#INCLUDE"), ci("#UNDEF")), $.preprocessor_keyword)),
-          repeat(field("argument", choice($.preprocessor_name, $._value))),
-          $._statement_end,
+        choice(
+          seq(
+            field("keyword", alias(ci("#INCLUDE"), $.preprocessor_keyword)),
+            repeat(field("argument", $._value)),
+            $._statement_end,
+          ),
+          seq(
+            field("keyword", alias(ci("#UNDEF"), $.preprocessor_keyword)),
+            repeat(field("argument", $.preprocessor_name)),
+            $._statement_end,
+          ),
         ),
       ),
 
@@ -337,15 +348,27 @@ module.exports = grammar({
         seq(
           field("start", $.text_start),
           optional($._line_end),
-          optional(field("body", $.text_content)),
+          repeat(
+            field(
+              "body",
+              choice($.text_content, $.text_fragment, $.dollar_variable, $.hash_variable, $.string),
+            ),
+          ),
           field("end", $.text_end),
           optional($._line_end),
         ),
       ),
 
-    text_start: ($) => token(prec(10, /<[tT][eE][xX][tT](?:,[^>\r\n]*)?>/)),
+    text_start: ($) =>
+      seq(
+        field("open", alias($._text_start_open, $.text_delimiter)),
+        repeat(
+          field("argument", choice($.text_option, $.dollar_variable, $.hash_variable, $.string)),
+        ),
+        field("close", alias($._text_start_close, $.text_delimiter)),
+      ),
 
-    text_end: ($) => token(prec(10, /<\/[tT][eE][xX][tT]>/)),
+    text_option: ($) => token(prec(1, /[^ \t\r\n>#$'"]+/)),
 
     metadata: ($) => token(seq("@", /[^\r\n]*/)),
 
@@ -379,9 +402,10 @@ module.exports = grammar({
         ),
       ),
 
-    _generator_part: ($) => choice($.generator_literal, $.hash_variable, $.dollar_variable),
+    _generator_part: ($) =>
+      choice($.generator_literal, $.hash_variable, $.dollar_variable, $.string),
 
-    generator_literal: ($) => token(prec(5, /[^ \t\r\n()!#$;]+/)),
+    generator_literal: ($) => token(prec(5, /[^ \t\r\n()!#$;'"]+/)),
 
     parenthesized_expression: ($) =>
       prec(
@@ -394,14 +418,15 @@ module.exports = grammar({
               $.parenthesized_literal,
               $.hash_variable,
               $.dollar_variable,
-              token(prec(1, /[^()!#$\r\n]+/)),
+              $.string,
+              token(prec(1, /[^()!#$'"\r\n]+/)),
             ),
           ),
           token(prec(10, ")")),
         ),
       ),
 
-    parenthesized_literal: ($) => token(prec(2, /\([^()!#$\r\n]*\)/)),
+    parenthesized_literal: ($) => token(prec(2, /\([^()!#$'"\r\n]*\)/)),
 
     string: ($) =>
       choice(

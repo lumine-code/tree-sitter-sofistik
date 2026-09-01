@@ -700,7 +700,11 @@ END
         (record
           (string)))
       (text_block
-        (text_start)
+        (text_start
+          (text_delimiter)
+          (text_delimiter))
+        (text_content)
+        (text_fragment)
         (text_content)
         (text_end))
       (end_record

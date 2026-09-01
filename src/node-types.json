@@ -885,6 +885,10 @@
         {
           "type": "parenthesized_literal",
           "named": true
+        },
+        {
+          "type": "string",
+          "named": true
         }
       ]
     }
@@ -907,6 +911,10 @@
         },
         {
           "type": "preprocessor_literal",
+          "named": true
+        },
+        {
+          "type": "string",
           "named": true
         }
       ]
@@ -1133,6 +1141,10 @@
         {
           "type": "preprocessor_literal",
           "named": true
+        },
+        {
+          "type": "string",
+          "named": true
         }
       ]
     }
@@ -1351,6 +1363,10 @@
           {
             "type": "hash_variable",
             "named": true
+          },
+          {
+            "type": "string",
+            "named": true
           }
         ]
       }
@@ -1533,11 +1549,27 @@
     "named": true,
     "fields": {
       "body": {
-        "multiple": false,
+        "multiple": true,
         "required": false,
         "types": [
           {
+            "type": "dollar_variable",
+            "named": true
+          },
+          {
+            "type": "hash_variable",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
             "type": "text_content",
+            "named": true
+          },
+          {
+            "type": "text_fragment",
             "named": true
           }
         ]
@@ -1558,6 +1590,54 @@
         "types": [
           {
             "type": "text_start",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "text_start",
+    "named": true,
+    "fields": {
+      "argument": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "dollar_variable",
+            "named": true
+          },
+          {
+            "type": "hash_variable",
+            "named": true
+          },
+          {
+            "type": "string",
+            "named": true
+          },
+          {
+            "type": "text_option",
+            "named": true
+          }
+        ]
+      },
+      "close": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "text_delimiter",
+            "named": true
+          }
+        ]
+      },
+      "open": {
+        "multiple": false,
+        "required": true,
+        "types": [
+          {
+            "type": "text_delimiter",
             "named": true
           }
         ]
@@ -1722,11 +1802,19 @@
     "named": true
   },
   {
+    "type": "text_delimiter",
+    "named": true
+  },
+  {
     "type": "text_end",
     "named": true
   },
   {
-    "type": "text_start",
+    "type": "text_fragment",
+    "named": true
+  },
+  {
+    "type": "text_option",
     "named": true
   },
   {

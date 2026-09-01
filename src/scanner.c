@@ -27,6 +27,10 @@ enum TokenType {
   PREPROCESSOR_LITERAL,
   CONTINUATION,
   COMMENT,
+  TEXT_START_OPEN,
+  TEXT_START_CLOSE,
+  TEXT_END,
+  TEXT_FRAGMENT,
   TEXT_CONTENT,
   END_OF_FILE,
   IGNORED_TEXT,
@@ -34,9 +38,19 @@ enum TokenType {
   ERROR_SENTINEL,
 };
 
+// TEXT bodies are segmented so variables and strings stay visible. Tracking
+// the header/body boundary keeps those external tokens safe during recovery,
+// when Tree-sitter reports every external symbol as valid.
+enum TextState {
+  OUTSIDE_TEXT,
+  IN_TEXT_HEADER,
+  IN_TEXT_BODY,
+};
+
 typedef struct {
   uint32_t module;
   uint32_t command;
+  uint8_t text_state;
 } Scanner;
 
 static bool ascii_equal(int32_t character, char expected) {
@@ -119,6 +133,95 @@ static void consume_line(TSLexer *lexer) {
   ) {
     lexer->advance(lexer, false);
   }
+}
+
+static bool scan_hash_variable_candidate(TSLexer *lexer) {
+  if (lexer->lookahead != '#') {
+    return false;
+  }
+  lexer->advance(lexer, false);
+
+  if (
+    (lexer->lookahead >= 'a' && lexer->lookahead <= 'z') ||
+    (lexer->lookahead >= 'A' && lexer->lookahead <= 'Z') ||
+    lexer->lookahead == '_'
+  ) {
+    while (is_schema_character(lexer->lookahead)) {
+      lexer->advance(lexer, false);
+    }
+  } else if (lexer->lookahead >= '0' && lexer->lookahead <= '9') {
+    while (lexer->lookahead >= '0' && lexer->lookahead <= '9') {
+      lexer->advance(lexer, false);
+    }
+  } else {
+    return false;
+  }
+
+  if (lexer->lookahead != '(') {
+    return true;
+  }
+  lexer->advance(lexer, false);
+  while (
+    lexer->lookahead && lexer->lookahead != ')' &&
+    lexer->lookahead != '\r' && lexer->lookahead != '\n'
+  ) {
+    lexer->advance(lexer, false);
+  }
+  if (lexer->lookahead != ')') {
+    return false;
+  }
+  lexer->advance(lexer, false);
+  return true;
+}
+
+static bool scan_dollar_variable_candidate(TSLexer *lexer) {
+  if (lexer->lookahead != '$') {
+    return false;
+  }
+  lexer->advance(lexer, false);
+  if (lexer->lookahead != '(') {
+    return false;
+  }
+  lexer->advance(lexer, false);
+
+  bool has_content = false;
+  while (
+    lexer->lookahead && lexer->lookahead != ')' &&
+    lexer->lookahead != '\r' && lexer->lookahead != '\n'
+  ) {
+    lexer->advance(lexer, false);
+    has_content = true;
+  }
+  if (!has_content || lexer->lookahead != ')') {
+    return false;
+  }
+  lexer->advance(lexer, false);
+  return true;
+}
+
+static bool scan_string_candidate(TSLexer *lexer, int32_t quote) {
+  if (lexer->lookahead != quote) {
+    return false;
+  }
+  lexer->advance(lexer, false);
+
+  while (
+    lexer->lookahead && lexer->lookahead != '\r' &&
+    lexer->lookahead != '\n'
+  ) {
+    if (lexer->lookahead != quote) {
+      lexer->advance(lexer, false);
+      continue;
+    }
+
+    lexer->advance(lexer, false);
+    if (lexer->lookahead == quote) {
+      lexer->advance(lexer, false);
+      continue;
+    }
+    return true;
+  }
+  return false;
 }
 
 static bool scan_slash_comment(TSLexer *lexer, const bool *valid_symbols) {
@@ -204,7 +307,7 @@ static bool scan_non_word_bare(
   bool *reserved_root_word
 ) {
   if (
-    !valid_symbols[BARE_WORD] || is_schema_character(lexer->lookahead) ||
+    is_schema_character(lexer->lookahead) ||
     is_bare_value_delimiter(lexer->lookahead)
   ) {
     return false;
@@ -230,6 +333,10 @@ static bool scan_non_word_bare(
     strcmp(prefix, "+SYS") == 0 || strcmp(prefix, "-SYS") == 0
   ) {
     *reserved_root_word = true;
+    return false;
+  }
+
+  if (!valid_symbols[BARE_WORD]) {
     return false;
   }
 
@@ -511,7 +618,7 @@ static bool scan_parenthesized_start(
   unsigned depth = 1;
   bool in_component = false;
   bool generator_candidate = true;
-  bool has_variable = false;
+  bool has_embedded_value = false;
 
   while (lexer->lookahead) {
     if (
@@ -522,27 +629,10 @@ static bool scan_parenthesized_start(
     }
 
     if (lexer->lookahead == '#') {
-      lexer->advance(lexer, false);
-      if (!is_schema_character(lexer->lookahead)) {
+      if (!scan_hash_variable_candidate(lexer)) {
         return false;
       }
-      while (is_schema_character(lexer->lookahead)) {
-        lexer->advance(lexer, false);
-      }
-      if (lexer->lookahead == '(') {
-        lexer->advance(lexer, false);
-        while (
-          lexer->lookahead && lexer->lookahead != ')' &&
-          lexer->lookahead != '\r' && lexer->lookahead != '\n'
-        ) {
-          lexer->advance(lexer, false);
-        }
-        if (lexer->lookahead != ')') {
-          return false;
-        }
-        lexer->advance(lexer, false);
-      }
-      has_variable = true;
+      has_embedded_value = true;
       if (depth == 1) {
         in_component = true;
       }
@@ -550,24 +640,22 @@ static bool scan_parenthesized_start(
     }
 
     if (lexer->lookahead == '$') {
-      lexer->advance(lexer, false);
-      if (lexer->lookahead != '(') {
+      if (!scan_dollar_variable_candidate(lexer)) {
         return false;
       }
-      lexer->advance(lexer, false);
-      bool has_content = false;
-      while (
-        lexer->lookahead && lexer->lookahead != ')' &&
-        lexer->lookahead != '\r' && lexer->lookahead != '\n'
-      ) {
-        lexer->advance(lexer, false);
-        has_content = true;
+      has_embedded_value = true;
+      if (depth == 1) {
+        in_component = true;
       }
-      if (!has_content || lexer->lookahead != ')') {
+      continue;
+    }
+
+    if (lexer->lookahead == '\'' || lexer->lookahead == '"') {
+      int32_t quote = lexer->lookahead;
+      if (!scan_string_candidate(lexer, quote)) {
         return false;
       }
-      lexer->advance(lexer, false);
-      has_variable = true;
+      has_embedded_value = true;
       if (depth == 1) {
         in_component = true;
       }
@@ -594,7 +682,10 @@ static bool scan_parenthesized_start(
           lexer->result_symbol = SEQUENCE_GENERATOR_START;
           return true;
         }
-        if (has_variable && valid_symbols[PARENTHESIZED_EXPRESSION_START]) {
+        if (
+          has_embedded_value &&
+          valid_symbols[PARENTHESIZED_EXPRESSION_START]
+        ) {
           lexer->result_symbol = PARENTHESIZED_EXPRESSION_START;
           return true;
         }
@@ -627,7 +718,8 @@ static bool scan_preprocessor_literal(TSLexer *lexer) {
   while (
     lexer->lookahead && lexer->lookahead != '\r' &&
     lexer->lookahead != '\n' && lexer->lookahead != '!' &&
-    lexer->lookahead != '#' && lexer->lookahead != '$'
+    lexer->lookahead != '#' && lexer->lookahead != '$' &&
+    lexer->lookahead != '\'' && lexer->lookahead != '"'
   ) {
     lexer->advance(lexer, false);
     has_content = true;
@@ -657,14 +749,153 @@ static bool scan_preprocessor_recovery_value(TSLexer *lexer) {
   return true;
 }
 
+static bool scan_text_start_open(Scanner *scanner, TSLexer *lexer) {
+  if (lexer->lookahead != '<') {
+    return false;
+  }
+  lexer->advance(lexer, false);
+
+  const char *text = "TEXT";
+  size_t index = 0;
+  while (text[index] && ascii_equal(lexer->lookahead, text[index])) {
+    lexer->advance(lexer, false);
+    index++;
+  }
+  if (
+    text[index] ||
+    (lexer->lookahead != '>' && lexer->lookahead != ',' &&
+     lexer->lookahead != ' ' && lexer->lookahead != '\t')
+  ) {
+    return false;
+  }
+
+  lexer->mark_end(lexer);
+  scanner->text_state = IN_TEXT_HEADER;
+  lexer->result_symbol = TEXT_START_OPEN;
+  return true;
+}
+
+static bool scan_text_start_close(Scanner *scanner, TSLexer *lexer) {
+  if (lexer->lookahead != '>') {
+    return false;
+  }
+  lexer->advance(lexer, false);
+  lexer->mark_end(lexer);
+  scanner->text_state = IN_TEXT_BODY;
+  lexer->result_symbol = TEXT_START_CLOSE;
+  return true;
+}
+
+static bool scan_text_end(Scanner *scanner, TSLexer *lexer) {
+  if (lexer->lookahead != '<') {
+    return false;
+  }
+  lexer->advance(lexer, false);
+  lexer->mark_end(lexer);
+  if (lexer->lookahead != '/' && lexer->lookahead != '\\') {
+    lexer->result_symbol = TEXT_CONTENT;
+    return true;
+  }
+  lexer->advance(lexer, false);
+
+  const char *text = "TEXT";
+  size_t index = 0;
+  while (text[index] && ascii_equal(lexer->lookahead, text[index])) {
+    lexer->advance(lexer, false);
+    index++;
+  }
+  if (text[index] || lexer->lookahead != '>') {
+    lexer->result_symbol = TEXT_CONTENT;
+    return true;
+  }
+  lexer->advance(lexer, false);
+  lexer->mark_end(lexer);
+  scanner->text_state = OUTSIDE_TEXT;
+  lexer->result_symbol = TEXT_END;
+  return true;
+}
+
+static bool scan_text_fragment(TSLexer *lexer) {
+  int32_t marker = lexer->lookahead;
+  if (marker != '#' && marker != '$' && marker != '\'' && marker != '"') {
+    return false;
+  }
+
+  lexer->advance(lexer, false);
+  lexer->mark_end(lexer);
+  bool is_embedded_value = false;
+
+  if (marker == '#') {
+    if (
+      (lexer->lookahead >= 'a' && lexer->lookahead <= 'z') ||
+      (lexer->lookahead >= 'A' && lexer->lookahead <= 'Z') ||
+      lexer->lookahead == '_'
+    ) {
+      is_embedded_value = true;
+    } else if (lexer->lookahead >= '0' && lexer->lookahead <= '9') {
+      is_embedded_value = true;
+    }
+  } else if (marker == '$') {
+    if (lexer->lookahead == '(') {
+      lexer->advance(lexer, false);
+      bool has_content = false;
+      while (
+        lexer->lookahead && lexer->lookahead != ')' &&
+        lexer->lookahead != '\r' && lexer->lookahead != '\n'
+      ) {
+        lexer->advance(lexer, false);
+        has_content = true;
+      }
+      is_embedded_value = has_content && lexer->lookahead == ')';
+    }
+  } else {
+    while (
+      lexer->lookahead && lexer->lookahead != '\r' &&
+      lexer->lookahead != '\n'
+    ) {
+      if (lexer->lookahead != marker) {
+        lexer->advance(lexer, false);
+        continue;
+      }
+      lexer->advance(lexer, false);
+      if (lexer->lookahead == marker) {
+        lexer->advance(lexer, false);
+        continue;
+      }
+      is_embedded_value = true;
+      break;
+    }
+  }
+
+  if (is_embedded_value) {
+    return false;
+  }
+  lexer->result_symbol = TEXT_FRAGMENT;
+  return true;
+}
+
 static bool scan_text_content(TSLexer *lexer) {
   bool has_content = false;
+  bool previous_is_word = false;
 
   while (lexer->lookahead) {
+    if (
+      lexer->lookahead == '#' || lexer->lookahead == '$' ||
+      ((lexer->lookahead == '\'' || lexer->lookahead == '"') &&
+       !previous_is_word)
+    ) {
+      lexer->mark_end(lexer);
+      if (!has_content) {
+        return false;
+      }
+      lexer->result_symbol = TEXT_CONTENT;
+      return true;
+    }
+
     if (lexer->lookahead == '<') {
       lexer->mark_end(lexer);
       lexer->advance(lexer, false);
-      if (lexer->lookahead == '/') {
+      if (lexer->lookahead == '/' || lexer->lookahead == '\\') {
         lexer->advance(lexer, false);
         const char *text = "TEXT";
         size_t index = 0;
@@ -681,9 +912,11 @@ static bool scan_text_content(TSLexer *lexer) {
         }
       }
       has_content = true;
+      previous_is_word = false;
       continue;
     }
 
+    previous_is_word = is_schema_character(lexer->lookahead);
     lexer->advance(lexer, false);
     has_content = true;
   }
@@ -733,6 +966,33 @@ bool tree_sitter_sofistik_external_scanner_scan(
   }
   if (all_symbols_valid) {
     if (
+      scanner->text_state == OUTSIDE_TEXT && lexer->lookahead == '<' &&
+      valid_symbols[TEXT_START_OPEN]
+    ) {
+      return scan_text_start_open(scanner, lexer);
+    }
+    if (
+      scanner->text_state == IN_TEXT_HEADER && lexer->lookahead == '>' &&
+      valid_symbols[TEXT_START_CLOSE]
+    ) {
+      return scan_text_start_close(scanner, lexer);
+    }
+    if (scanner->text_state == IN_TEXT_BODY) {
+      if (valid_symbols[TEXT_END] && lexer->lookahead == '<') {
+        return scan_text_end(scanner, lexer);
+      }
+      if (
+        valid_symbols[TEXT_FRAGMENT] &&
+        (lexer->lookahead == '#' || lexer->lookahead == '$' ||
+         lexer->lookahead == '\'' || lexer->lookahead == '"')
+      ) {
+        return scan_text_fragment(lexer);
+      }
+      if (valid_symbols[TEXT_CONTENT]) {
+        return scan_text_content(lexer);
+      }
+    }
+    if (
       valid_symbols[PREPROCESSOR_RECOVERY_VALUE] &&
       scan_preprocessor_recovery_value(lexer)
     ) {
@@ -741,8 +1001,34 @@ bool tree_sitter_sofistik_external_scanner_scan(
     return false;
   }
 
-  if (valid_symbols[TEXT_CONTENT]) {
-    return scan_text_content(lexer);
+  if (
+    scanner->text_state == OUTSIDE_TEXT && lexer->lookahead == '<' &&
+    valid_symbols[TEXT_START_OPEN]
+  ) {
+    return scan_text_start_open(scanner, lexer);
+  }
+
+  if (
+    scanner->text_state == IN_TEXT_HEADER && lexer->lookahead == '>' &&
+    valid_symbols[TEXT_START_CLOSE]
+  ) {
+    return scan_text_start_close(scanner, lexer);
+  }
+
+  if (scanner->text_state == IN_TEXT_BODY) {
+    if (valid_symbols[TEXT_END] && lexer->lookahead == '<') {
+      return scan_text_end(scanner, lexer);
+    }
+    if (
+      valid_symbols[TEXT_FRAGMENT] &&
+      (lexer->lookahead == '#' || lexer->lookahead == '$' ||
+       lexer->lookahead == '\'' || lexer->lookahead == '"')
+    ) {
+      return scan_text_fragment(lexer);
+    }
+    if (valid_symbols[TEXT_CONTENT]) {
+      return scan_text_content(lexer);
+    }
   }
 
   if (valid_symbols[END_OF_FILE] && !lexer->lookahead) {
@@ -807,8 +1093,7 @@ bool tree_sitter_sofistik_external_scanner_scan(
   if (
     valid_symbols[IGNORED_TEXT] && has_ignored_text_start &&
     !reserved_root_word && initial_lookahead != '#' &&
-    initial_lookahead != '<' && initial_lookahead != '@' &&
-    initial_lookahead != '+' && initial_lookahead != '-'
+    initial_lookahead != '<' && initial_lookahead != '@'
   ) {
     consume_line(lexer);
     lexer->mark_end(lexer);
@@ -825,7 +1110,8 @@ unsigned tree_sitter_sofistik_external_scanner_serialize(
   Scanner *scanner = payload;
   write_u32(buffer, scanner->module);
   write_u32(buffer + 4, scanner->command);
-  return 8;
+  buffer[8] = (char)scanner->text_state;
+  return 9;
 }
 
 void tree_sitter_sofistik_external_scanner_deserialize(
@@ -835,11 +1121,16 @@ void tree_sitter_sofistik_external_scanner_deserialize(
 ) {
   Scanner *scanner = payload;
   reset_context(scanner);
-  if (length < 8) {
+  scanner->text_state = OUTSIDE_TEXT;
+  if (length < 9) {
     return;
   }
   scanner->module = read_u32(buffer);
   scanner->command = read_u32(buffer + 4);
+  scanner->text_state = (uint8_t)buffer[8];
+  if (scanner->text_state > IN_TEXT_BODY) {
+    scanner->text_state = OUTSIDE_TEXT;
+  }
 }
 
 void tree_sitter_sofistik_external_scanner_destroy(void *payload) {

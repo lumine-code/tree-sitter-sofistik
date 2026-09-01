@@ -7,14 +7,12 @@
     "nul": 1,
     "invalidUtf8": 0
   },
-  "badFiles": 51,
-  "errorNodes": 137,
+  "badFiles": 42,
+  "errorNodes": 179,
   "classifications": {
-    "ERROR": 109,
+    "ERROR": 157,
     "MISSING:;": 17,
-    "MISSING:control_keyword": 7,
-    "MISSING:preprocessor_keyword": 1,
-    "UNLOCATED": 3
+    "MISSING:control_keyword": 5
   },
   "fileClassifications": {
     "fragmentWithoutProgram": {
@@ -22,8 +20,8 @@
       "errorNodes": 0
     },
     "documentWithUnsupportedSyntax": {
-      "files": 51,
-      "errorNodes": 137
+      "files": 42,
+      "errorNodes": 179
     }
   },
   "firstFailures": [
@@ -37,18 +35,6 @@
       "file": "ase.dat/deutsch/bridge/stahl_verbund_einfeldtraeger.dat",
       "row": 326,
       "column": 92,
-      "type": "ERROR"
-    },
-    {
-      "file": "ase.dat/deutsch/geometric_nonl/suspension_bridge_formfinding.dat",
-      "row": 360,
-      "column": 1,
-      "type": "ERROR"
-    },
-    {
-      "file": "ase.dat/deutsch/special/stahlbau_nachweismethoden_jb.dat",
-      "row": 137,
-      "column": 1,
       "type": "ERROR"
     },
     {
@@ -79,18 +65,6 @@
       "file": "ase.dat/english/dynamics/movs_train_on_axis.dat",
       "row": 50,
       "column": 13,
-      "type": "ERROR"
-    },
-    {
-      "file": "ase.dat/english/geometric_nonl/suspension_bridge_formfinding.dat",
-      "row": 360,
-      "column": 1,
-      "type": "ERROR"
-    },
-    {
-      "file": "ase.dat/english/special/steel_design_jb.dat",
-      "row": 137,
-      "column": 1,
       "type": "ERROR"
     },
     {
@@ -145,6 +119,30 @@
       "file": "csm.dat/english/optimize/geometry_opti_arch.dat",
       "row": 145,
       "column": 34,
+      "type": "ERROR"
+    },
+    {
+      "file": "csm.dat/english/optimize/more_opti/csm_insert_hangers_forcefree.dat",
+      "row": 442,
+      "column": 30,
+      "type": "ERROR"
+    },
+    {
+      "file": "dolfyn.dat/deutsch/gebaeude_3D/high_rise_cylind.dat",
+      "row": 82,
+      "column": 1,
+      "type": "ERROR"
+    },
+    {
+      "file": "dolfyn.dat/deutsch/tests/abl3d.dat",
+      "row": 166,
+      "column": 11,
+      "type": "ERROR"
+    },
+    {
+      "file": "dolfyn.dat/english/buildings_3D/city.dat",
+      "row": 70,
+      "column": 43,
       "type": "ERROR"
     }
   ]
