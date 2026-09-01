@@ -85,6 +85,17 @@ test("keeps block DEFINE markers transparent after a command inside a program", 
   assert.strictEqual(tree.rootNode.descendantsOfType("preprocessor_enddef_record").length, 1);
 });
 
+test("keeps a single-line DEFINE value opaque", () => {
+  const tree = parse("#define p_poin = poin qgrp 'PP' type pg p #Q_w x #x y #y");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  const statement = tree.rootNode.descendantsOfType("preprocessor_define_statement")[0];
+  const value = statement.childForFieldName("value");
+  assert.strictEqual(value.type, "preprocessor_value");
+  assert.strictEqual(value.text, "= poin qgrp 'PP' type pg p #Q_w x #x y #y");
+  assert.strictEqual(value.namedChildCount, 0);
+  assert.strictEqual(statement.descendantsOfType("expression").length, 0);
+});
+
 test("uses dollar PROG only as a standalone scope directive", () => {
   const tree = parse("$prog maxima\nsupp 1\n$PROG\nplain text\n+prog aqua\nend");
   assert.strictEqual(tree.rootNode.hasError, false);

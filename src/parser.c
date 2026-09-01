@@ -42,7 +42,7 @@ enum ts_symbol_identifiers {
   aux_sym_endif_record_token1 = 12,
   aux_sym_exit_iteration_record_token1 = 13,
   aux_sym_preprocessor_define_statement_token1 = 14,
-  aux_sym_preprocessor_define_statement_token2 = 15,
+  sym_preprocessor_value = 15,
   aux_sym_preprocessor_enddef_record_token1 = 16,
   aux_sym_preprocessor_if_header_token1 = 17,
   aux_sym_preprocessor_elseif_header_token1 = 18,
@@ -186,7 +186,7 @@ static const char * const ts_symbol_names[] = {
   [aux_sym_endif_record_token1] = "control_keyword",
   [aux_sym_exit_iteration_record_token1] = "control_keyword",
   [aux_sym_preprocessor_define_statement_token1] = "preprocessor_keyword",
-  [aux_sym_preprocessor_define_statement_token2] = "expression",
+  [sym_preprocessor_value] = "preprocessor_value",
   [aux_sym_preprocessor_enddef_record_token1] = "preprocessor_keyword",
   [aux_sym_preprocessor_if_header_token1] = "preprocessor_keyword",
   [aux_sym_preprocessor_elseif_header_token1] = "preprocessor_keyword",
@@ -330,7 +330,7 @@ static const TSSymbol ts_symbol_map[] = {
   [aux_sym_endif_record_token1] = sym__end_keyword,
   [aux_sym_exit_iteration_record_token1] = sym__end_keyword,
   [aux_sym_preprocessor_define_statement_token1] = aux_sym_preprocessor_define_statement_token1,
-  [aux_sym_preprocessor_define_statement_token2] = sym_expression,
+  [sym_preprocessor_value] = sym_preprocessor_value,
   [aux_sym_preprocessor_enddef_record_token1] = aux_sym_preprocessor_define_statement_token1,
   [aux_sym_preprocessor_if_header_token1] = aux_sym_preprocessor_define_statement_token1,
   [aux_sym_preprocessor_elseif_header_token1] = aux_sym_preprocessor_define_statement_token1,
@@ -519,7 +519,7 @@ static const TSSymbolMetadata ts_symbol_metadata[] = {
     .visible = true,
     .named = true,
   },
-  [aux_sym_preprocessor_define_statement_token2] = {
+  [sym_preprocessor_value] = {
     .visible = true,
     .named = true,
   },
@@ -7569,7 +7569,7 @@ static bool ts_lex(TSLexer *lexer, TSStateId state) {
       ACCEPT_TOKEN(aux_sym_preprocessor_define_statement_token1);
       END_STATE();
     case 270:
-      ACCEPT_TOKEN(aux_sym_preprocessor_define_statement_token2);
+      ACCEPT_TOKEN(sym_preprocessor_value);
       ADVANCE_MAP(
         0x0b, 272,
         '\f', 272,
@@ -7599,7 +7599,7 @@ static bool ts_lex(TSLexer *lexer, TSStateId state) {
           (lookahead < '\t' || '\r' < lookahead)) ADVANCE(270);
       END_STATE();
     case 271:
-      ACCEPT_TOKEN(aux_sym_preprocessor_define_statement_token2);
+      ACCEPT_TOKEN(sym_preprocessor_value);
       ADVANCE_MAP(
         0x0b, 273,
         '\f', 273,
@@ -7619,7 +7619,7 @@ static bool ts_lex(TSLexer *lexer, TSStateId state) {
           (lookahead < '\t' || '\r' < lookahead)) ADVANCE(271);
       END_STATE();
     case 272:
-      ACCEPT_TOKEN(aux_sym_preprocessor_define_statement_token2);
+      ACCEPT_TOKEN(sym_preprocessor_value);
       if (lookahead == '#' ||
           lookahead == '[' ||
           lookahead == ']') ADVANCE(273);
@@ -7642,7 +7642,7 @@ static bool ts_lex(TSLexer *lexer, TSStateId state) {
           lookahead != '\r') ADVANCE(272);
       END_STATE();
     case 273:
-      ACCEPT_TOKEN(aux_sym_preprocessor_define_statement_token2);
+      ACCEPT_TOKEN(sym_preprocessor_value);
       if (lookahead == '(' ||
           lookahead == ')' ||
           lookahead == '<' ||
@@ -7658,7 +7658,7 @@ static bool ts_lex(TSLexer *lexer, TSStateId state) {
           lookahead != '\r') ADVANCE(273);
       END_STATE();
     case 274:
-      ACCEPT_TOKEN(aux_sym_preprocessor_define_statement_token2);
+      ACCEPT_TOKEN(sym_preprocessor_value);
       if (lookahead == '\t' ||
           lookahead == 0x0b ||
           lookahead == '\f' ||
@@ -7669,7 +7669,7 @@ static bool ts_lex(TSLexer *lexer, TSStateId state) {
           (lookahead < '\t' || '\r' < lookahead)) ADVANCE(274);
       END_STATE();
     case 275:
-      ACCEPT_TOKEN(aux_sym_preprocessor_define_statement_token2);
+      ACCEPT_TOKEN(sym_preprocessor_value);
       if (lookahead != 0 &&
           lookahead != '\n' &&
           lookahead != '\r') ADVANCE(275);
@@ -13164,7 +13164,7 @@ static const uint16_t ts_parse_table[LARGE_STATE_COUNT][SYMBOL_COUNT] = {
     [aux_sym_endif_record_token1] = ACTIONS(1),
     [aux_sym_exit_iteration_record_token1] = ACTIONS(1),
     [aux_sym_preprocessor_define_statement_token1] = ACTIONS(1),
-    [aux_sym_preprocessor_define_statement_token2] = ACTIONS(1),
+    [sym_preprocessor_value] = ACTIONS(1),
     [aux_sym_preprocessor_enddef_record_token1] = ACTIONS(1),
     [aux_sym_preprocessor_if_header_token1] = ACTIONS(1),
     [aux_sym_preprocessor_elseif_header_token1] = ACTIONS(1),
@@ -38542,7 +38542,7 @@ static const uint16_t ts_small_parse_table[] = {
     ACTIONS(860), 1,
       sym__bare_word,
     ACTIONS(1835), 1,
-      aux_sym_preprocessor_define_statement_token2,
+      sym_preprocessor_value,
     STATE(362), 1,
       sym__record_end,
     STATE(517), 1,
@@ -38758,7 +38758,7 @@ static const uint16_t ts_small_parse_table[] = {
     ACTIONS(860), 1,
       sym__bare_word,
     ACTIONS(1849), 1,
-      aux_sym_preprocessor_define_statement_token2,
+      sym_preprocessor_value,
     STATE(241), 1,
       sym__record_end,
     STATE(525), 1,
@@ -39082,7 +39082,7 @@ static const uint16_t ts_small_parse_table[] = {
     ACTIONS(860), 1,
       sym__bare_word,
     ACTIONS(1869), 1,
-      aux_sym_preprocessor_define_statement_token2,
+      sym_preprocessor_value,
     STATE(549), 1,
       aux_sym_variable_statement_repeat1,
     STATE(595), 1,
@@ -39118,7 +39118,7 @@ static const uint16_t ts_small_parse_table[] = {
     ACTIONS(860), 1,
       sym__bare_word,
     ACTIONS(1873), 1,
-      aux_sym_preprocessor_define_statement_token2,
+      sym_preprocessor_value,
     STATE(441), 1,
       sym__record_end,
     STATE(532), 1,
@@ -39190,7 +39190,7 @@ static const uint16_t ts_small_parse_table[] = {
     ACTIONS(860), 1,
       sym__bare_word,
     ACTIONS(1879), 1,
-      aux_sym_preprocessor_define_statement_token2,
+      sym_preprocessor_value,
     STATE(145), 1,
       sym__record_end,
     STATE(519), 1,
@@ -39262,7 +39262,7 @@ static const uint16_t ts_small_parse_table[] = {
     ACTIONS(860), 1,
       sym__bare_word,
     ACTIONS(1885), 1,
-      aux_sym_preprocessor_define_statement_token2,
+      sym_preprocessor_value,
     STATE(294), 1,
       sym__record_end,
     STATE(564), 1,

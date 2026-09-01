@@ -178,7 +178,7 @@ END
         (preprocessor_define_statement
           (preprocessor_keyword)
           (preprocessor_name)
-          (expression))
+          (preprocessor_value))
         (implicit_record
           (item_sequence
             (item_name)
@@ -505,7 +505,7 @@ SYS echo hi
   (preprocessor_define_statement
     (preprocessor_keyword)
     (preprocessor_name)
-    (expression))
+    (preprocessor_value))
   (preprocessor_define_header
     (preprocessor_keyword)
     (preprocessor_name))

@@ -250,10 +250,12 @@ module.exports = grammar({
         seq(
           field("keyword", alias(ci("#DEFINE"), $.preprocessor_keyword)),
           field("name", $.preprocessor_name),
-          field("value", alias(token(prec(10, /=[^\r\n]*/)), $.expression)),
+          field("value", $.preprocessor_value),
           optional($._line_end),
         ),
       ),
+
+    preprocessor_value: ($) => token(prec(10, /=[^\r\n]*/)),
 
     preprocessor_program_block: ($) =>
       seq(

@@ -868,7 +868,7 @@
         "required": true,
         "types": [
           {
-            "type": "expression",
+            "type": "preprocessor_value",
             "named": true
           }
         ]
@@ -1536,6 +1536,10 @@
   },
   {
     "type": "preprocessor_name",
+    "named": true
+  },
+  {
+    "type": "preprocessor_value",
     "named": true
   },
   {
