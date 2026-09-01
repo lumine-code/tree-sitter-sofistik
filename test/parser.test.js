@@ -90,6 +90,30 @@ test("exposes variables in parenthesized expressions without claiming them as ge
   assert.strictEqual(tree.rootNode.descendantsOfType("number").length, 0);
 });
 
+test("exposes every variable in LET calculations containing parentheses", () => {
+  const tree = parse(
+    "+PROG SOFILOAD\n" +
+      "LET#D_1 1.2+0.40+#D_F ; LET#POS #L_1+#D_1+(#L_2-#L_1-#D_1)*(#I/(#L_N-1))\n" +
+      "END",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+  const statement = tree.rootNode.descendantsOfType("variable_statement")[1];
+  assert.deepStrictEqual(
+    statement.descendantsOfType("hash_variable").map((node) => node.text),
+    ["#POS", "#L_1", "#D_1", "#L_2", "#L_1", "#D_1", "#I", "#L_N"],
+  );
+  assert.strictEqual(statement.descendantsOfType("generic_expression").length, 0);
+});
+
+test("keeps formatted hash expressions valid while exposing embedded variables", () => {
+  const tree = parse("+PROG AQUA\nTXE #(#lc,8.0) (#(Y+0))*#yscal 1.51*(#p_z3+0.36)\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("hash_variable").map((node) => node.text),
+    ["#lc", "#yscal", "#p_z3"],
+  );
+});
+
 test("treats block DEFINE markers as transparent to the active module", () => {
   const tree = parse(
     "$prog maxima\n#define maxima-supp\nsupp $(no) mami auto\n#enddef\n+prog aqua\nend",
