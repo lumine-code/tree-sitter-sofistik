@@ -1,6 +1,6 @@
 {
   "corpus": "SOFiSTiK 2026 installed DAT examples",
-  "schemaDigest": "c9458e5866feba16f0abbbd0e40d7185e3bedbe1ea3f6ce9010aaeadd76d9c56",
+  "schemaDigest": "218366c50d099e4445f98b48c2a53aff1e719c675b5ff134e93b1b943e3feef3",
   "discovered": 1392,
   "parsed": 1391,
   "skipped": {
@@ -27,15 +27,125 @@
     }
   },
   "firstFailures": [
-    "ase.dat/deutsch/bridge/m_n_interaction_plot.dat",
-    "ase.dat/deutsch/bridge/stahl_verbund_einfeldtraeger.dat",
-    "ase.dat/deutsch/geometric_nonl/suspension_bridge_formfinding.dat",
-    "ase.dat/deutsch/special/stahlbau_nachweismethoden_jb.dat",
-    "ase.dat/english/active_bending/active_bending_throw_tent.dat",
-    "ase.dat/english/bric/bric_th2.dat",
-    "ase.dat/english/bridge/m_n_interaction_plot.dat",
-    "ase.dat/english/bridge/steel_composite_singlespan_girder.dat",
-    "ase.dat/english/dynamics/movs_train_on_axis.dat",
-    "ase.dat/english/geometric_nonl/suspension_bridge_formfinding.dat"
+    {
+      "file": "ase.dat/deutsch/bridge/m_n_interaction_plot.dat",
+      "row": 430,
+      "column": 46,
+      "type": "ERROR"
+    },
+    {
+      "file": "ase.dat/deutsch/bridge/stahl_verbund_einfeldtraeger.dat",
+      "row": 326,
+      "column": 92,
+      "type": "ERROR"
+    },
+    {
+      "file": "ase.dat/deutsch/geometric_nonl/suspension_bridge_formfinding.dat",
+      "row": 360,
+      "column": 1,
+      "type": "ERROR"
+    },
+    {
+      "file": "ase.dat/deutsch/special/stahlbau_nachweismethoden_jb.dat",
+      "row": 137,
+      "column": 1,
+      "type": "ERROR"
+    },
+    {
+      "file": "ase.dat/english/active_bending/active_bending_throw_tent.dat",
+      "row": 68,
+      "column": 31,
+      "type": "ERROR"
+    },
+    {
+      "file": "ase.dat/english/bric/bric_th2.dat",
+      "row": 138,
+      "column": 21,
+      "type": "ERROR"
+    },
+    {
+      "file": "ase.dat/english/bridge/m_n_interaction_plot.dat",
+      "row": 430,
+      "column": 46,
+      "type": "ERROR"
+    },
+    {
+      "file": "ase.dat/english/bridge/steel_composite_singlespan_girder.dat",
+      "row": 326,
+      "column": 79,
+      "type": "ERROR"
+    },
+    {
+      "file": "ase.dat/english/dynamics/movs_train_on_axis.dat",
+      "row": 50,
+      "column": 13,
+      "type": "ERROR"
+    },
+    {
+      "file": "ase.dat/english/geometric_nonl/suspension_bridge_formfinding.dat",
+      "row": 360,
+      "column": 1,
+      "type": "ERROR"
+    },
+    {
+      "file": "ase.dat/english/special/steel_design_jb.dat",
+      "row": 137,
+      "column": 1,
+      "type": "ERROR"
+    },
+    {
+      "file": "csm.dat/deutsch/optimize/csm23_schraegseil_optimierung_2.dat",
+      "row": 287,
+      "column": 1,
+      "type": "ERROR"
+    },
+    {
+      "file": "csm.dat/deutsch/optimize/csm26_precamber_feldweise.dat",
+      "row": 121,
+      "column": 35,
+      "type": "ERROR"
+    },
+    {
+      "file": "csm.dat/deutsch/optimize/geometry_opti_arch.dat",
+      "row": 145,
+      "column": 34,
+      "type": "ERROR"
+    },
+    {
+      "file": "csm.dat/english/design/csm31_partial_prestress.dat",
+      "row": 511,
+      "column": 8,
+      "type": "ERROR"
+    },
+    {
+      "file": "csm.dat/english/incremental_launching/csm40_incremental_launching_introduction.dat",
+      "row": 222,
+      "column": 61,
+      "type": "ERROR"
+    },
+    {
+      "file": "csm.dat/english/more/csm31_design_india.dat",
+      "row": 346,
+      "column": 21,
+      "type": "ERROR"
+    },
+    {
+      "file": "csm.dat/english/optimize/csm23_cable_stay_optimisation_2.dat",
+      "row": 277,
+      "column": 1,
+      "type": "ERROR"
+    },
+    {
+      "file": "csm.dat/english/optimize/csm26_precamber_spanbyspan.dat",
+      "row": 112,
+      "column": 1,
+      "type": "ERROR"
+    },
+    {
+      "file": "csm.dat/english/optimize/geometry_opti_arch.dat",
+      "row": 145,
+      "column": 34,
+      "type": "ERROR"
+    }
   ]
 }

@@ -5,6 +5,7 @@ const { execFileSync } = require("node:child_process");
 
 const SCHEMA_FILE_PATTERN = /^sofistik\.(\d{4})\.(en|de)\.json$/;
 const SOURCE_REPOSITORY = "https://github.com/lumine-code/language-sofistik";
+const ALLOWED_SLOT_KINDS = new Set(["keyword", "literal", "enum", "comment", "placeholder"]);
 
 function stableObject(value) {
   if (Array.isArray(value)) return value.map(stableObject);
@@ -45,15 +46,14 @@ function normalizeSlot(slot, sourceName, moduleName, commandName) {
   }
 
   const position = Number(slot.position);
-  if (!Number.isInteger(position) || position < 0) {
+  if (!Number.isInteger(position) || position < 1) {
     throw new Error(`${sourceName}: ${moduleName}/${commandName} has invalid slot position`);
   }
 
   const name =
     slot.name === null || slot.name === undefined ? null : String(slot.name).toUpperCase();
   const kind = String(slot.kind || "placeholder");
-  const allowedKinds = new Set(["keyword", "literal", "enum", "comment", "placeholder"]);
-  if (!allowedKinds.has(kind)) {
+  if (!ALLOWED_SLOT_KINDS.has(kind)) {
     throw new Error(
       `${sourceName}: ${moduleName}/${commandName} has unsupported slot kind ${kind}`,
     );
@@ -125,6 +125,13 @@ function mergeSchemaFiles(files) {
         const slots = commandDocument.slots
           .map((slot) => normalizeSlot(slot, file.name, moduleName, commandName))
           .sort((left, right) => left.position - right.position);
+        for (let index = 0; index < slots.length; index++) {
+          if (slots[index].position !== index + 1) {
+            throw new Error(
+              `${file.name}: ${moduleName}/${commandName} slot positions must be contiguous and 1-based`,
+            );
+          }
+        }
         const key = structuralSignature(slots);
         const target = (modules[moduleName].commands[commandName] ||= {
           items: [],
@@ -201,15 +208,14 @@ function importSchema(sourceDirectory, outputDirectory) {
   }
 
   const merged = mergeSchemaFiles(files);
-  const modulePayload = stableJson(merged.modules);
-  const snapshotDigest = digest(modulePayload);
-  const snapshot = {
+  const semanticSnapshot = {
     schemaVersion: 1,
-    digest: snapshotDigest,
     versions: merged.versions,
     languages: merged.languages,
     modules: merged.modules,
   };
+  const snapshotDigest = digest(stableJson(semanticSnapshot));
+  const snapshot = { ...semanticSnapshot, digest: snapshotDigest };
   const provenance = {
     schemaVersion: 1,
     source: {

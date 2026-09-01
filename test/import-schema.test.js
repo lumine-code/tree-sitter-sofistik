@@ -1,9 +1,10 @@
 const assert = require("node:assert");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { test } = require("node:test");
-const { importSchema } = require("../scripts/import-schema");
+const { importSchema, stableJson } = require("../scripts/import-schema");
 
 function writeSchema(directory, file, modules) {
   fs.writeFileSync(path.join(directory, file), `${JSON.stringify(modules, null, 2)}\n`);
@@ -21,7 +22,7 @@ test("imports a deterministic union with provenance", (context) => {
       CONC: {
         slots: [
           {
-            position: 0,
+            position: 1,
             name: "NO",
             kind: "placeholder",
             dataTypeCode: "I",
@@ -29,7 +30,7 @@ test("imports a deterministic union with provenance", (context) => {
             enumRedirect: null,
           },
           {
-            position: 1,
+            position: 2,
             name: "TYPE",
             kind: "enum",
             dataTypeCode: null,
@@ -47,7 +48,7 @@ test("imports a deterministic union with provenance", (context) => {
           CONC: {
             slots: [
               {
-                position: 0,
+                position: 1,
                 name: "NO",
                 kind: "placeholder",
                 dataTypeCode: "I",
@@ -55,7 +56,7 @@ test("imports a deterministic union with provenance", (context) => {
                 enumRedirect: null,
               },
               {
-                position: 1,
+                position: 2,
                 name: "TYPE",
                 kind: "enum",
                 dataTypeCode: null,
@@ -76,6 +77,11 @@ test("imports a deterministic union with provenance", (context) => {
 
   assert.strictEqual(firstSnapshot, secondSnapshot);
   assert.strictEqual(first.snapshot.digest, second.snapshot.digest);
+  const { digest, ...semanticSnapshot } = first.snapshot;
+  assert.strictEqual(
+    digest,
+    crypto.createHash("sha256").update(stableJson(semanticSnapshot)).digest("hex"),
+  );
   assert.deepStrictEqual(first.snapshot.versions, ["2025", "2026"]);
   assert.deepStrictEqual(first.snapshot.languages, ["de", "en"]);
   assert.deepStrictEqual(first.snapshot.modules.AQUA.commands.CONC.items, ["NO", "TYPE"]);
@@ -96,4 +102,33 @@ test("rejects malformed command schemas", (context) => {
     () => importSchema(temporaryDirectory, outputDirectory),
     /AQUA\/CONC must contain slots/,
   );
+});
+
+test("rejects non-contiguous or zero-based slot positions", (context) => {
+  const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "tree-sitter-sofistik-"));
+  const outputDirectory = path.join(temporaryDirectory, "output");
+  context.after(() => fs.rmSync(temporaryDirectory, { recursive: true, force: true }));
+
+  for (const [position, message] of [
+    [0, /invalid slot position/],
+    [2, /slot positions must be contiguous and 1-based/],
+  ]) {
+    writeSchema(temporaryDirectory, "sofistik.2026.en.json", {
+      AQUA: {
+        CONC: {
+          slots: [
+            {
+              position,
+              name: "NO",
+              kind: "keyword",
+              dataTypeCode: null,
+              enumValues: [],
+              enumRedirect: null,
+            },
+          ],
+        },
+      },
+    });
+    assert.throws(() => importSchema(temporaryDirectory, outputDirectory), message);
+  }
 });

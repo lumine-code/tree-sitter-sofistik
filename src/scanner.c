@@ -34,18 +34,9 @@ enum TokenType {
   ERROR_SENTINEL,
 };
 
-enum RecordState {
-  BETWEEN_RECORDS,
-  IN_RECORD,
-  AFTER_ITEM,
-};
-
 typedef struct {
   uint32_t module;
   uint32_t command;
-  uint32_t item;
-  uint8_t record_state;
-  bool continued_line;
 } Scanner;
 
 static bool ascii_equal(int32_t character, char expected) {
@@ -81,12 +72,11 @@ static bool is_bare_value_delimiter(int32_t character) {
          character == ')' || character == '<' || character == '>';
 }
 
-static bool is_reserved_statement_word(const char *word) {
-  static const char *const words[] = {
-    "DBG", "DEL", "ELSE", "ELSEIF", "ENDIF", "ENDLOOP",
-    "EXIT_ITERATION", "IF", "LET", "LOOP", "PRT", "RCL", "STO",
-  };
-  size_t count = sizeof(words) / sizeof(words[0]);
+static bool contains_word(
+  const char *word,
+  const char *const *words,
+  size_t count
+) {
   for (size_t index = 0; index < count; index++) {
     if (strcmp(words[index], word) == 0) {
       return true;
@@ -99,20 +89,23 @@ static bool is_variable_keyword(const char *word) {
   static const char *const words[] = {
     "DBG", "DEL", "LET", "PRT", "RCL", "STO",
   };
-  size_t count = sizeof(words) / sizeof(words[0]);
-  for (size_t index = 0; index < count; index++) {
-    if (strcmp(words[index], word) == 0) {
-      return true;
-    }
-  }
-  return false;
+  return contains_word(word, words, sizeof(words) / sizeof(words[0]));
+}
+
+static bool is_reserved_statement_word(const char *word) {
+  static const char *const control_words[] = {
+    "ELSE", "ELSEIF", "ENDIF", "ENDLOOP", "EXIT_ITERATION", "IF", "LOOP",
+  };
+  return is_variable_keyword(word) ||
+         contains_word(
+           word,
+           control_words,
+           sizeof(control_words) / sizeof(control_words[0])
+         );
 }
 
 static void reset_command(Scanner *scanner) {
   scanner->command = SOFISTIK_UNKNOWN_ID;
-  scanner->item = SOFISTIK_UNKNOWN_ID;
-  scanner->record_state = BETWEEN_RECORDS;
-  scanner->continued_line = false;
 }
 
 static void reset_context(Scanner *scanner) {
@@ -157,18 +150,38 @@ static uint32_t find_module(const char *name) {
   return SOFISTIK_UNKNOWN_ID;
 }
 
-static uint32_t find_command(uint32_t module, const char *name) {
-  if (module >= SOFISTIK_MODULE_COUNT) {
-    return SOFISTIK_UNKNOWN_ID;
-  }
-  const SofistikModuleSchema *schema = &SOFISTIK_MODULES[module];
-  for (uint32_t offset = 0; offset < schema->command_count; offset++) {
-    uint32_t index = schema->command_start + offset;
+static uint32_t find_command_in_range(
+  uint32_t start,
+  uint32_t count,
+  const char *name
+) {
+  for (uint32_t offset = 0; offset < count; offset++) {
+    uint32_t index = start + offset;
     if (strcmp(SOFISTIK_COMMANDS[index].name, name) == 0) {
       return index;
     }
   }
   return SOFISTIK_UNKNOWN_ID;
+}
+
+static uint32_t find_command(uint32_t module, const char *name) {
+  if (module >= SOFISTIK_MODULE_COUNT) {
+    return SOFISTIK_UNKNOWN_ID;
+  }
+  const SofistikModuleSchema *schema = &SOFISTIK_MODULES[module];
+  uint32_t command = find_command_in_range(
+    schema->command_start,
+    schema->command_count,
+    name
+  );
+  if (command != SOFISTIK_UNKNOWN_ID) {
+    return command;
+  }
+  return find_command_in_range(
+    SOFISTIK_BASIC_COMMAND_START,
+    SOFISTIK_BASIC_COMMAND_COUNT,
+    name
+  );
 }
 
 static uint32_t find_item(uint32_t command, const char *name) {
@@ -178,7 +191,7 @@ static uint32_t find_item(uint32_t command, const char *name) {
   const SofistikCommandSchema *schema = &SOFISTIK_COMMANDS[command];
   for (uint32_t offset = 0; offset < schema->item_count; offset++) {
     uint32_t index = schema->item_start + offset;
-    if (strcmp(SOFISTIK_ITEMS[index].name, name) == 0) {
+    if (strcmp(SOFISTIK_ITEMS[index], name) == 0) {
       return index;
     }
   }
@@ -360,9 +373,6 @@ static bool scan_word(
     uint32_t command = find_command(scanner->module, word);
     if (command != SOFISTIK_UNKNOWN_ID && valid_symbols[COMMAND_NAME]) {
       scanner->command = command;
-      scanner->item = SOFISTIK_UNKNOWN_ID;
-      scanner->record_state = IN_RECORD;
-      scanner->continued_line = false;
       lexer->result_symbol = COMMAND_NAME;
       return true;
     }
@@ -388,9 +398,6 @@ static bool scan_word(
   if (valid_symbols[ITEM_NAME]) {
     uint32_t item = find_item(scanner->command, word);
     if (item != SOFISTIK_UNKNOWN_ID) {
-      scanner->item = item;
-      scanner->record_state = AFTER_ITEM;
-      scanner->continued_line = false;
       lexer->result_symbol = ITEM_NAME;
       return true;
     }
@@ -430,7 +437,6 @@ static bool scan_dollar(
   if (lexer->lookahead == '$') {
     lexer->advance(lexer, false);
     if (valid_symbols[CONTINUATION]) {
-      scanner->continued_line = true;
       consume_line(lexer);
       lexer->mark_end(lexer);
       lexer->result_symbol = CONTINUATION;
@@ -819,10 +825,7 @@ unsigned tree_sitter_sofistik_external_scanner_serialize(
   Scanner *scanner = payload;
   write_u32(buffer, scanner->module);
   write_u32(buffer + 4, scanner->command);
-  write_u32(buffer + 8, scanner->item);
-  buffer[12] = (char)scanner->record_state;
-  buffer[13] = scanner->continued_line ? 1 : 0;
-  return 14;
+  return 8;
 }
 
 void tree_sitter_sofistik_external_scanner_deserialize(
@@ -832,14 +835,11 @@ void tree_sitter_sofistik_external_scanner_deserialize(
 ) {
   Scanner *scanner = payload;
   reset_context(scanner);
-  if (length < 14) {
+  if (length < 8) {
     return;
   }
   scanner->module = read_u32(buffer);
   scanner->command = read_u32(buffer + 4);
-  scanner->item = read_u32(buffer + 8);
-  scanner->record_state = (uint8_t)buffer[12];
-  scanner->continued_line = buffer[13] != 0;
 }
 
 void tree_sitter_sofistik_external_scanner_destroy(void *payload) {

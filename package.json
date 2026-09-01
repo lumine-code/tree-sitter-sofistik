@@ -55,7 +55,8 @@
     }
   },
   "scripts": {
-    "build": "npm run generate && node-gyp rebuild",
+    "build": "npm run generate && npm run build:native",
+    "build:native": "node-gyp rebuild",
     "build:wasm": "tree-sitter build --wasm",
     "check:format": "prettier --check .",
     "check:generated": "node scripts/check-generated.js",
@@ -64,7 +65,7 @@
     "import:schema": "node scripts/import-schema.js",
     "install": "node-gyp-build",
     "lint": "eslint .",
-    "test": "npm run lint && npm run check:format && node --test bindings/node/binding_test.js test/*.test.js && tree-sitter test",
+    "test": "npm run lint && npm run check:format && npm run check:generated && npm run build:native && node --test bindings/node/binding_test.js test/*.test.js && tree-sitter test",
     "test:corpus": "node scripts/test-corpus.js"
   }
 }

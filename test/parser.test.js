@@ -412,6 +412,19 @@ test("inherits localized PAGE commands from BASIC in every program scope", () =>
   assert.strictEqual(tree.rootNode.descendantsOfType("invalid_command").length, 0);
 });
 
+test("prefers a module command override before the BASIC fallback", () => {
+  const tree = parse("+PROG AQB\nCTRL VAL4 1 VAL5 2\nEND\n+PROG ASE\nPAGE UNII 0\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("command_name").map((node) => node.text),
+    ["CTRL", "PAGE"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("item_name").map((node) => node.text),
+    ["VAL4", "UNII"],
+  );
+});
+
 test("keeps a colliding enum-like token as a schema item", () => {
   const tree = parse("+PROG ASE\nGRP VAL NO\nEND");
   assert.strictEqual(tree.rootNode.hasError, false);
@@ -558,7 +571,9 @@ test("restores contextual scanner state during an incremental reparse", () => {
   });
 
   const reparsed = parser.parse(changed, tree);
+  const fresh = parser.parse(changed);
   assert.strictEqual(reparsed.rootNode.hasError, false);
+  assert.strictEqual(reparsed.rootNode.toString(), fresh.rootNode.toString());
   assert.deepStrictEqual(
     reparsed.rootNode.descendantsOfType("item_name").map((node) => node.text),
     ["X", "Y"],

@@ -7,17 +7,7 @@ const outputPath = path.join(root, "src", "schema.h");
 const RESERVED_COMMANDS = new Set(["END", "ENDE"]);
 
 function cString(value) {
-  return JSON.stringify(value).replace(/\\u([0-9a-f]{4})/gi, "\\u$1");
-}
-
-function enumValuesForItem(command, itemName) {
-  const values = [];
-  for (const signature of command.signatures) {
-    for (const slot of signature.slots) {
-      if (slot.name === itemName) values.push(...slot.enumValues);
-    }
-  }
-  return [...new Set(values)].sort();
+  return JSON.stringify(value);
 }
 
 function buildTables(snapshot) {
@@ -28,40 +18,34 @@ function buildTables(snapshot) {
   const modules = [];
   const commands = [];
   const items = [];
-  const enums = [];
   const globalCommands = new Set();
-  const globalItems = new Set();
 
-  for (const moduleName of moduleNames) {
-    const moduleCommands = { ...basic, ...snapshot.modules[moduleName].commands };
-    const names = Object.keys(moduleCommands)
+  function appendCommands(commandMap) {
+    const names = Object.keys(commandMap)
       .filter((name) => !RESERVED_COMMANDS.has(name))
       .sort();
-    const commandStart = commands.length;
 
     for (const commandName of names) {
-      const command = moduleCommands[commandName];
+      const command = commandMap[commandName];
       const itemStart = items.length;
       globalCommands.add(commandName);
 
-      for (const itemName of command.items) {
-        const enumStart = enums.length;
-        const values = enumValuesForItem(command, itemName);
-        enums.push(...values);
-        items.push({
-          name: itemName,
-          enumStart,
-          enumCount: values.length,
-        });
-        globalItems.add(itemName);
-      }
-
+      items.push(...command.items);
       commands.push({
         name: commandName,
         itemStart,
         itemCount: items.length - itemStart,
       });
     }
+  }
+
+  const basicCommandStart = commands.length;
+  appendCommands(basic);
+  const basicCommandCount = commands.length - basicCommandStart;
+
+  for (const moduleName of moduleNames) {
+    const commandStart = commands.length;
+    appendCommands(snapshot.modules[moduleName].commands);
 
     modules.push({
       name: moduleName,
@@ -71,12 +55,12 @@ function buildTables(snapshot) {
   }
 
   return {
+    basicCommandStart,
+    basicCommandCount,
     modules,
     commands,
     items,
-    enums,
     globalCommands: [...globalCommands].sort(),
-    globalItems: [...globalItems].sort(),
   };
 }
 
@@ -106,12 +90,6 @@ typedef struct {
   uint32_t item_count;
 } SofistikCommandSchema;
 
-typedef struct {
-  const char *name;
-  uint32_t enum_start;
-  uint32_t enum_count;
-} SofistikItemSchema;
-
 static const SofistikModuleSchema SOFISTIK_MODULES[] = {
 ${rows(tables.modules, (entry) => `{${cString(entry.name)}, ${entry.commandStart}, ${entry.commandCount}}`)}
 };
@@ -120,28 +98,20 @@ static const SofistikCommandSchema SOFISTIK_COMMANDS[] = {
 ${rows(tables.commands, (entry) => `{${cString(entry.name)}, ${entry.itemStart}, ${entry.itemCount}}`)}
 };
 
-static const SofistikItemSchema SOFISTIK_ITEMS[] = {
-${rows(tables.items, (entry) => `{${cString(entry.name)}, ${entry.enumStart}, ${entry.enumCount}}`)}
-};
-
-static const char *const SOFISTIK_ENUMS[] = {
-${rows(tables.enums, cString)}
+static const char *const SOFISTIK_ITEMS[] = {
+${rows(tables.items, cString)}
 };
 
 static const char *const SOFISTIK_GLOBAL_COMMANDS[] = {
 ${rows(tables.globalCommands, cString)}
 };
 
-static const char *const SOFISTIK_GLOBAL_ITEMS[] = {
-${rows(tables.globalItems, cString)}
-};
-
 #define SOFISTIK_MODULE_COUNT ${tables.modules.length}u
+#define SOFISTIK_BASIC_COMMAND_START ${tables.basicCommandStart}u
+#define SOFISTIK_BASIC_COMMAND_COUNT ${tables.basicCommandCount}u
 #define SOFISTIK_COMMAND_COUNT ${tables.commands.length}u
 #define SOFISTIK_ITEM_COUNT ${tables.items.length}u
-#define SOFISTIK_ENUM_COUNT ${tables.enums.length}u
 #define SOFISTIK_GLOBAL_COMMAND_COUNT ${tables.globalCommands.length}u
-#define SOFISTIK_GLOBAL_ITEM_COUNT ${tables.globalItems.length}u
 
 #endif
 `;
@@ -159,7 +129,7 @@ function generateSchema(source = snapshotPath, output = outputPath) {
 if (require.main === module) {
   const tables = generateSchema();
   process.stdout.write(
-    `Generated scanner tables for ${tables.modules.length} modules, ${tables.commands.length} commands, ${tables.items.length} items, and ${tables.enums.length} enum values.\n`,
+    `Generated scanner tables for ${tables.modules.length} modules, ${tables.commands.length} commands, and ${tables.items.length} items.\n`,
   );
 }
 

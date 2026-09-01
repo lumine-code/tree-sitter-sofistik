@@ -33,9 +33,7 @@ module.exports = grammar({
 
   conflicts: ($) => [
     [$.item_sequence, $.table_definition],
-    [$._program_body_start, $._module_tail_statement],
-    [$._program_body_start, $._scoped_top_level_statement],
-    [$._continued_input_block, $._scoped_top_level_statement],
+    [$._continued_input_block, $._module_tail_statement],
     [$._module_tail_statement],
   ],
 
@@ -47,19 +45,7 @@ module.exports = grammar({
           $.commented_program_scope,
           $.apply_statement,
           $.sys_statement,
-          $.preprocessor_if_header,
-          $.preprocessor_elseif_header,
-          $.preprocessor_else_header,
-          $.preprocessor_endif_record,
-          $.preprocessor_define_header,
-          $.preprocessor_enddef_record,
-          $.preprocessor_define_statement,
-          $.preprocessor_directive,
-          $._scoped_top_level_statement,
-          $.text_block,
-          $.metadata,
-          $.ignored_text,
-          $._line_end,
+          $._module_tail_statement,
         ),
       ),
 
@@ -286,34 +272,8 @@ module.exports = grammar({
         ),
       ),
 
-    _scoped_top_level_statement: ($) =>
-      choice(
-        $.command,
-        $.invalid_command_record,
-        $.loop_block,
-        $.if_block,
-        $.exit_iteration_record,
-        $.variable_statement,
-        alias($._template_record, $.dynamic_record),
-        $.end_record,
-      ),
-
     _module_tail_statement: ($) =>
-      choice(
-        $.preprocessor_if_header,
-        $.preprocessor_elseif_header,
-        $.preprocessor_else_header,
-        $.preprocessor_endif_record,
-        $.preprocessor_define_header,
-        $.preprocessor_enddef_record,
-        $.preprocessor_define_statement,
-        $.preprocessor_directive,
-        $._scoped_top_level_statement,
-        $.text_block,
-        $.metadata,
-        $.ignored_text,
-        $._line_end,
-      ),
+      choice($._program_body_start, $.end_record, $.ignored_text, $._line_end),
 
     preprocessor_define_header: ($) =>
       seq(
@@ -364,15 +324,6 @@ module.exports = grammar({
       ),
 
     preprocessor_name: ($) => /#?[A-Za-z0-9_][A-Za-z0-9_-]*/,
-
-    dynamic_record: ($) =>
-      seq(
-        field("name", $.dynamic_command_name),
-        repeat(field("value", choice($._value, $.continuation))),
-        $._record_end,
-      ),
-
-    dynamic_line: ($) => seq(repeat1(field("value", $._value)), $._record_end),
 
     _template_record: ($) =>
       seq(
