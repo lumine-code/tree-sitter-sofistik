@@ -331,6 +331,24 @@ test("keeps the module inside the stable program header field", () => {
   assert.strictEqual(header.childForFieldName("module").text, "SOFIMSHA");
 });
 
+test("inherits localized PAGE commands from BASIC in every program scope", () => {
+  const tree = parse(
+    "$PROG ASE\n#DEFINE ASE_CTRL\nPAGE UNII 0\n#ENDDEF\n" +
+      "$PROG AQB\n#DEFINE AQB_CTRL\nSEIT UNIE 0\n#ENDDEF",
+  );
+
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("command_name").map((node) => node.text),
+    ["PAGE", "SEIT"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("item_name").map((node) => node.text),
+    ["UNII", "UNIE"],
+  );
+  assert.strictEqual(tree.rootNode.descendantsOfType("invalid_command").length, 0);
+});
+
 test("keeps a colliding enum-like token as a schema item", () => {
   const tree = parse("+PROG ASE\nGRP VAL NO\nEND");
   assert.strictEqual(tree.rootNode.hasError, false);

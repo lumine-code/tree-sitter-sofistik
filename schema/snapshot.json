@@ -1,5 +1,5 @@
 {
-  "digest": "c9458e5866feba16f0abbbd0e40d7185e3bedbe1ea3f6ce9010aaeadd76d9c56",
+  "digest": "7440896a95527d7953483d2b791e29223607d8b0b9cab9e1d2c18be8828912e8",
   "languages": [
     "de",
     "en"
@@ -83079,6 +83079,152 @@
             }
           ]
         },
+        "PAGE": {
+          "items": [
+            "FIRS",
+            "FORM",
+            "LANI",
+            "LANO",
+            "LINE",
+            "MARG",
+            "PAG",
+            "PRIL",
+            "UNII",
+            "UNIO"
+          ],
+          "signatures": [
+            {
+              "slots": [
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "keyword",
+                  "name": "FIRS",
+                  "position": 1
+                },
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "keyword",
+                  "name": "LINE",
+                  "position": 2
+                },
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "keyword",
+                  "name": "MARG",
+                  "position": 3
+                },
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "keyword",
+                  "name": "LANO",
+                  "position": 4
+                },
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "keyword",
+                  "name": "LANI",
+                  "position": 5
+                },
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "keyword",
+                  "name": "UNIO",
+                  "position": 6
+                },
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "keyword",
+                  "name": "UNII",
+                  "position": 7
+                },
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "keyword",
+                  "name": "FORM",
+                  "position": 8
+                },
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "keyword",
+                  "name": "PRIL",
+                  "position": 9
+                },
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "enum",
+                  "name": "PAG",
+                  "position": 10
+                },
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "placeholder",
+                  "name": null,
+                  "position": 11
+                },
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "placeholder",
+                  "name": null,
+                  "position": 12
+                }
+              ],
+              "sources": [
+                {
+                  "language": "en",
+                  "version": "2018"
+                },
+                {
+                  "language": "en",
+                  "version": "2020"
+                },
+                {
+                  "language": "en",
+                  "version": "2022"
+                },
+                {
+                  "language": "en",
+                  "version": "2023"
+                },
+                {
+                  "language": "en",
+                  "version": "2024"
+                },
+                {
+                  "language": "en",
+                  "version": "2025"
+                },
+                {
+                  "language": "en",
+                  "version": "2026"
+                }
+              ]
+            }
+          ]
+        },
         "QUER": {
           "items": [
             "A",
@@ -83419,7 +83565,18 @@
           ]
         },
         "SEIT": {
-          "items": [],
+          "items": [
+            "BEZ",
+            "FORM",
+            "NRST",
+            "NZEI",
+            "PRIL",
+            "RAND",
+            "SPRA",
+            "SPRE",
+            "UNIA",
+            "UNIE"
+          ],
           "signatures": [
             {
               "slots": [],
@@ -83431,6 +83588,136 @@
                 {
                   "language": "en",
                   "version": "2020"
+                }
+              ]
+            },
+            {
+              "slots": [
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "keyword",
+                  "name": "NRST",
+                  "position": 1
+                },
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "keyword",
+                  "name": "NZEI",
+                  "position": 2
+                },
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "keyword",
+                  "name": "RAND",
+                  "position": 3
+                },
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "keyword",
+                  "name": "SPRA",
+                  "position": 4
+                },
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "keyword",
+                  "name": "SPRE",
+                  "position": 5
+                },
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "keyword",
+                  "name": "UNIA",
+                  "position": 6
+                },
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "keyword",
+                  "name": "UNIE",
+                  "position": 7
+                },
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "keyword",
+                  "name": "FORM",
+                  "position": 8
+                },
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "keyword",
+                  "name": "PRIL",
+                  "position": 9
+                },
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "enum",
+                  "name": "BEZ",
+                  "position": 10
+                },
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "placeholder",
+                  "name": null,
+                  "position": 11
+                },
+                {
+                  "dataTypeCode": null,
+                  "enumRedirect": null,
+                  "enumValues": [],
+                  "kind": "placeholder",
+                  "name": null,
+                  "position": 12
+                }
+              ],
+              "sources": [
+                {
+                  "language": "de",
+                  "version": "2018"
+                },
+                {
+                  "language": "de",
+                  "version": "2020"
+                },
+                {
+                  "language": "de",
+                  "version": "2022"
+                },
+                {
+                  "language": "de",
+                  "version": "2023"
+                },
+                {
+                  "language": "de",
+                  "version": "2024"
+                },
+                {
+                  "language": "de",
+                  "version": "2025"
+                },
+                {
+                  "language": "de",
+                  "version": "2026"
                 }
               ]
             }
@@ -91166,19 +91453,6 @@
           ],
           "signatures": [
             {
-              "slots": [],
-              "sources": [
-                {
-                  "language": "en",
-                  "version": "2018"
-                },
-                {
-                  "language": "en",
-                  "version": "2020"
-                }
-              ]
-            },
-            {
               "slots": [
                 {
                   "dataTypeCode": null,
@@ -91278,6 +91552,14 @@
                 }
               ],
               "sources": [
+                {
+                  "language": "en",
+                  "version": "2018"
+                },
+                {
+                  "language": "en",
+                  "version": "2020"
+                },
                 {
                   "language": "en",
                   "version": "2022"
@@ -132756,19 +133038,6 @@
           ],
           "signatures": [
             {
-              "slots": [],
-              "sources": [
-                {
-                  "language": "en",
-                  "version": "2018"
-                },
-                {
-                  "language": "en",
-                  "version": "2020"
-                }
-              ]
-            },
-            {
               "slots": [
                 {
                   "dataTypeCode": null,
@@ -132868,6 +133137,14 @@
                 }
               ],
               "sources": [
+                {
+                  "language": "en",
+                  "version": "2018"
+                },
+                {
+                  "language": "en",
+                  "version": "2020"
+                },
                 {
                   "language": "en",
                   "version": "2022"
@@ -138461,19 +138738,6 @@
           ],
           "signatures": [
             {
-              "slots": [],
-              "sources": [
-                {
-                  "language": "en",
-                  "version": "2018"
-                },
-                {
-                  "language": "en",
-                  "version": "2020"
-                }
-              ]
-            },
-            {
               "slots": [
                 {
                   "dataTypeCode": null,
@@ -138573,6 +138837,14 @@
                 }
               ],
               "sources": [
+                {
+                  "language": "en",
+                  "version": "2018"
+                },
+                {
+                  "language": "en",
+                  "version": "2020"
+                },
                 {
                   "language": "en",
                   "version": "2022"
@@ -192125,19 +192397,6 @@
           ],
           "signatures": [
             {
-              "slots": [],
-              "sources": [
-                {
-                  "language": "en",
-                  "version": "2018"
-                },
-                {
-                  "language": "en",
-                  "version": "2020"
-                }
-              ]
-            },
-            {
               "slots": [
                 {
                   "dataTypeCode": null,
@@ -192237,6 +192496,14 @@
                 }
               ],
               "sources": [
+                {
+                  "language": "en",
+                  "version": "2018"
+                },
+                {
+                  "language": "en",
+                  "version": "2020"
+                },
                 {
                   "language": "en",
                   "version": "2022"
@@ -205120,19 +205387,6 @@
           ],
           "signatures": [
             {
-              "slots": [],
-              "sources": [
-                {
-                  "language": "en",
-                  "version": "2018"
-                },
-                {
-                  "language": "en",
-                  "version": "2020"
-                }
-              ]
-            },
-            {
               "slots": [
                 {
                   "dataTypeCode": null,
@@ -205232,6 +205486,14 @@
                 }
               ],
               "sources": [
+                {
+                  "language": "en",
+                  "version": "2018"
+                },
+                {
+                  "language": "en",
+                  "version": "2020"
+                },
                 {
                   "language": "en",
                   "version": "2022"
@@ -286750,19 +287012,6 @@
           ],
           "signatures": [
             {
-              "slots": [],
-              "sources": [
-                {
-                  "language": "en",
-                  "version": "2018"
-                },
-                {
-                  "language": "en",
-                  "version": "2020"
-                }
-              ]
-            },
-            {
               "slots": [
                 {
                   "dataTypeCode": null,
@@ -286862,6 +287111,14 @@
                 }
               ],
               "sources": [
+                {
+                  "language": "en",
+                  "version": "2018"
+                },
+                {
+                  "language": "en",
+                  "version": "2020"
+                },
                 {
                   "language": "en",
                   "version": "2022"
@@ -358187,19 +358444,6 @@
           ],
           "signatures": [
             {
-              "slots": [],
-              "sources": [
-                {
-                  "language": "en",
-                  "version": "2018"
-                },
-                {
-                  "language": "en",
-                  "version": "2020"
-                }
-              ]
-            },
-            {
               "slots": [
                 {
                   "dataTypeCode": null,
@@ -358299,6 +358543,14 @@
                 }
               ],
               "sources": [
+                {
+                  "language": "en",
+                  "version": "2018"
+                },
+                {
+                  "language": "en",
+                  "version": "2020"
+                },
                 {
                   "language": "en",
                   "version": "2022"
