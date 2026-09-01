@@ -1285,14 +1285,52 @@
       }
     },
     "preprocessor_value": {
-      "type": "TOKEN",
+      "type": "PREC_RIGHT",
+      "value": 10,
       "content": {
-        "type": "PREC",
-        "value": 10,
-        "content": {
-          "type": "PATTERN",
-          "value": "=[^!$\\r\\n]*(?:\\$\\([^\\r\\n)]*\\)[^!$\\r\\n]*)*"
-        }
+        "type": "CHOICE",
+        "members": [
+          {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "TOKEN",
+                "content": {
+                  "type": "PREC",
+                  "value": 20,
+                  "content": {
+                    "type": "STRING",
+                    "value": "="
+                  }
+                }
+              },
+              {
+                "type": "REPEAT1",
+                "content": {
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "SYMBOL",
+                      "name": "dollar_variable"
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "hash_variable"
+                    },
+                    {
+                      "type": "SYMBOL",
+                      "name": "preprocessor_literal"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "SYMBOL",
+            "name": "_preprocessor_recovery_value"
+          }
+        ]
       }
     },
     "_scoped_top_level_statement": {
@@ -1575,14 +1613,23 @@
       ]
     },
     "preprocessor_condition": {
-      "type": "TOKEN",
+      "type": "REPEAT1",
       "content": {
-        "type": "PREC",
-        "value": 10,
-        "content": {
-          "type": "PATTERN",
-          "value": "[^ \\t\\r\\n][^\\r\\n]*"
-        }
+        "type": "CHOICE",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "dollar_variable"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "hash_variable"
+          },
+          {
+            "type": "SYMBOL",
+            "name": "preprocessor_literal"
+          }
+        ]
       }
     },
     "preprocessor_directive": {
@@ -1648,16 +1695,8 @@
             }
           },
           {
-            "type": "CHOICE",
-            "members": [
-              {
-                "type": "SYMBOL",
-                "name": "_record_end"
-              },
-              {
-                "type": "BLANK"
-              }
-            ]
+            "type": "SYMBOL",
+            "name": "_statement_end"
           }
         ]
       }
@@ -1894,6 +1933,10 @@
         },
         {
           "type": "SYMBOL",
+          "name": "parenthesized_expression"
+        },
+        {
+          "type": "SYMBOL",
           "name": "number_list"
         },
         {
@@ -2002,6 +2045,76 @@
         "content": {
           "type": "PATTERN",
           "value": "[^ \\t\\r\\n()!#$;]+"
+        }
+      }
+    },
+    "parenthesized_expression": {
+      "type": "PREC",
+      "value": 5,
+      "content": {
+        "type": "SEQ",
+        "members": [
+          {
+            "type": "SYMBOL",
+            "name": "_parenthesized_expression_start"
+          },
+          {
+            "type": "REPEAT",
+            "content": {
+              "type": "CHOICE",
+              "members": [
+                {
+                  "type": "SYMBOL",
+                  "name": "parenthesized_expression"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "parenthesized_literal"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "hash_variable"
+                },
+                {
+                  "type": "SYMBOL",
+                  "name": "dollar_variable"
+                },
+                {
+                  "type": "TOKEN",
+                  "content": {
+                    "type": "PREC",
+                    "value": 1,
+                    "content": {
+                      "type": "PATTERN",
+                      "value": "[^()!#$\\r\\n]+"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "type": "TOKEN",
+            "content": {
+              "type": "PREC",
+              "value": 10,
+              "content": {
+                "type": "STRING",
+                "value": ")"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "parenthesized_literal": {
+      "type": "TOKEN",
+      "content": {
+        "type": "PREC",
+        "value": 2,
+        "content": {
+          "type": "PATTERN",
+          "value": "\\([^()!#$\\r\\n]*\\)"
         }
       }
     },
@@ -2284,6 +2397,14 @@
     },
     {
       "type": "SYMBOL",
+      "name": "_parenthesized_expression_start"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "preprocessor_literal"
+    },
+    {
+      "type": "SYMBOL",
       "name": "continuation"
     },
     {
@@ -2301,6 +2422,10 @@
     {
       "type": "SYMBOL",
       "name": "ignored_text"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_preprocessor_recovery_value"
     },
     {
       "type": "SYMBOL",

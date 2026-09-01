@@ -23,11 +23,14 @@ enum TokenType {
   DOLLAR_PROG,
   DOLLAR_APPLY,
   SEQUENCE_GENERATOR_START,
+  PARENTHESIZED_EXPRESSION_START,
+  PREPROCESSOR_LITERAL,
   CONTINUATION,
   COMMENT,
   TEXT_CONTENT,
   END_OF_FILE,
   IGNORED_TEXT,
+  PREPROCESSOR_RECOVERY_VALUE,
   ERROR_SENTINEL,
 };
 
@@ -72,7 +75,7 @@ static bool is_bare_value_delimiter(int32_t character) {
   return !character || character == ' ' || character == '\t' ||
          character == '\f' || character == '\r' || character == '\n' ||
          character == ';' || character == '!' || character == '=' ||
-         character == '#' || character == '@' || character == '\'' ||
+         character == '#' || character == '$' || character == '@' || character == '\'' ||
          character == '"' ||
          character == '[' || character == ']' || character == '(' ||
          character == ')' || character == '<' || character == '>';
@@ -278,7 +281,8 @@ static bool scan_word(
   Scanner *scanner,
   TSLexer *lexer,
   const bool *valid_symbols,
-  bool *reserved_root_word
+  bool *reserved_root_word,
+  bool at_line_start
 ) {
   char word[128] = {0};
   bool contextual = false;
@@ -349,7 +353,8 @@ static bool scan_word(
 
   if (
     (valid_symbols[COMMAND_NAME] || valid_symbols[INVALID_COMMAND]) &&
-    !(valid_symbols[BARE_WORD] && valid_symbols[IGNORED_TEXT]) &&
+    !(valid_symbols[BARE_WORD] && valid_symbols[IGNORED_TEXT] &&
+      !at_line_start) &&
     !(valid_symbols[IGNORED_TEXT] && scanner->module == SOFISTIK_UNKNOWN_ID)
   ) {
     uint32_t command = find_command(scanner->module, word);
@@ -486,7 +491,10 @@ static bool is_generator_space(int32_t character) {
   return character == ' ' || character == '\t' || character == '\f';
 }
 
-static bool scan_sequence_generator_start(TSLexer *lexer) {
+static bool scan_parenthesized_start(
+  TSLexer *lexer,
+  const bool *valid_symbols
+) {
   if (lexer->lookahead != '(') {
     return false;
   }
@@ -494,109 +502,153 @@ static bool scan_sequence_generator_start(TSLexer *lexer) {
   lexer->advance(lexer, false);
   lexer->mark_end(lexer);
   unsigned component_count = 0;
+  unsigned depth = 1;
+  bool in_component = false;
+  bool generator_candidate = true;
+  bool has_variable = false;
 
-  while (is_generator_space(lexer->lookahead)) {
-    lexer->advance(lexer, false);
-  }
-
-  for (;;) {
-    if (lexer->lookahead == ')') {
-      if (component_count < 2) {
-        return false;
-      }
-      lexer->result_symbol = SEQUENCE_GENERATOR_START;
-      return true;
-    }
+  while (lexer->lookahead) {
     if (
-      !lexer->lookahead || lexer->lookahead == '\r' ||
-      lexer->lookahead == '\n' || lexer->lookahead == '!' ||
-      lexer->lookahead == ';' || lexer->lookahead == '('
+      lexer->lookahead == '\r' || lexer->lookahead == '\n' ||
+      lexer->lookahead == '!' || lexer->lookahead == ';'
     ) {
       return false;
     }
 
-    bool has_component = false;
-    while (!is_generator_space(lexer->lookahead) && lexer->lookahead != ')') {
-      if (
-        !lexer->lookahead || lexer->lookahead == '\r' ||
-        lexer->lookahead == '\n' || lexer->lookahead == '!' ||
-        lexer->lookahead == ';' || lexer->lookahead == '('
-      ) {
+    if (lexer->lookahead == '#') {
+      lexer->advance(lexer, false);
+      if (!is_schema_character(lexer->lookahead)) {
         return false;
       }
-
-      if (lexer->lookahead == '#') {
+      while (is_schema_character(lexer->lookahead)) {
         lexer->advance(lexer, false);
-        if (!is_schema_character(lexer->lookahead)) {
-          return false;
-        }
-        while (is_schema_character(lexer->lookahead)) {
-          lexer->advance(lexer, false);
-        }
-        if (lexer->lookahead == '(') {
-          lexer->advance(lexer, false);
-          while (
-            lexer->lookahead && lexer->lookahead != ')' &&
-            lexer->lookahead != '\r' && lexer->lookahead != '\n'
-          ) {
-            lexer->advance(lexer, false);
-          }
-          if (lexer->lookahead != ')') {
-            return false;
-          }
-          lexer->advance(lexer, false);
-        }
-        has_component = true;
-        continue;
       }
-
-      if (lexer->lookahead == '$') {
+      if (lexer->lookahead == '(') {
         lexer->advance(lexer, false);
-        if (lexer->lookahead != '(') {
-          return false;
-        }
-        lexer->advance(lexer, false);
-        bool has_content = false;
         while (
           lexer->lookahead && lexer->lookahead != ')' &&
           lexer->lookahead != '\r' && lexer->lookahead != '\n'
         ) {
           lexer->advance(lexer, false);
-          has_content = true;
         }
-        if (!has_content || lexer->lookahead != ')') {
+        if (lexer->lookahead != ')') {
           return false;
         }
         lexer->advance(lexer, false);
-        has_component = true;
-        continue;
       }
+      has_variable = true;
+      if (depth == 1) {
+        in_component = true;
+      }
+      continue;
+    }
 
-      bool has_literal = false;
-      while (
-        lexer->lookahead && !is_generator_space(lexer->lookahead) &&
-        lexer->lookahead != '\r' && lexer->lookahead != '\n' &&
-        lexer->lookahead != '(' && lexer->lookahead != ')' &&
-        lexer->lookahead != '!' && lexer->lookahead != '#' &&
-        lexer->lookahead != '$' && lexer->lookahead != ';'
-      ) {
-        lexer->advance(lexer, false);
-        has_literal = true;
-      }
-      if (!has_literal) {
+    if (lexer->lookahead == '$') {
+      lexer->advance(lexer, false);
+      if (lexer->lookahead != '(') {
         return false;
       }
-      has_component = true;
+      lexer->advance(lexer, false);
+      bool has_content = false;
+      while (
+        lexer->lookahead && lexer->lookahead != ')' &&
+        lexer->lookahead != '\r' && lexer->lookahead != '\n'
+      ) {
+        lexer->advance(lexer, false);
+        has_content = true;
+      }
+      if (!has_content || lexer->lookahead != ')') {
+        return false;
+      }
+      lexer->advance(lexer, false);
+      has_variable = true;
+      if (depth == 1) {
+        in_component = true;
+      }
+      continue;
     }
 
-    if (!has_component) {
-      return false;
-    }
-    component_count++;
-    while (is_generator_space(lexer->lookahead)) {
+    if (lexer->lookahead == '(') {
+      generator_candidate = false;
+      depth++;
       lexer->advance(lexer, false);
+      continue;
     }
+
+    if (lexer->lookahead == ')') {
+      depth--;
+      if (depth == 0) {
+        if (in_component) {
+          component_count++;
+        }
+        if (
+          generator_candidate && component_count >= 2 &&
+          valid_symbols[SEQUENCE_GENERATOR_START]
+        ) {
+          lexer->result_symbol = SEQUENCE_GENERATOR_START;
+          return true;
+        }
+        if (has_variable && valid_symbols[PARENTHESIZED_EXPRESSION_START]) {
+          lexer->result_symbol = PARENTHESIZED_EXPRESSION_START;
+          return true;
+        }
+        return false;
+      }
+      lexer->advance(lexer, false);
+      continue;
+    }
+
+    if (depth == 1 && is_generator_space(lexer->lookahead)) {
+      if (in_component) {
+        component_count++;
+        in_component = false;
+      }
+      lexer->advance(lexer, false);
+      continue;
+    }
+
+    if (depth == 1) {
+      in_component = true;
+    }
+    lexer->advance(lexer, false);
   }
+
+  return false;
+}
+
+static bool scan_preprocessor_literal(TSLexer *lexer) {
+  bool has_content = false;
+  while (
+    lexer->lookahead && lexer->lookahead != '\r' &&
+    lexer->lookahead != '\n' && lexer->lookahead != '!' &&
+    lexer->lookahead != '#' && lexer->lookahead != '$'
+  ) {
+    lexer->advance(lexer, false);
+    has_content = true;
+  }
+  if (!has_content) {
+    return false;
+  }
+  lexer->mark_end(lexer);
+  lexer->result_symbol = PREPROCESSOR_LITERAL;
+  return true;
+}
+
+static bool scan_preprocessor_recovery_value(TSLexer *lexer) {
+  if (lexer->lookahead != '=') {
+    return false;
+  }
+  lexer->advance(lexer, false);
+  while (
+    lexer->lookahead && lexer->lookahead != '\r' &&
+    lexer->lookahead != '\n' && lexer->lookahead != '!' &&
+    lexer->lookahead != '$'
+  ) {
+    lexer->advance(lexer, false);
+  }
+  lexer->mark_end(lexer);
+  lexer->result_symbol = PREPROCESSOR_RECOVERY_VALUE;
+  return true;
 }
 
 static bool scan_text_content(TSLexer *lexer) {
@@ -664,6 +716,7 @@ bool tree_sitter_sofistik_external_scanner_scan(
   const bool *valid_symbols
 ) {
   Scanner *scanner = payload;
+  bool at_line_start = lexer->get_column(lexer) == 0;
 
   // Tree-sitter marks every external token valid during error recovery. The
   // sentinel is never part of a successful production; checking the complete
@@ -673,6 +726,12 @@ bool tree_sitter_sofistik_external_scanner_scan(
     all_symbols_valid = all_symbols_valid && valid_symbols[index];
   }
   if (all_symbols_valid) {
+    if (
+      valid_symbols[PREPROCESSOR_RECOVERY_VALUE] &&
+      scan_preprocessor_recovery_value(lexer)
+    ) {
+      return true;
+    }
     return false;
   }
 
@@ -697,8 +756,19 @@ bool tree_sitter_sofistik_external_scanner_scan(
     return scan_dollar(scanner, lexer, valid_symbols);
   }
 
-  if (valid_symbols[SEQUENCE_GENERATOR_START] && lexer->lookahead == '(') {
-    return scan_sequence_generator_start(lexer);
+  if (
+    (valid_symbols[SEQUENCE_GENERATOR_START] ||
+     valid_symbols[PARENTHESIZED_EXPRESSION_START]) &&
+    lexer->lookahead == '('
+  ) {
+    return scan_parenthesized_start(lexer, valid_symbols);
+  }
+
+  if (
+    valid_symbols[PREPROCESSOR_LITERAL] &&
+    scan_preprocessor_literal(lexer)
+  ) {
+    return true;
   }
 
   if (valid_symbols[COMMENT] && lexer->lookahead == '!') {
@@ -719,7 +789,13 @@ bool tree_sitter_sofistik_external_scanner_scan(
   if (scan_non_word_bare(lexer, valid_symbols, &reserved_root_word)) {
     return true;
   }
-  if (scan_word(scanner, lexer, valid_symbols, &reserved_root_word)) {
+  if (scan_word(
+        scanner,
+        lexer,
+        valid_symbols,
+        &reserved_root_word,
+        at_line_start
+      )) {
     return true;
   }
   if (

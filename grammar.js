@@ -16,11 +16,14 @@ module.exports = grammar({
     $._dollar_prog,
     $._dollar_apply,
     $._sequence_generator_start,
+    $._parenthesized_expression_start,
+    $.preprocessor_literal,
     $.continuation,
     $.comment,
     $.text_content,
     $._end_of_file,
     $.ignored_text,
+    $._preprocessor_recovery_value,
     $._error_sentinel,
   ],
 
@@ -251,7 +254,17 @@ module.exports = grammar({
         ),
       ),
 
-    preprocessor_value: ($) => token(prec(10, /=[^!$\r\n]*(?:\$\([^\r\n)]*\)[^!$\r\n]*)*/)),
+    preprocessor_value: ($) =>
+      prec.right(
+        10,
+        choice(
+          seq(
+            token(prec(20, "=")),
+            repeat1(choice($.dollar_variable, $.hash_variable, $.preprocessor_literal)),
+          ),
+          $._preprocessor_recovery_value,
+        ),
+      ),
 
     _scoped_top_level_statement: ($) =>
       choice(
@@ -301,14 +314,15 @@ module.exports = grammar({
     preprocessor_endif_record: ($) =>
       seq(field("keyword", alias(ci("#ENDIF"), $.preprocessor_keyword)), $._statement_end),
 
-    preprocessor_condition: ($) => token(prec(10, /[^ \t\r\n][^\r\n]*/)),
+    preprocessor_condition: ($) =>
+      repeat1(choice($.dollar_variable, $.hash_variable, $.preprocessor_literal)),
 
     preprocessor_directive: ($) =>
       prec.right(
         seq(
           field("keyword", alias(choice(ci("#INCLUDE"), ci("#UNDEF")), $.preprocessor_keyword)),
           repeat(field("argument", choice($.preprocessor_name, $._value))),
-          optional($._record_end),
+          $._statement_end,
         ),
       ),
 
@@ -353,6 +367,7 @@ module.exports = grammar({
       choice(
         $.string,
         $.sequence_generator,
+        $.parenthesized_expression,
         $.number_list,
         $.number,
         $.dollar_variable,
@@ -379,6 +394,26 @@ module.exports = grammar({
     _generator_part: ($) => choice($.generator_literal, $.hash_variable, $.dollar_variable),
 
     generator_literal: ($) => token(prec(5, /[^ \t\r\n()!#$;]+/)),
+
+    parenthesized_expression: ($) =>
+      prec(
+        5,
+        seq(
+          $._parenthesized_expression_start,
+          repeat(
+            choice(
+              $.parenthesized_expression,
+              $.parenthesized_literal,
+              $.hash_variable,
+              $.dollar_variable,
+              token(prec(1, /[^()!#$\r\n]+/)),
+            ),
+          ),
+          token(prec(10, ")")),
+        ),
+      ),
+
+    parenthesized_literal: ($) => token(prec(2, /\([^()!#$\r\n]*\)/)),
 
     string: ($) =>
       choice(

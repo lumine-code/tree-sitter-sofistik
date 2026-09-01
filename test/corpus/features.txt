@@ -39,6 +39,69 @@ END
   (end_record
     (control_keyword)))
 
+===================================================
+Embedded variables in neutral preprocessor and math
+===================================================
+#define project = $(probase)
+#define load = #Q_w+#x
+#if $(project)<>$(probase)
+#elseif #condition + 1
+#endif
++prog aqua
+head (#L_1)+(#L_2-#L_1+#L_0)*(#i/(#L_n-1)) (D)
+end
+---
+
+(source_file
+  (preprocessor_define_statement
+    (preprocessor_keyword)
+    (preprocessor_name)
+    (preprocessor_value
+      (dollar_variable)))
+  (preprocessor_define_statement
+    (preprocessor_keyword)
+    (preprocessor_name)
+    (preprocessor_value
+      (hash_variable)
+      (preprocessor_literal)
+      (hash_variable)))
+  (preprocessor_if_header
+    (preprocessor_keyword)
+    (preprocessor_condition
+      (dollar_variable)
+      (preprocessor_literal)
+      (dollar_variable)))
+  (preprocessor_elseif_header
+    (preprocessor_keyword)
+    (preprocessor_condition
+      (hash_variable)
+      (preprocessor_literal)))
+  (preprocessor_endif_record
+    (preprocessor_keyword))
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (command
+        (command_name)
+        (record
+          (parenthesized_expression
+            (hash_variable))
+          (bare_value)
+          (parenthesized_expression
+            (hash_variable)
+            (hash_variable)
+            (hash_variable))
+          (bare_value)
+          (parenthesized_expression
+            (hash_variable)
+            (parenthesized_expression
+              (hash_variable)))
+          (generic_expression)))
+      (end_record
+        (control_keyword)))))
+
 =========================================
 Transparent scope directives and values
 =========================================
@@ -190,7 +253,8 @@ END
         (preprocessor_define_statement
           (preprocessor_keyword)
           (preprocessor_name)
-          (preprocessor_value))
+          (preprocessor_value
+            (preprocessor_literal)))
         (implicit_record
           (item_sequence
             (item_name)
@@ -521,7 +585,8 @@ SYS echo hi
   (preprocessor_define_statement
     (preprocessor_keyword)
     (preprocessor_name)
-    (preprocessor_value))
+    (preprocessor_value
+      (preprocessor_literal)))
   (preprocessor_define_header
     (preprocessor_keyword)
     (preprocessor_name))
@@ -530,7 +595,11 @@ SYS echo hi
     (preprocessor_keyword))
   (preprocessor_if_header
     (preprocessor_keyword)
-    (preprocessor_condition))
+    (preprocessor_condition
+      (hash_variable)
+      (preprocessor_literal)
+      (hash_variable)
+      (preprocessor_literal)))
   (program
     (program_header
       (program_sigil)
@@ -544,7 +613,9 @@ SYS echo hi
         (control_keyword))))
   (preprocessor_elseif_header
     (preprocessor_keyword)
-    (preprocessor_condition))
+    (preprocessor_condition
+      (hash_variable)
+      (preprocessor_literal)))
   (program
     (program_header
       (program_sigil)

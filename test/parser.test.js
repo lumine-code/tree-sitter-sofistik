@@ -76,11 +76,18 @@ test("keeps hash variables visible inside a sequence generator", () => {
   assert.strictEqual(generator.descendantsOfType("number").length, 0);
 });
 
-test("does not claim single-component parenthesized expressions as generators", () => {
+test("exposes variables in parenthesized expressions without claiming them as generators", () => {
   const tree = parse("+PROG AQUA\nHEAD (#L_1) (D) (#L_1)+(#L_2-#L_1+#L_0)*(#i/(#L_n-1))\nEND");
   assert.strictEqual(tree.rootNode.hasError, false);
   assert.strictEqual(tree.rootNode.descendantsOfType("sequence_generator").length, 0);
   assert.strictEqual(tree.rootNode.descendantsOfType("generator_literal").length, 0);
+  assert.strictEqual(tree.rootNode.descendantsOfType("parenthesized_expression").length, 5);
+  assert.strictEqual(tree.rootNode.descendantsOfType("generic_expression")[0].text, "(D)");
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("hash_variable").map((node) => node.text),
+    ["#L_1", "#L_1", "#L_2", "#L_1", "#L_0", "#i", "#L_n"],
+  );
+  assert.strictEqual(tree.rootNode.descendantsOfType("number").length, 0);
 });
 
 test("treats block DEFINE markers as transparent to the active module", () => {
@@ -112,18 +119,35 @@ test("keeps block DEFINE markers transparent after a command inside a program", 
   assert.strictEqual(tree.rootNode.descendantsOfType("preprocessor_enddef_record").length, 1);
 });
 
-test("keeps a single-line DEFINE value opaque", () => {
+test("keeps a single-line DEFINE value neutral while exposing variables", () => {
   const tree = parse("#define p_poin = poin qgrp 'PP' type pg p #Q_w x #x y #y");
   assert.strictEqual(tree.rootNode.hasError, false);
   const statement = tree.rootNode.descendantsOfType("preprocessor_define_statement")[0];
   const value = statement.childForFieldName("value");
   assert.strictEqual(value.type, "preprocessor_value");
   assert.strictEqual(value.text, "= poin qgrp 'PP' type pg p #Q_w x #x y #y");
-  assert.strictEqual(value.namedChildCount, 0);
+  assert.deepStrictEqual(
+    value.namedChildren
+      .filter((node) => node.type === "hash_variable" || node.type === "dollar_variable")
+      .map((node) => [node.type, node.text]),
+    [
+      ["hash_variable", "#Q_w"],
+      ["hash_variable", "#x"],
+      ["hash_variable", "#y"],
+    ],
+  );
   assert.strictEqual(statement.descendantsOfType("expression").length, 0);
 });
 
-test("ends an opaque DEFINE value before inline comments", () => {
+test("keeps malformed hash prose recovery to its original error range", () => {
+  const tree = parse("-prog template urs:13\nhead # CDB_IER=1 - Usage for Support Forces\nend");
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("ERROR").map((node) => node.text),
+    ["# CDB_IER=1 - Usage for Support Forces", "#"],
+  );
+});
+
+test("ends a neutral DEFINE value before inline comments", () => {
   const tree = parse(
     "#define no = 119 ! only vertical live\n#define next = $(no)+1 $ reused value",
   );
@@ -136,7 +160,33 @@ test("ends an opaque DEFINE value before inline comments", () => {
     tree.rootNode.descendantsOfType("comment").map((node) => node.text),
     ["! only vertical live", "$ reused value"],
   );
-  assert.strictEqual(tree.rootNode.descendantsOfType("dollar_variable").length, 0);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("dollar_variable").map((node) => node.text),
+    ["$(no)"],
+  );
+});
+
+test("exposes substitutions on the right side of linear DEFINE statements", () => {
+  const tree = parse(
+    "#define probase = [c] main\n#define project = $(probase)\n#define load = #Q_w+#x",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+  const values = tree.rootNode.descendantsOfType("preprocessor_value");
+  assert.deepStrictEqual(
+    values.map((value) =>
+      value.namedChildren
+        .filter((node) => node.type === "hash_variable" || node.type === "dollar_variable")
+        .map((node) => [node.type, node.text]),
+    ),
+    [
+      [],
+      [["dollar_variable", "$(probase)"]],
+      [
+        ["hash_variable", "#Q_w"],
+        ["hash_variable", "#x"],
+      ],
+    ],
+  );
 });
 
 test("keeps preprocessor conditionals flat across program scopes", () => {
@@ -161,12 +211,43 @@ test("keeps preprocessor conditionals flat across program scopes", () => {
 
   const conditions = tree.rootNode.descendantsOfType("preprocessor_condition");
   assert.deepStrictEqual(
-    conditions.map((node) => node.text),
+    conditions.map((node) => node.text.trimStart()),
     ["#version >= 2024 & (#enabled)", "#version = 2023"],
   );
-  assert.ok(conditions.every((node) => node.namedChildCount === 0));
-  assert.strictEqual(tree.rootNode.descendantsOfType("hash_variable").length, 0);
+  assert.deepStrictEqual(
+    conditions.map((node) =>
+      node.namedChildren
+        .filter((child) => child.type === "hash_variable" || child.type === "dollar_variable")
+        .map((child) => [child.type, child.text]),
+    ),
+    [
+      [
+        ["hash_variable", "#version"],
+        ["hash_variable", "#enabled"],
+      ],
+      [["hash_variable", "#version"]],
+    ],
+  );
   assert.strictEqual(tree.rootNode.descendantsOfType("expression").length, 0);
+});
+
+test("keeps conditional text neutral while exposing dollar and hash variables", () => {
+  const tree = parse("#if $(project)<>$(probase)\n#elseif #condition + 1 ! explanation\n#endif");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("dollar_variable").map((node) => node.text),
+    ["$(project)", "$(probase)"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("hash_variable").map((node) => node.text),
+    ["#condition"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("comment").map((node) => node.text),
+    ["! explanation"],
+  );
+  assert.strictEqual(tree.rootNode.descendantsOfType("expression").length, 0);
+  assert.strictEqual(tree.rootNode.descendantsOfType("number").length, 0);
 });
 
 test("preserves command context through flat preprocessor conditionals", () => {
@@ -270,6 +351,19 @@ test("keeps enum-looking TENDON values as ordinary bare values", () => {
   );
 });
 
+test("separates comma-delimited substitutions without hiding later variables", () => {
+  const tree = parse("+PROG MAXIMA\nACT $(actqs),$(roads),$(third)\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("dollar_variable").map((node) => node.text),
+    ["$(actqs)", "$(roads)", "$(third)"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("bare_value").map((node) => node.text),
+    [",", ","],
+  );
+});
+
 test("marks globally known names that are invalid in the current context", () => {
   const tree = parse("+PROG AQUA\nNODE 1\nEND\n+PROG UNKNOWN\nEND");
   assert.strictEqual(tree.rootNode.hasError, false);
@@ -303,6 +397,36 @@ test("accepts include names while preserving the current command", () => {
   const directive = tree.rootNode.descendantsOfType("preprocessor_directive")[0];
   assert.strictEqual(directive.childForFieldName("argument").text, "blockase");
   assert.strictEqual(tree.rootNode.descendantsOfType("implicit_record").length, 1);
+});
+
+test("keeps every INCLUDE argument inside its directive", () => {
+  const tree = parse(
+    '#INCLUDE maxima-supp\n#INCLUDE "$(project).dat"\n#INCLUDE $(project)\n#UNDEF #temporary',
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+  const directives = tree.rootNode.descendantsOfType("preprocessor_directive");
+  assert.deepStrictEqual(
+    directives.map((directive) => {
+      const argument = directive.childForFieldName("argument");
+      return [argument.type, argument.text];
+    }),
+    [
+      ["bare_value", "maxima-supp"],
+      ["string", '"$(project).dat"'],
+      ["dollar_variable", "$(project)"],
+      ["preprocessor_name", "#temporary"],
+    ],
+  );
+});
+
+test("starts each known command on a new root-scope line", () => {
+  const tree = parse("+PROG AQB\nEND\n#DEFINE aqblcs\nLC 1\n  LC 2\nLC 3\n#ENDDEF");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("command_name").map((node) => node.text.toUpperCase()),
+    ["LC", "LC", "LC"],
+  );
+  assert.strictEqual(tree.rootNode.descendantsOfType("implicit_record").length, 0);
 });
 
 test("allows input block terminators inside control flow", () => {

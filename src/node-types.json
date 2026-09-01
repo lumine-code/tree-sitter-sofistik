@@ -40,6 +40,10 @@
         "named": true
       },
       {
+        "type": "parenthesized_expression",
+        "named": true
+      },
+      {
         "type": "punctuated_value",
         "named": true
       },
@@ -761,6 +765,56 @@
     }
   },
   {
+    "type": "parenthesized_expression",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "dollar_variable",
+          "named": true
+        },
+        {
+          "type": "hash_variable",
+          "named": true
+        },
+        {
+          "type": "parenthesized_expression",
+          "named": true
+        },
+        {
+          "type": "parenthesized_literal",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
+    "type": "preprocessor_condition",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "dollar_variable",
+          "named": true
+        },
+        {
+          "type": "hash_variable",
+          "named": true
+        },
+        {
+          "type": "preprocessor_literal",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "preprocessor_define_header",
     "named": true,
     "fields": {
@@ -960,6 +1014,29 @@
           }
         ]
       }
+    }
+  },
+  {
+    "type": "preprocessor_value",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "dollar_variable",
+          "named": true
+        },
+        {
+          "type": "hash_variable",
+          "named": true
+        },
+        {
+          "type": "preprocessor_literal",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -1352,6 +1429,10 @@
     "named": false
   },
   {
+    "type": "=",
+    "named": false
+  },
+  {
     "type": "at_reference",
     "named": true
   },
@@ -1437,7 +1518,7 @@
     "named": true
   },
   {
-    "type": "preprocessor_condition",
+    "type": "parenthesized_literal",
     "named": true
   },
   {
@@ -1445,11 +1526,11 @@
     "named": true
   },
   {
-    "type": "preprocessor_name",
+    "type": "preprocessor_literal",
     "named": true
   },
   {
-    "type": "preprocessor_value",
+    "type": "preprocessor_name",
     "named": true
   },
   {
