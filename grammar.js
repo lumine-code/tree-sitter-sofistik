@@ -1,3 +1,5 @@
+const DOLLAR_VARIABLE_PATTERN = /\$\([^\r\n)]+\)/;
+
 module.exports = grammar({
   name: "sofistik",
 
@@ -20,6 +22,8 @@ module.exports = grammar({
     $.preprocessor_literal,
     $.continuation,
     $.comment,
+    $._single_string_content,
+    $._double_string_content,
     $._text_start_open,
     $._text_start_close,
     $.text_end,
@@ -430,8 +434,8 @@ module.exports = grammar({
 
     string: ($) =>
       choice(
-        token(seq("'", repeat(choice(/[^'\r\n]+/, "''")), "'")),
-        token(seq('"', repeat(choice(/[^"\r\n]+/, '""')), '"')),
+        interpolatedString($, "'", $._single_string_content),
+        interpolatedString($, '"', $._double_string_content),
       ),
 
     number_list: ($) =>
@@ -444,7 +448,7 @@ module.exports = grammar({
 
     number: ($) => /[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/,
 
-    dollar_variable: ($) => /\$\([^\r\n)]+\)/,
+    dollar_variable: ($) => DOLLAR_VARIABLE_PATTERN,
 
     hash_variable: ($) => /#(?:[A-Za-z_][A-Za-z0-9_]*|\d+)(?:\([^\r\n)]*\))?/,
 
@@ -476,6 +480,19 @@ module.exports = grammar({
     _line_end: ($) => /\r?\n/,
   },
 });
+
+function interpolatedString($, quote, contentToken) {
+  return seq(
+    token(prec(10, quote)),
+    repeat(
+      choice(
+        alias(token.immediate(prec(20, DOLLAR_VARIABLE_PATTERN)), $.dollar_variable),
+        contentToken,
+      ),
+    ),
+    token.immediate(prec(10, quote)),
+  );
+}
 
 function ci(value) {
   const source = [...value]

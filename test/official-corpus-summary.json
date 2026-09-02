@@ -8,10 +8,12 @@
     "invalidUtf8": 0
   },
   "badFiles": 42,
-  "errorNodes": 179,
+  "errorNodes": 159,
   "classifications": {
-    "ERROR": 157,
+    "ERROR": 117,
     "MISSING:;": 17,
+    "MISSING:'": 15,
+    "MISSING:\"": 5,
     "MISSING:control_keyword": 5
   },
   "fileClassifications": {
@@ -21,7 +23,7 @@
     },
     "documentWithUnsupportedSyntax": {
       "files": 42,
-      "errorNodes": 179
+      "errorNodes": 159
     }
   },
   "firstFailures": [
@@ -34,20 +36,20 @@
     {
       "file": "ase.dat/deutsch/bridge/stahl_verbund_einfeldtraeger.dat",
       "row": 326,
-      "column": 92,
-      "type": "ERROR"
+      "column": 93,
+      "type": "MISSING:\""
     },
     {
       "file": "ase.dat/english/active_bending/active_bending_throw_tent.dat",
       "row": 68,
-      "column": 31,
-      "type": "ERROR"
+      "column": 32,
+      "type": "MISSING:'"
     },
     {
       "file": "ase.dat/english/bric/bric_th2.dat",
       "row": 138,
-      "column": 21,
-      "type": "ERROR"
+      "column": 22,
+      "type": "MISSING:'"
     },
     {
       "file": "ase.dat/english/bridge/m_n_interaction_plot.dat",
@@ -58,14 +60,14 @@
     {
       "file": "ase.dat/english/bridge/steel_composite_singlespan_girder.dat",
       "row": 326,
-      "column": 79,
-      "type": "ERROR"
+      "column": 80,
+      "type": "MISSING:\""
     },
     {
       "file": "ase.dat/english/dynamics/movs_train_on_axis.dat",
       "row": 50,
-      "column": 13,
-      "type": "ERROR"
+      "column": 21,
+      "type": "MISSING:'"
     },
     {
       "file": "csm.dat/deutsch/optimize/csm23_schraegseil_optimierung_2.dat",
@@ -88,20 +90,20 @@
     {
       "file": "csm.dat/english/design/csm31_partial_prestress.dat",
       "row": 511,
-      "column": 8,
-      "type": "ERROR"
+      "column": 25,
+      "type": "MISSING:\""
     },
     {
       "file": "csm.dat/english/incremental_launching/csm40_incremental_launching_introduction.dat",
       "row": 222,
-      "column": 61,
-      "type": "ERROR"
+      "column": 74,
+      "type": "MISSING:'"
     },
     {
       "file": "csm.dat/english/more/csm31_design_india.dat",
       "row": 346,
-      "column": 21,
-      "type": "ERROR"
+      "column": 32,
+      "type": "MISSING:'"
     },
     {
       "file": "csm.dat/english/optimize/csm23_cable_stay_optimisation_2.dat",
@@ -124,8 +126,8 @@
     {
       "file": "csm.dat/english/optimize/more_opti/csm_insert_hangers_forcefree.dat",
       "row": 442,
-      "column": 30,
-      "type": "ERROR"
+      "column": 63,
+      "type": "MISSING:'"
     },
     {
       "file": "dolfyn.dat/deutsch/gebaeude_3D/high_rise_cylind.dat",
@@ -142,8 +144,8 @@
     {
       "file": "dolfyn.dat/english/buildings_3D/city.dat",
       "row": 70,
-      "column": 43,
-      "type": "ERROR"
+      "column": 57,
+      "type": "MISSING:\""
     }
   ]
 }

@@ -1479,7 +1479,17 @@
   {
     "type": "string",
     "named": true,
-    "fields": {}
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "dollar_variable",
+          "named": true
+        }
+      ]
+    }
   },
   {
     "type": "sys_sigil",
@@ -1679,6 +1689,14 @@
         ]
       }
     }
+  },
+  {
+    "type": "\"",
+    "named": false
+  },
+  {
+    "type": "'",
+    "named": false
   },
   {
     "type": ")",

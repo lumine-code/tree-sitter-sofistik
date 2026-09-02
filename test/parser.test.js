@@ -149,6 +149,29 @@ test("separates both variable syntaxes and quoted strings in LET definitions", (
   );
 });
 
+test("exposes dollar variables but keeps hash syntax inside quoted strings", () => {
+  const tree = parse(
+    "+PROG AQUA\n" +
+      'HEAD "double ""quoted"" $(asetxt1) #DOUBLE ! ; PROG" ' +
+      "'single ''quoted'' $(asetxt2) #SINGLE ! ; PROG'\n" +
+      "END",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+  const strings = tree.rootNode.descendantsOfType("string");
+  assert.strictEqual(strings.length, 2);
+  assert.deepStrictEqual(
+    strings[0].descendantsOfType("dollar_variable").map((node) => node.text),
+    ["$(asetxt1)"],
+  );
+  assert.strictEqual(strings[0].descendantsOfType("hash_variable").length, 0);
+  assert.deepStrictEqual(
+    strings[1].descendantsOfType("dollar_variable").map((node) => node.text),
+    ["$(asetxt2)"],
+  );
+  assert.strictEqual(strings[1].descendantsOfType("hash_variable").length, 0);
+  assert.strictEqual(tree.rootNode.descendantsOfType("comment").length, 0);
+});
+
 test("treats block DEFINE markers as transparent to the active module", () => {
   const tree = parse(
     "$prog maxima\n#define maxima-supp\nsupp $(no) mami auto\n#enddef\n+prog aqua\nend",

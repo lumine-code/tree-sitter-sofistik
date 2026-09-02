@@ -27,6 +27,8 @@ enum TokenType {
   PREPROCESSOR_LITERAL,
   CONTINUATION,
   COMMENT,
+  SINGLE_STRING_CONTENT,
+  DOUBLE_STRING_CONTENT,
   TEXT_START_OPEN,
   TEXT_START_CLOSE,
   TEXT_END,
@@ -222,6 +224,57 @@ static bool scan_string_candidate(TSLexer *lexer, int32_t quote) {
     return true;
   }
   return false;
+}
+
+static bool scan_interpolated_string_content(
+  TSLexer *lexer,
+  int32_t quote,
+  enum TokenType result_symbol
+) {
+  bool has_content = false;
+
+  while (
+    lexer->lookahead && lexer->lookahead != '\r' &&
+    lexer->lookahead != '\n'
+  ) {
+    if (lexer->lookahead == quote) {
+      lexer->mark_end(lexer);
+      lexer->advance(lexer, false);
+      if (lexer->lookahead == quote) {
+        lexer->advance(lexer, false);
+        has_content = true;
+        continue;
+      }
+      if (!has_content) {
+        return false;
+      }
+      lexer->result_symbol = result_symbol;
+      return true;
+    }
+
+    if (lexer->lookahead == '$') {
+      lexer->mark_end(lexer);
+      if (scan_dollar_variable_candidate(lexer)) {
+        if (!has_content) {
+          return false;
+        }
+        lexer->result_symbol = result_symbol;
+        return true;
+      }
+      has_content = true;
+      continue;
+    }
+
+    lexer->advance(lexer, false);
+    has_content = true;
+  }
+
+  if (!has_content) {
+    return false;
+  }
+  lexer->mark_end(lexer);
+  lexer->result_symbol = result_symbol;
+  return true;
 }
 
 static bool scan_slash_comment(TSLexer *lexer, const bool *valid_symbols) {
@@ -999,6 +1052,22 @@ bool tree_sitter_sofistik_external_scanner_scan(
       return true;
     }
     return false;
+  }
+
+  if (valid_symbols[SINGLE_STRING_CONTENT]) {
+    return scan_interpolated_string_content(
+      lexer,
+      '\'',
+      SINGLE_STRING_CONTENT
+    );
+  }
+
+  if (valid_symbols[DOUBLE_STRING_CONTENT]) {
+    return scan_interpolated_string_content(
+      lexer,
+      '"',
+      DOUBLE_STRING_CONTENT
+    );
   }
 
   if (
