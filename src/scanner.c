@@ -49,6 +49,12 @@ enum TextState {
   IN_TEXT_BODY,
 };
 
+// A TEMPLATE command has no schema row, but it is still an active command.
+// Keep that state distinct from UNKNOWN so the words that follow its name are
+// scanned as values instead of repeatedly competing with a fresh command at
+// every position on a semicolon-delimited line.
+#define SOFISTIK_DYNAMIC_COMMAND_ID SOFISTIK_COMMAND_COUNT
+
 typedef struct {
   uint32_t module;
   uint32_t command;
@@ -455,7 +461,9 @@ static bool scan_word(
   TSLexer *lexer,
   const bool *valid_symbols,
   bool *reserved_root_word,
-  bool at_line_start
+  bool at_line_start,
+  bool line_start_known,
+  uint32_t skipped_columns
 ) {
   char word[128] = {0};
   bool contextual = false;
@@ -498,6 +506,7 @@ static bool scan_word(
   }
 
   if (valid_symbols[DYNAMIC_COMMAND_NAME]) {
+    scanner->command = SOFISTIK_DYNAMIC_COMMAND_ID;
     lexer->result_symbol = DYNAMIC_COMMAND_NAME;
     return true;
   }
@@ -510,13 +519,18 @@ static bool scan_word(
     return true;
   }
 
-  if (
-    (at_line_start || scanner->command == SOFISTIK_UNKNOWN_ID) &&
-    (strcmp(word, "PROG") == 0 || strcmp(word, "APPLY") == 0 ||
-     strcmp(word, "SYS") == 0)
-  ) {
-    *reserved_root_word = true;
-    return false;
+  bool reserved_root_statement =
+    strcmp(word, "PROG") == 0 || strcmp(word, "APPLY") == 0 ||
+    strcmp(word, "SYS") == 0;
+  if (reserved_root_statement) {
+    if (!line_start_known && scanner->command != SOFISTIK_UNKNOWN_ID) {
+      at_line_start =
+        lexer->get_column(lexer) == skipped_columns + strlen(word);
+    }
+    if (at_line_start || scanner->command == SOFISTIK_UNKNOWN_ID) {
+      *reserved_root_word = true;
+      return false;
+    }
   }
 
   if (valid_symbols[IGNORED_TEXT] && is_reserved_statement_word(word)) {
@@ -537,6 +551,7 @@ static bool scan_word(
       return true;
     }
     if (valid_symbols[TEMPLATE_COMMAND_NAME] && is_template_module(scanner->module)) {
+      scanner->command = SOFISTIK_DYNAMIC_COMMAND_ID;
       lexer->result_symbol = TEMPLATE_COMMAND_NAME;
       return true;
     }
@@ -551,6 +566,7 @@ static bool scan_word(
   }
 
   if (valid_symbols[TEMPLATE_COMMAND_NAME] && is_template_module(scanner->module)) {
+    scanner->command = SOFISTIK_DYNAMIC_COMMAND_ID;
     lexer->result_symbol = TEMPLATE_COMMAND_NAME;
     return true;
   }
@@ -1008,7 +1024,6 @@ bool tree_sitter_sofistik_external_scanner_scan(
   const bool *valid_symbols
 ) {
   Scanner *scanner = payload;
-  bool at_line_start = lexer->get_column(lexer) == 0;
 
   // Tree-sitter marks every external token valid during error recovery. The
   // sentinel is never part of a successful production; checking the complete
@@ -1105,12 +1120,17 @@ bool tree_sitter_sofistik_external_scanner_scan(
     return true;
   }
 
+  bool needs_line_start = valid_symbols[BARE_WORD] && valid_symbols[IGNORED_TEXT];
+  bool at_line_start = needs_line_start && lexer->get_column(lexer) == 0;
+
+  uint32_t skipped_columns = 0;
   while (
     lexer->lookahead == ' ' || lexer->lookahead == '\t' ||
     lexer->lookahead == '\f' || lexer->lookahead == 0x00ef ||
     lexer->lookahead == 0x00bb || lexer->lookahead == 0x00bf
   ) {
     lexer->advance(lexer, true);
+    skipped_columns++;
   }
 
   if (lexer->lookahead == '$') {
@@ -1155,7 +1175,9 @@ bool tree_sitter_sofistik_external_scanner_scan(
         lexer,
         valid_symbols,
         &reserved_root_word,
-        at_line_start
+        at_line_start,
+        needs_line_start,
+        skipped_columns
       )) {
     return true;
   }

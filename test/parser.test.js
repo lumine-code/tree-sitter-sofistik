@@ -1,4 +1,5 @@
 const assert = require("node:assert");
+const { performance } = require("node:perf_hooks");
 const { test } = require("node:test");
 const Parser = require("tree-sitter");
 const SOFiSTiK = require("..");
@@ -29,12 +30,71 @@ test("uses schema commands before the dynamic TEMPLATE fallback", () => {
   );
 });
 
+test(
+  "scales quoted TEMPLATE records across one semicolon-delimited line",
+  { timeout: 10000 },
+  () => {
+    const makeSource = (count) =>
+      `+PROG TEMPLATE\n${Array.from({ length: count }, (_, index) => {
+        const suffix = String(index).padStart(4, "0");
+        return `CMD${suffix} #VALUE${suffix} "quoted value"`;
+      }).join(" ; ")}\nEND`;
+    const smallRecordCount = 128;
+    const scale = 16;
+    const smallSource = makeSource(smallRecordCount);
+    const largeSource = makeSource(smallRecordCount * scale);
+    const parser = new Parser();
+    parser.setLanguage(SOFiSTiK);
+
+    const measureFastest = (source, repetitions) => {
+      let fastest = Infinity;
+      for (let round = 0; round < 3; round++) {
+        const trees = [];
+        const started = performance.now();
+        for (let index = 0; index < repetitions; index++) {
+          trees.push(parser.parse(source));
+        }
+        fastest = Math.min(fastest, performance.now() - started);
+        assert.ok(trees.every((tree) => !tree.rootNode.hasError));
+      }
+      return fastest;
+    };
+
+    parser.parse(smallSource);
+    parser.parse(largeSource);
+    const smallBatchDuration = measureFastest(smallSource, scale);
+    const largeDuration = measureFastest(largeSource, 1);
+    assert.ok(
+      largeDuration < smallBatchDuration * 6,
+      `single-line parse scaled superlinearly: ${smallBatchDuration.toFixed(1)}ms for ${scale} small parses, ${largeDuration.toFixed(1)}ms for one equally sized parse`,
+    );
+
+    const tree = parser.parse(largeSource);
+    const records = tree.rootNode.descendantsOfType("dynamic_record");
+    assert.strictEqual(records.length, smallRecordCount * scale);
+    assert.strictEqual(records[0].childForFieldName("name").text, "CMD0000");
+    assert.strictEqual(records.at(-1).childForFieldName("name").text, "CMD2047");
+    assert.strictEqual(tree.rootNode.descendantsOfType("string").length, smallRecordCount * scale);
+  },
+);
+
 test("exposes END and ENDE as control keywords", () => {
   const tree = parse("+PROG AQUA\nEND\nHEAD Again\nENDE");
   assert.strictEqual(tree.rootNode.hasError, false);
   assert.deepStrictEqual(
     tree.rootNode.descendantsOfType("control_keyword").map((node) => node.text),
     ["END", "ENDE"],
+  );
+});
+
+test("keeps a root program boundary after a mojibake BOM", () => {
+  const tree = parse("+PROG AQUA\nHEAD A\nï»¿PROG ASE\nEND");
+  assert.strictEqual(tree.rootNode.hasError, true);
+  const programs = tree.rootNode.descendantsOfType("program");
+  assert.strictEqual(programs.length, 2);
+  assert.strictEqual(
+    programs[1].childForFieldName("header").childForFieldName("module").text,
+    "ASE",
   );
 });
 
@@ -149,6 +209,19 @@ test("separates both variable syntaxes and quoted strings in LET definitions", (
   );
 });
 
+test("accepts a final variable statement without a newline or semicolon", () => {
+  const source = "DEL#VALUE ; STO#VALUE 16000.0";
+  const tree = parse(source);
+  assert.strictEqual(tree.rootNode.hasError, false);
+  const statements = tree.rootNode.descendantsOfType("variable_statement");
+  assert.strictEqual(statements.length, 2);
+  assert.deepStrictEqual(
+    statements.map((statement) => statement.childForFieldName("keyword").text),
+    ["DEL", "STO"],
+  );
+  assert.strictEqual(statements.at(-1).endIndex, source.length);
+});
+
 test("exposes dollar variables but keeps hash syntax inside quoted strings", () => {
   const tree = parse(
     "+PROG AQUA\n" +
@@ -199,6 +272,29 @@ test("keeps block DEFINE markers transparent after a command inside a program", 
   );
   assert.strictEqual(tree.rootNode.descendantsOfType("preprocessor_define_header").length, 1);
   assert.strictEqual(tree.rootNode.descendantsOfType("preprocessor_enddef_record").length, 1);
+});
+
+test("keeps variable-only block DEFINE bodies in the transparent module tail", () => {
+  const source =
+    "+PROG TEMPLATE\nEND\n#DEFINE VALUES\n$(FIRST)\n$(SECOND)\n#ENDDEF\n\n" +
+    "+PROG SOFILOAD URS:2\nEND";
+  const tree = parse(source);
+  assert.strictEqual(tree.rootNode.hasError, false);
+
+  const programs = tree.rootNode.descendantsOfType("program");
+  const nextProgramStart = source.indexOf("+PROG SOFILOAD");
+  assert.strictEqual(programs.length, 2);
+  assert.strictEqual(programs[0].endIndex, nextProgramStart);
+  assert.strictEqual(programs[0].childrenForFieldName("body").length, 1);
+  assert.deepStrictEqual(
+    programs[0].descendantsOfType("dollar_variable").map((node) => node.text),
+    ["$(FIRST)", "$(SECOND)"],
+  );
+  const expansions = programs[0]
+    .childrenForFieldName("tail")
+    .filter((node) => node.type === "implicit_record");
+  assert.strictEqual(expansions.length, 2);
+  assert.ok(expansions.every((record) => record.descendantsOfType("dollar_variable").length === 1));
 });
 
 test("keeps a single-line DEFINE value neutral while exposing variables", () => {

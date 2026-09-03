@@ -564,7 +564,7 @@
         },
         {
           "type": "SYMBOL",
-          "name": "_record_end"
+          "name": "_statement_end"
         }
       ]
     },
@@ -590,6 +590,26 @@
         {
           "type": "SYMBOL",
           "name": "_implicit_start"
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_record_element"
+          }
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_record_end"
+        }
+      ]
+    },
+    "_module_tail_expansion": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "SYMBOL",
+          "name": "dollar_variable"
         },
         {
           "type": "REPEAT",
@@ -1334,6 +1354,15 @@
         {
           "type": "SYMBOL",
           "name": "_program_body_start"
+        },
+        {
+          "type": "ALIAS",
+          "content": {
+            "type": "SYMBOL",
+            "name": "_module_tail_expansion"
+          },
+          "named": true,
+          "value": "implicit_record"
         },
         {
           "type": "SYMBOL",

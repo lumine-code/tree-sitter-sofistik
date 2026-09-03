@@ -167,12 +167,14 @@ module.exports = grammar({
         field("keyword", $.variable_keyword),
         field("variable", $.hash_variable),
         repeat(field("value", $._value)),
-        $._record_end,
+        $._statement_end,
       ),
 
     record: ($) => seq(repeat($._record_element), $._record_end),
 
     implicit_record: ($) => seq($._implicit_start, repeat($._record_element), $._record_end),
+
+    _module_tail_expansion: ($) => seq($.dollar_variable, repeat($._record_element), $._record_end),
 
     _implicit_start: ($) => choice($.item_sequence, $.invalid_item, $._value),
 
@@ -281,7 +283,13 @@ module.exports = grammar({
       ),
 
     _module_tail_statement: ($) =>
-      choice($._program_body_start, $.end_record, $.ignored_text, $._line_end),
+      choice(
+        $._program_body_start,
+        alias($._module_tail_expansion, $.implicit_record),
+        $.end_record,
+        $.ignored_text,
+        $._line_end,
+      ),
 
     preprocessor_define_header: ($) =>
       seq(
