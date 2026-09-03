@@ -1,6 +1,12 @@
 {
   "corpus": "SOFiSTiK 2026 installed DAT examples",
-  "schemaDigest": "c8151a06e46871f6c0f40c5385a58cdf7b171f91edb37188bee51591aea8756a",
+  "data": {
+    "package": "@lumine-code/sofistik-data",
+    "repository": "https://github.com/lumine-code/sofistik-data",
+    "commit": "c2ea4651db138f6aec1b9079df2e0f8539f52d1e"
+  },
+  "schemaDigest": "3e8a9c02c4cad1af851fee8fb01749c2878909da812c57253d0ede5a817b9180",
+  "grammarVocabularyDigest": "72be0544f22ddf57cc66fbaed42b103d699c8b4e0170d55c3ea8264f0441d74c",
   "discovered": 1392,
   "parsed": 1391,
   "skipped": {

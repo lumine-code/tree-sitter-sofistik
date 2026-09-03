@@ -3,7 +3,11 @@ const path = require("node:path");
 const { performance } = require("node:perf_hooks");
 const Parser = require("tree-sitter");
 const SOFiSTiK = require("..");
-const { digest: schemaDigest } = require("../schema/snapshot.json");
+const {
+  source: data,
+  schemaDigest,
+  grammarVocabularyDigest,
+} = require("../schema/provenance.json");
 
 function collectFiles(directory, files = []) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
@@ -45,7 +49,9 @@ function run(root) {
   parser.setLanguage(SOFiSTiK);
   const summary = {
     root: absoluteRoot,
+    data,
     schemaDigest,
+    grammarVocabularyDigest,
     discovered: files.length,
     parsed: 0,
     skipped: { nul: 0, invalidUtf8: 0 },

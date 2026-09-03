@@ -13,7 +13,7 @@ Parses SOFiSTiK CADINP input with Tree-sitter.
 - **Structure**: exposes programs, commands, records, control flow, and preprocessors.
 - **Descriptive text**: accepts ignored prose between program scopes without weakening command validation inside them.
 - **Neutral values**: leaves enum-like values and generator literals unclassified while retaining variable nodes.
-- **Generated schema**: derives its accepted vocabulary from the language data snapshot.
+- **Generated schema**: derives its accepted vocabulary from the pinned `@lumine-code/sofistik-data` package.
 - **Bindings**: supports Node-API, source, and WebAssembly builds.
 
 ## Installation
@@ -41,12 +41,14 @@ npm test
 npm run build:wasm
 ```
 
-Import a fresh schema snapshot before regenerating the parser:
+`npm run build` compiles the checked-in C sources and does not require development dependencies or regenerate parser files. Regenerate the C parser, node types, scanner tables, and data provenance explicitly after advancing the pinned data package or changing the grammar:
 
 ```sh
-npm run import:schema -- ../language-sofistik/schema
 npm run generate
+npm run check:generated
 ```
+
+The compact `src/schema.h` scanner tables come directly from `getGrammarVocabulary()`. `schema/provenance.json` records the exact data commit together with the complete schema and grammar-vocabulary digests; the full versioned schema remains owned by `@lumine-code/sofistik-data` and is not copied into this repository.
 
 An installed SOFiSTiK example tree can be checked without vendoring it by running `npm run test:corpus -- <directory>` or setting `SOFISTIK_CORPUS`.
 

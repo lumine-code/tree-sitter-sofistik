@@ -27,7 +27,6 @@
   "files": [
     "bindings/node",
     "grammar.js",
-    "schema/snapshot.json",
     "schema/provenance.json",
     "src",
     "tree-sitter.json",
@@ -39,6 +38,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@lumine-code/sofistik-data": "github:lumine-code/sofistik-data#c2ea4651db138f6aec1b9079df2e0f8539f52d1e",
     "eslint": "^10.9.1",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.11.0",
@@ -55,17 +55,16 @@
     }
   },
   "scripts": {
-    "build": "npm run generate && npm run build:native",
+    "build": "npm run build:native",
     "build:native": "node-gyp rebuild",
     "build:wasm": "tree-sitter build --wasm",
     "check:format": "prettier --check .",
     "check:generated": "node scripts/check-generated.js",
     "generate": "npm run generate:schema --silent && tree-sitter generate",
     "generate:schema": "node scripts/generate-schema.js",
-    "import:schema": "node scripts/import-schema.js",
     "install": "node-gyp-build",
     "lint": "eslint .",
-    "test": "npm run lint && npm run check:format && npm run check:generated && npm run build:native && node --test bindings/node/binding_test.js test/*.test.js && tree-sitter test",
+    "test": "npm run lint && npm run check:format && npm run check:generated && npm run build && node --test bindings/node/binding_test.js test/*.test.js && tree-sitter test",
     "test:corpus": "node scripts/test-corpus.js"
   }
 }

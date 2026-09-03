@@ -5,7 +5,13 @@ const { spawnSync } = require("node:child_process");
 const { generateSchema } = require("./generate-schema");
 
 const root = path.join(__dirname, "..");
-const generatedFiles = ["grammar.json", "node-types.json", "parser.c", "schema.h"];
+const generatedFiles = [
+  ["src/grammar.json", "grammar.json"],
+  ["src/node-types.json", "node-types.json"],
+  ["src/parser.c", "parser.c"],
+  ["src/schema.h", "schema.h"],
+  ["schema/provenance.json", "provenance.json"],
+];
 
 function run(command, args) {
   const result = spawnSync(command, args, {
@@ -22,10 +28,10 @@ const temporaryDirectory = fs.mkdtempSync(
 );
 
 try {
-  generateSchema(
-    path.join(root, "schema", "snapshot.json"),
-    path.join(temporaryDirectory, "schema.h"),
-  );
+  generateSchema({
+    output: path.join(temporaryDirectory, "schema.h"),
+    provenanceOutput: path.join(temporaryDirectory, "provenance.json"),
+  });
   run(process.execPath, [
     require.resolve("tree-sitter-cli/cli.js"),
     "generate",
@@ -34,15 +40,15 @@ try {
     path.join(root, "grammar.js"),
   ]);
 
-  const staleFiles = generatedFiles.filter((file) => {
-    const expected = fs.readFileSync(path.join(root, "src", file));
-    const generated = fs.readFileSync(path.join(temporaryDirectory, file));
+  const staleFiles = generatedFiles.filter(([expectedFile, generatedFile]) => {
+    const expected = fs.readFileSync(path.join(root, expectedFile));
+    const generated = fs.readFileSync(path.join(temporaryDirectory, generatedFile));
     return !expected.equals(generated);
   });
 
   if (staleFiles.length > 0) {
     process.stderr.write(
-      `Generated files are stale: ${staleFiles.map((file) => `src/${file}`).join(", ")}\n`,
+      `Generated files are stale: ${staleFiles.map(([file]) => file).join(", ")}\n`,
     );
     process.stderr.write("Run `npm run generate` and commit the resulting files.\n");
     process.exitCode = 1;
