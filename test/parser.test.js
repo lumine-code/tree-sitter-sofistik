@@ -588,6 +588,29 @@ test("keeps the module inside the stable program header field", () => {
   assert.strictEqual(header.childForFieldName("module").text, "SOFIMSHA");
 });
 
+test("uses executable module aliases with their schema vocabularies", () => {
+  const tree = parse(
+    "+PROG DBMERG\nHEAD Copy results\nCDB FROM 1\nEND\n" +
+      "+PROG STAR2\nBEME AM1 1\nEND\n" +
+      "+PROG TUNARS\nGEO NO 1\nEND",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("module_name").map((node) => node.text),
+    ["DBMERG", "STAR2", "TUNARS"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("command_name").map((node) => node.text),
+    ["HEAD", "CDB", "BEME", "GEO"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("item_name").map((node) => node.text),
+    ["FROM", "AM1", "NO"],
+  );
+  assert.strictEqual(tree.rootNode.descendantsOfType("invalid_module").length, 0);
+  assert.strictEqual(tree.rootNode.descendantsOfType("invalid_command").length, 0);
+});
+
 test("inherits localized PAGE commands from BASIC in every program scope", () => {
   const tree = parse(
     "$PROG ASE\n#DEFINE ASE_CTRL\nPAGE UNII 0\n#ENDDEF\n" +

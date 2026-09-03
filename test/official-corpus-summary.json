@@ -7,10 +7,10 @@
     "nul": 1,
     "invalidUtf8": 0
   },
-  "badFiles": 42,
-  "errorNodes": 159,
+  "badFiles": 40,
+  "errorNodes": 109,
   "classifications": {
-    "ERROR": 117,
+    "ERROR": 67,
     "MISSING:;": 17,
     "MISSING:'": 15,
     "MISSING:\"": 5,
@@ -22,8 +22,8 @@
       "errorNodes": 0
     },
     "documentWithUnsupportedSyntax": {
-      "files": 42,
-      "errorNodes": 159
+      "files": 40,
+      "errorNodes": 109
     }
   },
   "firstFailures": [

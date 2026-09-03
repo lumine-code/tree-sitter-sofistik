@@ -3,7 +3,12 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { test } = require("node:test");
-const { buildTables, generateSchema } = require("../scripts/generate-schema");
+const {
+  MODULE_ALIASES,
+  UNIVERSAL_COMMANDS,
+  buildTables,
+  generateSchema,
+} = require("../scripts/generate-schema");
 const snapshot = require("../schema/snapshot.json");
 
 function commandsInRange(tables, start, count) {
@@ -94,9 +99,11 @@ test("deduplicated BASIC ranges preserve every module vocabulary", () => {
 
   for (const module of tables.modules) {
     const local = commandsInRange(tables, module.commandStart, module.commandCount);
+    const schemaModuleName = MODULE_ALIASES[module.name] || module.name;
     const expectedCommands = {
+      ...UNIVERSAL_COMMANDS,
       ...snapshot.modules.BASIC.commands,
-      ...snapshot.modules[module.name].commands,
+      ...snapshot.modules[schemaModuleName].commands,
     };
     delete expectedCommands.END;
     delete expectedCommands.ENDE;
@@ -114,4 +121,30 @@ test("deduplicated BASIC ranges preserve every module vocabulary", () => {
       );
     }
   }
+});
+
+test("maps executable module names to their schema ranges", () => {
+  const tables = buildTables(snapshot);
+  const modules = new Map(tables.modules.map((module) => [module.name, module]));
+
+  for (const [alias, target] of Object.entries(MODULE_ALIASES)) {
+    assert.deepStrictEqual(
+      {
+        commandStart: modules.get(alias).commandStart,
+        commandCount: modules.get(alias).commandCount,
+      },
+      {
+        commandStart: modules.get(target).commandStart,
+        commandCount: modules.get(target).commandCount,
+      },
+      `${alias} aliases ${target}`,
+    );
+  }
+});
+
+test("adds commands that are universal in CADINP but absent from BASIC metadata", () => {
+  const tables = buildTables(snapshot);
+  const basic = commandsInRange(tables, tables.basicCommandStart, tables.basicCommandCount);
+
+  assert.deepStrictEqual(basic.get("HEAD"), []);
 });

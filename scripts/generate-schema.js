@@ -5,13 +5,23 @@ const root = path.join(__dirname, "..");
 const snapshotPath = path.join(root, "schema", "snapshot.json");
 const outputPath = path.join(root, "src", "schema.h");
 const RESERVED_COMMANDS = new Set(["END", "ENDE"]);
+// The .err headers expose internal component names, while CADINP uses the
+// executable names shown in program headers and example files.
+const MODULE_ALIASES = Object.freeze({
+  DBMERG: "DBME",
+  STAR2: "STAR",
+  TUNARS: "TUNA",
+});
+const UNIVERSAL_COMMANDS = Object.freeze({
+  HEAD: { items: [] },
+});
 
 function cString(value) {
   return JSON.stringify(value);
 }
 
 function buildTables(snapshot) {
-  const basic = snapshot.modules.BASIC?.commands || {};
+  const basic = { ...UNIVERSAL_COMMANDS, ...snapshot.modules.BASIC?.commands };
   const moduleNames = Object.keys(snapshot.modules)
     .filter((name) => name !== "BASIC")
     .sort();
@@ -53,6 +63,19 @@ function buildTables(snapshot) {
       commandCount: commands.length - commandStart,
     });
   }
+
+  const moduleRanges = new Map(modules.map((module) => [module.name, module]));
+  for (const [alias, target] of Object.entries(MODULE_ALIASES)) {
+    if (moduleRanges.has(alias)) continue;
+    const targetRange = moduleRanges.get(target);
+    if (!targetRange) continue;
+    modules.push({
+      name: alias,
+      commandStart: targetRange.commandStart,
+      commandCount: targetRange.commandCount,
+    });
+  }
+  modules.sort((left, right) => left.name.localeCompare(right.name));
 
   return {
     basicCommandStart,
@@ -134,6 +157,8 @@ if (require.main === module) {
 }
 
 module.exports = {
+  MODULE_ALIASES,
+  UNIVERSAL_COMMANDS,
   buildTables,
   generateSchema,
   renderHeader,
