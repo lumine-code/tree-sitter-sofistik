@@ -26,6 +26,35 @@ function digest(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
 
+function readModuleAliases(sourceDirectory, modules) {
+  const file = "meta.json";
+  const metaPath = path.join(sourceDirectory, file);
+  if (!fs.existsSync(metaPath)) return { aliases: {}, source: null };
+
+  const content = fs.readFileSync(metaPath, "utf8");
+  const metadata = JSON.parse(content);
+  const rawAliases = metadata.moduleAliases || {};
+  if (typeof rawAliases !== "object" || Array.isArray(rawAliases)) {
+    throw new Error(`${file}: moduleAliases must be an object`);
+  }
+
+  const aliases = {};
+  for (const [rawAlias, rawTarget] of Object.entries(rawAliases).sort(([left], [right]) =>
+    left.localeCompare(right),
+  )) {
+    const alias = String(rawAlias).toUpperCase();
+    const target = String(rawTarget).toUpperCase();
+    if (!modules[target]) {
+      throw new Error(`${file}: module alias ${alias} targets unknown module ${target}`);
+    }
+    if (modules[alias] && alias !== target) {
+      throw new Error(`${file}: module alias ${alias} conflicts with a schema module`);
+    }
+    aliases[alias] = target;
+  }
+  return { aliases, source: { file, digest: digest(content) } };
+}
+
 function sourceModules(document) {
   if (document && typeof document === "object" && document.modules) {
     return document.modules;
@@ -208,10 +237,12 @@ function importSchema(sourceDirectory, outputDirectory) {
   }
 
   const merged = mergeSchemaFiles(files);
+  const aliasMetadata = readModuleAliases(absoluteSource, merged.modules);
   const semanticSnapshot = {
     schemaVersion: 1,
     versions: merged.versions,
     languages: merged.languages,
+    moduleAliases: aliasMetadata.aliases,
     modules: merged.modules,
   };
   const snapshotDigest = digest(stableJson(semanticSnapshot));
@@ -225,6 +256,8 @@ function importSchema(sourceDirectory, outputDirectory) {
     },
     versions: merged.versions,
     languages: merged.languages,
+    moduleAliases: aliasMetadata.aliases,
+    metadata: aliasMetadata.source,
     sources: merged.sources,
     digest: snapshotDigest,
   };
@@ -276,5 +309,6 @@ if (require.main === module) {
 module.exports = {
   importSchema,
   mergeSchemaFiles,
+  readModuleAliases,
   stableJson,
 };

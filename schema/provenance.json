@@ -1,12 +1,21 @@
 {
-  "digest": "218366c50d099e4445f98b48c2a53aff1e719c675b5ff134e93b1b943e3feef3",
+  "digest": "c8151a06e46871f6c0f40c5385a58cdf7b171f91edb37188bee51591aea8756a",
   "languages": [
     "de",
     "en"
   ],
+  "metadata": {
+    "digest": "de0dd0b7fce4ca50fa236f96771e850b9a111e8281ebacc8301a1daddcb8b471",
+    "file": "meta.json"
+  },
+  "moduleAliases": {
+    "DBMERG": "DBME",
+    "STAR2": "STAR",
+    "TUNARS": "TUNA"
+  },
   "schemaVersion": 1,
   "source": {
-    "commit": "8e4f2a7770840040fbf64ce7e3da9b3a9ed6c724",
+    "commit": "1ac16b469566380acda3d029de55e2af4b644fc4",
     "dirty": false,
     "repository": "https://github.com/lumine-code/language-sofistik"
   },

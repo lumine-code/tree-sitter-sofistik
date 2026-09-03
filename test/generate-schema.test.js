@@ -3,12 +3,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { test } = require("node:test");
-const {
-  MODULE_ALIASES,
-  UNIVERSAL_COMMANDS,
-  buildTables,
-  generateSchema,
-} = require("../scripts/generate-schema");
+const { UNIVERSAL_COMMANDS, buildTables, generateSchema } = require("../scripts/generate-schema");
 const snapshot = require("../schema/snapshot.json");
 
 function commandsInRange(tables, start, count) {
@@ -99,7 +94,7 @@ test("deduplicated BASIC ranges preserve every module vocabulary", () => {
 
   for (const module of tables.modules) {
     const local = commandsInRange(tables, module.commandStart, module.commandCount);
-    const schemaModuleName = MODULE_ALIASES[module.name] || module.name;
+    const schemaModuleName = snapshot.moduleAliases?.[module.name] || module.name;
     const expectedCommands = {
       ...UNIVERSAL_COMMANDS,
       ...snapshot.modules.BASIC.commands,
@@ -127,7 +122,7 @@ test("maps executable module names to their schema ranges", () => {
   const tables = buildTables(snapshot);
   const modules = new Map(tables.modules.map((module) => [module.name, module]));
 
-  for (const [alias, target] of Object.entries(MODULE_ALIASES)) {
+  for (const [alias, target] of Object.entries(snapshot.moduleAliases)) {
     assert.deepStrictEqual(
       {
         commandStart: modules.get(alias).commandStart,

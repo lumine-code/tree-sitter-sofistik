@@ -1,9 +1,14 @@
 {
-  "digest": "218366c50d099e4445f98b48c2a53aff1e719c675b5ff134e93b1b943e3feef3",
+  "digest": "c8151a06e46871f6c0f40c5385a58cdf7b171f91edb37188bee51591aea8756a",
   "languages": [
     "de",
     "en"
   ],
+  "moduleAliases": {
+    "DBMERG": "DBME",
+    "STAR2": "STAR",
+    "TUNARS": "TUNA"
+  },
   "modules": {
     "AQB": {
       "commands": {
