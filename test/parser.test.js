@@ -1154,29 +1154,30 @@ test("resets TEMPLATE context for every APPLY and SYS sigil", () => {
 test("scales linearly when parenthesized expression depth doubles", { timeout: 10000 }, () => {
   const makeSource = (depth) =>
     `+PROG AQUA\nHEAD ${"(".repeat(depth)}#VALUE${")".repeat(depth)}\nEND`;
-  const smallDepth = 800;
+  const smallDepth = 1600;
   const largeDepth = smallDepth * 2;
   const smallSource = makeSource(smallDepth);
   const largeSource = makeSource(largeDepth);
   const parser = new Parser();
   parser.setLanguage(SOFiSTiK);
 
-  const measureFastest = (source) => {
-    let fastest = Infinity;
-    for (let round = 0; round < 3; round++) {
+  const measureMedian = (source) => {
+    const durations = [];
+    for (let round = 0; round < 7; round++) {
       const started = performance.now();
-      for (let repetition = 0; repetition < 5; repetition++) {
+      for (let repetition = 0; repetition < 10; repetition++) {
         assert.strictEqual(parser.parse(source).rootNode.hasError, false);
       }
-      fastest = Math.min(fastest, (performance.now() - started) / 5);
+      durations.push((performance.now() - started) / 10);
     }
-    return fastest;
+    durations.sort((left, right) => left - right);
+    return durations[Math.floor(durations.length / 2)];
   };
 
   parser.parse(smallSource);
   parser.parse(largeSource);
-  const smallDuration = measureFastest(smallSource);
-  const largeDuration = measureFastest(largeSource);
+  const smallDuration = measureMedian(smallSource);
+  const largeDuration = measureMedian(largeSource);
   assert.ok(
     largeDuration < smallDuration * 3,
     `nested parse scaled superlinearly: ${smallDuration.toFixed(2)}ms at depth ${smallDepth}, ${largeDuration.toFixed(2)}ms at depth ${largeDepth}`,
