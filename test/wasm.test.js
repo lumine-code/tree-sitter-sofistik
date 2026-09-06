@@ -212,8 +212,8 @@ test("keeps Wasm record and parenthesis scaling linear", { timeout: 30000 }, () 
       `Wasm record parse scaled superlinearly: ${smallBatch.toFixed(2)}ms vs ${largeParse.toFixed(2)}ms`,
     );
 
-    const nested800 = measureBatch(makeNested(800), 1, 7);
-    const nested1600 = measureBatch(makeNested(1600), 1, 7);
+    const nested800 = measureBatch(makeNested(800), 8, 7);
+    const nested1600 = measureBatch(makeNested(1600), 8, 7);
     assert.ok(
       nested1600 < nested800 * 3,
       `Wasm parenthesis parse scaled superlinearly: ${nested800.toFixed(2)}ms vs ${nested1600.toFixed(2)}ms`,
