@@ -33,6 +33,10 @@ const TRACKED_NODE_TYPES = Object.freeze([
 ]);
 const DYNAMIC_CONTROL_WORDS = new Set(["ELSE", "ELSEIF", "ENDIF", "ENDLOOP", "IF", "LOOP"]);
 
+function compareText(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 function collectFiles(directory, files = []) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const file = path.join(directory, entry.name);
@@ -86,6 +90,10 @@ function normalize(file) {
 
 function hasProgramHeader(source) {
   return /^[ \t]*[+\-$]?PROG\b/im.test(source);
+}
+
+function hasCorpusFailures(summary) {
+  return summary.badFiles > 0 || summary.skipped.invalidUtf8 > 0;
 }
 
 function parseArguments(argv, environment = process.env) {
@@ -168,13 +176,16 @@ function collectStructure(root, summary, file = "") {
       });
       if (word === "KOPF") summary.invalidKopf++;
     }
-    stack.push(...(node.namedChildren || node.children || []));
+    const children = node.namedChildren || node.children || [];
+    for (let index = children.length - 1; index >= 0; index--) {
+      stack.push(children[index]);
+    }
   }
 }
 
 function run(root, { fallbackEncodings = [], output = true, structure = false } = {}) {
   const absoluteRoot = path.resolve(root);
-  const files = collectFiles(absoluteRoot).sort((left, right) => left.localeCompare(right));
+  const files = collectFiles(absoluteRoot).sort(compareText);
   const parser = new Parser();
   parser.setLanguage(SOFiSTiK);
   const summary = {
@@ -253,17 +264,24 @@ function run(root, { fallbackEncodings = [], output = true, structure = false } 
 
   summary.elapsedMs = Math.round(performance.now() - started);
   summary.classifications = Object.fromEntries(
-    Object.entries(summary.classifications).sort(([left], [right]) => left.localeCompare(right)),
+    Object.entries(summary.classifications).sort(([left], [right]) => compareText(left, right)),
   );
   if (structure) {
     summary.invalidCommands = Object.fromEntries(
-      Object.entries(summary.invalidCommands).sort(([left], [right]) => left.localeCompare(right)),
+      Object.entries(summary.invalidCommands).sort(([left], [right]) => compareText(left, right)),
+    );
+    summary.invalidCommandFingerprints.sort(
+      (left, right) =>
+        compareText(left.file, right.file) ||
+        left.row - right.row ||
+        left.column - right.column ||
+        compareText(left.text, right.text),
     );
   }
   if (output) {
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
   }
-  if (summary.badFiles > 0) process.exitCode = 1;
+  if (hasCorpusFailures(summary)) process.exitCode = 1;
   return summary;
 }
 
@@ -287,11 +305,13 @@ if (require.main === module) {
 }
 
 module.exports = {
+  TRACKED_NODE_TYPES,
   collectFailures,
   collectFiles,
   collectStructure,
   decode,
   fingerprintFailure,
+  hasCorpusFailures,
   hasProgramHeader,
   parseArguments,
   run,

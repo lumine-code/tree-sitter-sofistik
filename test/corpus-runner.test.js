@@ -2,10 +2,12 @@ const assert = require("node:assert");
 const path = require("node:path");
 const { test } = require("node:test");
 const {
+  TRACKED_NODE_TYPES,
   collectFailures,
   collectStructure,
   decode,
   fingerprintFailure,
+  hasCorpusFailures,
   hasProgramHeader,
   parseArguments,
 } = require("../scripts/test-corpus");
@@ -28,6 +30,12 @@ test("corpus decoder tries UTF-8 before repeatable fallback encodings", () => {
     source: "PŁ",
     encoding: "windows-1250",
   });
+});
+
+test("treats undecodable text as a corpus failure", () => {
+  assert.strictEqual(hasCorpusFailures({ badFiles: 0, skipped: { invalidUtf8: 1 } }), true);
+  assert.strictEqual(hasCorpusFailures({ badFiles: 1, skipped: { invalidUtf8: 0 } }), true);
+  assert.strictEqual(hasCorpusFailures({ badFiles: 0, skipped: { invalidUtf8: 0 } }), false);
 });
 
 test("parses corpus arguments and validates options", () => {
@@ -170,8 +178,67 @@ test("ties the recorded official corpus result to the generated data provenance"
     "2026",
   ]);
   for (const [release, summary] of Object.entries(officialCorpusSummary.releases)) {
+    assert.strictEqual(
+      summary.discovered,
+      summary.parsed + summary.skipped.nul + summary.skipped.invalidUtf8,
+      `${release} accounting`,
+    );
+    assert.strictEqual(summary.skipped.invalidUtf8, 0, `${release} undecodable files`);
+    assert.strictEqual(
+      summary.skippedFiles.length,
+      summary.skipped.nul + summary.skipped.invalidUtf8,
+      `${release} skipped paths`,
+    );
+    assert.deepStrictEqual(
+      summary.skippedFiles.map(({ file }) => file),
+      summary.skippedFiles.map(({ file }) => file).sort(),
+      `${release} skipped path order`,
+    );
+    assert.strictEqual(
+      new Set(summary.skippedFiles.map(({ file }) => file)).size,
+      summary.skippedFiles.length,
+      `${release} unique skipped paths`,
+    );
+    assert.strictEqual(
+      summary.skippedFiles.filter(({ reason }) => reason === "nul").length,
+      summary.skipped.nul,
+      `${release} NUL paths`,
+    );
+    assert.strictEqual(
+      summary.skippedFiles.filter(({ reason }) => reason === "invalidUtf8").length,
+      summary.skipped.invalidUtf8,
+      `${release} invalid UTF-8 paths`,
+    );
+    assert.deepStrictEqual(
+      summary.fallbackFiles.map(({ file }) => file),
+      summary.fallbackFiles.map(({ file }) => file).sort(),
+      `${release} fallback path order`,
+    );
+    assert.strictEqual(
+      new Set(summary.fallbackFiles.map(({ file }) => file)).size,
+      summary.fallbackFiles.length,
+      `${release} unique fallback paths`,
+    );
+    for (const { encoding } of summary.fallbackFiles) {
+      assert.ok(summary.fallbackEncodings.includes(encoding), `${release} fallback ${encoding}`);
+    }
     assert.strictEqual(summary.badFiles, 0, `${release} bad files`);
     assert.strictEqual(summary.errorNodes, 0, `${release} recovery nodes`);
+    assert.deepStrictEqual(summary.classifications, {}, `${release} recovery classifications`);
+    assert.deepStrictEqual(summary.failureFingerprints, [], `${release} recovery fingerprints`);
+    assert.deepStrictEqual(
+      summary.fileClassifications,
+      {
+        fragmentWithoutProgram: { files: 0, errorNodes: 0 },
+        documentWithUnsupportedSyntax: { files: 0, errorNodes: 0 },
+      },
+      `${release} file classifications`,
+    );
+    assert.deepStrictEqual(
+      Object.keys(summary.nodeCounts),
+      [...TRACKED_NODE_TYPES],
+      `${release} structural keys`,
+    );
     assert.deepStrictEqual(summary.dynamicControlCommands, {}, `${release} dynamic controls`);
     assert.deepStrictEqual(summary.invalidCommands, {}, `${release} invalid commands`);
     assert.deepStrictEqual(
@@ -180,8 +247,18 @@ test("ties the recorded official corpus result to the generated data provenance"
       `${release} invalid command fingerprints`,
     );
     assert.strictEqual(summary.invalidKopf, 0, `${release} invalid KOPF`);
+    assert.strictEqual(summary.nodeCounts.invalid_command, 0, `${release} invalid command nodes`);
     assert.ok(summary.nodeCounts.number > 1_000_000, `${release} numeric coverage`);
     assert.ok(summary.nodeCounts.hash_variable > 100_000, `${release} variable coverage`);
     assert.ok(summary.nodeCounts.picture_block > 0, `${release} picture coverage`);
+    assert.ok(summary.nodeCounts.invalid_at_reference > 0, `${release} invalid @ coverage`);
+    assert.ok(summary.nodeCounts.orphan_endloop_record > 0, `${release} orphan ENDLOOP coverage`);
+    assert.ok(summary.nodeCounts.orphan_endif_record > 0, `${release} orphan ENDIF coverage`);
+    assert.ok(summary.nodeCounts.orphan_text_end > 0, `${release} orphan TEXT coverage`);
+    assert.ok(
+      summary.nodeCounts.unterminated_double_quoted_string > 0,
+      `${release} unterminated string coverage`,
+    );
+    assert.ok(summary.nodeCounts.unterminated_input_block > 0, `${release} missing END coverage`);
   }
 });

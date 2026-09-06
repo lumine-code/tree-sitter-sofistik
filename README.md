@@ -9,6 +9,7 @@ Parses SOFiSTiK CADINP input with Tree-sitter.
 - **Grammar**: provides a Tree-sitter grammar for CADINP input.
 - **Context**: restricts commands and items to the program that owns them.
 - **Scope directives**: treats `$PROG` as a module context marker for include fragments rather than an executable program.
+- **Module lifetime**: keeps module context across repeated `END` records until the next root directive.
 - **Transparent preprocessing**: preserves the active module across definition and conditional markers.
 - **Structure**: exposes programs, commands, records, control flow, CDB statements, TEXT, and PICT blocks.
 - **Tolerant diagnostics**: represents incomplete strings and orphan terminators with named nodes instead of parser recovery.

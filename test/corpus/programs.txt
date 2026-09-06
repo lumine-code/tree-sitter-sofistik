@@ -461,6 +461,46 @@ END
       (end_record
         keyword: (control_keyword)))))
 
+====================================
+Tail loop with an attached counter
+====================================
++PROG ASE
+END
+LOOP#i ASE_ITER ; STO#iter50(#i) #ASE_ITER(#i) ; ENDLOOP
+END
+---
+
+(source_file
+  (program
+    header: (program_header
+      sigil: (program_sigil)
+      module: (module_name))
+    body: (input_block
+      (end_record
+        keyword: (control_keyword)))
+    tail: (loop_block
+      (loop_header
+        keyword: (control_keyword)
+        argument: (hash_variable
+          name: (hash_variable_name))
+        argument: (bare_value))
+      (variable_statement
+        keyword: (variable_keyword)
+        variable: (hash_variable
+          name: (hash_variable_name)
+          arguments: (hash_arguments
+            (hash_variable
+              name: (hash_variable_name))))
+        value: (hash_variable
+          name: (hash_variable_name)
+          arguments: (hash_arguments
+            (hash_variable
+              name: (hash_variable_name)))))
+      (endloop_record
+        keyword: (control_keyword)))
+    tail: (end_record
+      keyword: (control_keyword))))
+
 =======================
 Dynamic template record
 =======================

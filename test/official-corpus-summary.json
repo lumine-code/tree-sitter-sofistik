@@ -41,30 +41,42 @@
       "errorNodes": 0,
       "nodeCounts": {
         "cdb_statement": 554,
-        "command": 243062,
+        "command": 243088,
         "formatted_value": 2595,
-        "hash_variable": 100556,
-        "if_block": 1013,
+        "hash_variable": 100888,
+        "if_block": 1062,
         "invalid_command": 0,
         "invalid_at_reference": 1,
         "literal_hash": 968,
-        "loop_block": 1752,
-        "number": 1019595,
+        "loop_block": 1822,
+        "number": 1019706,
         "number_list": 5063,
-        "orphan_endloop_record": 3,
+        "orphan_endloop_record": 6,
         "orphan_endif_record": 4,
         "orphan_text_end": 1,
         "picture_block": 9,
         "punctuated_value": 84,
-        "string": 24226,
+        "string": 24197,
         "unterminated_double_quoted_string": 3,
         "unterminated_input_block": 2,
-        "unterminated_single_quoted_string": 1
+        "unterminated_single_quoted_string": 6
       },
       "dynamicControlCommands": {},
       "invalidCommands": {},
       "invalidCommandFingerprints": [],
-      "invalidKopf": 0
+      "invalidKopf": 0,
+      "classifications": {},
+      "fileClassifications": {
+        "fragmentWithoutProgram": {
+          "files": 0,
+          "errorNodes": 0
+        },
+        "documentWithUnsupportedSyntax": {
+          "files": 0,
+          "errorNodes": 0
+        }
+      },
+      "failureFingerprints": []
     },
     "2020": {
       "discovered": 1331,
@@ -93,30 +105,42 @@
       "errorNodes": 0,
       "nodeCounts": {
         "cdb_statement": 567,
-        "command": 250660,
+        "command": 250686,
         "formatted_value": 2596,
-        "hash_variable": 105962,
-        "if_block": 1073,
+        "hash_variable": 106296,
+        "if_block": 1122,
         "invalid_command": 0,
         "invalid_at_reference": 1,
         "literal_hash": 964,
-        "loop_block": 1907,
-        "number": 1033270,
+        "loop_block": 1979,
+        "number": 1033381,
         "number_list": 5574,
-        "orphan_endloop_record": 3,
+        "orphan_endloop_record": 6,
         "orphan_endif_record": 4,
         "orphan_text_end": 1,
         "picture_block": 9,
         "punctuated_value": 84,
-        "string": 26321,
+        "string": 26274,
         "unterminated_double_quoted_string": 3,
         "unterminated_input_block": 2,
-        "unterminated_single_quoted_string": 1
+        "unterminated_single_quoted_string": 6
       },
       "dynamicControlCommands": {},
       "invalidCommands": {},
       "invalidCommandFingerprints": [],
-      "invalidKopf": 0
+      "invalidKopf": 0,
+      "classifications": {},
+      "fileClassifications": {
+        "fragmentWithoutProgram": {
+          "files": 0,
+          "errorNodes": 0
+        },
+        "documentWithUnsupportedSyntax": {
+          "files": 0,
+          "errorNodes": 0
+        }
+      },
+      "failureFingerprints": []
     },
     "2022": {
       "discovered": 1365,
@@ -145,30 +169,42 @@
       "errorNodes": 0,
       "nodeCounts": {
         "cdb_statement": 577,
-        "command": 251062,
+        "command": 251088,
         "formatted_value": 2689,
-        "hash_variable": 110356,
-        "if_block": 1123,
+        "hash_variable": 110702,
+        "if_block": 1176,
         "invalid_command": 0,
         "invalid_at_reference": 1,
         "literal_hash": 964,
-        "loop_block": 1953,
-        "number": 1026267,
+        "loop_block": 2029,
+        "number": 1026380,
         "number_list": 5813,
-        "orphan_endloop_record": 3,
+        "orphan_endloop_record": 6,
         "orphan_endif_record": 4,
         "orphan_text_end": 1,
         "picture_block": 9,
         "punctuated_value": 84,
-        "string": 27430,
+        "string": 27365,
         "unterminated_double_quoted_string": 3,
         "unterminated_input_block": 2,
-        "unterminated_single_quoted_string": 0
+        "unterminated_single_quoted_string": 5
       },
       "dynamicControlCommands": {},
       "invalidCommands": {},
       "invalidCommandFingerprints": [],
-      "invalidKopf": 0
+      "invalidKopf": 0,
+      "classifications": {},
+      "fileClassifications": {
+        "fragmentWithoutProgram": {
+          "files": 0,
+          "errorNodes": 0
+        },
+        "documentWithUnsupportedSyntax": {
+          "files": 0,
+          "errorNodes": 0
+        }
+      },
+      "failureFingerprints": []
     },
     "2023": {
       "discovered": 1392,
@@ -193,30 +229,42 @@
       "errorNodes": 0,
       "nodeCounts": {
         "cdb_statement": 582,
-        "command": 254466,
+        "command": 254492,
         "formatted_value": 2692,
-        "hash_variable": 111997,
-        "if_block": 1140,
+        "hash_variable": 112343,
+        "if_block": 1193,
         "invalid_command": 0,
         "invalid_at_reference": 1,
         "literal_hash": 965,
-        "loop_block": 1974,
-        "number": 1031863,
+        "loop_block": 2050,
+        "number": 1031976,
         "number_list": 5940,
-        "orphan_endloop_record": 3,
+        "orphan_endloop_record": 6,
         "orphan_endif_record": 4,
         "orphan_text_end": 1,
         "picture_block": 9,
         "punctuated_value": 84,
-        "string": 28589,
+        "string": 28524,
         "unterminated_double_quoted_string": 3,
         "unterminated_input_block": 1,
-        "unterminated_single_quoted_string": 1
+        "unterminated_single_quoted_string": 6
       },
       "dynamicControlCommands": {},
       "invalidCommands": {},
       "invalidCommandFingerprints": [],
-      "invalidKopf": 0
+      "invalidKopf": 0,
+      "classifications": {},
+      "fileClassifications": {
+        "fragmentWithoutProgram": {
+          "files": 0,
+          "errorNodes": 0
+        },
+        "documentWithUnsupportedSyntax": {
+          "files": 0,
+          "errorNodes": 0
+        }
+      },
+      "failureFingerprints": []
     },
     "2024": {
       "discovered": 1417,
@@ -241,30 +289,42 @@
       "errorNodes": 0,
       "nodeCounts": {
         "cdb_statement": 589,
-        "command": 260018,
+        "command": 260044,
         "formatted_value": 2714,
-        "hash_variable": 114509,
-        "if_block": 1185,
+        "hash_variable": 114861,
+        "if_block": 1238,
         "invalid_command": 0,
         "invalid_at_reference": 1,
         "literal_hash": 965,
-        "loop_block": 2021,
-        "number": 1041198,
+        "loop_block": 2103,
+        "number": 1041311,
         "number_list": 6126,
-        "orphan_endloop_record": 5,
+        "orphan_endloop_record": 8,
         "orphan_endif_record": 4,
         "orphan_text_end": 1,
         "picture_block": 9,
         "punctuated_value": 84,
-        "string": 30207,
+        "string": 30142,
         "unterminated_double_quoted_string": 3,
         "unterminated_input_block": 1,
-        "unterminated_single_quoted_string": 4
+        "unterminated_single_quoted_string": 9
       },
       "dynamicControlCommands": {},
       "invalidCommands": {},
       "invalidCommandFingerprints": [],
-      "invalidKopf": 0
+      "invalidKopf": 0,
+      "classifications": {},
+      "fileClassifications": {
+        "fragmentWithoutProgram": {
+          "files": 0,
+          "errorNodes": 0
+        },
+        "documentWithUnsupportedSyntax": {
+          "files": 0,
+          "errorNodes": 0
+        }
+      },
+      "failureFingerprints": []
     },
     "2025": {
       "discovered": 1440,
@@ -285,30 +345,42 @@
       "errorNodes": 0,
       "nodeCounts": {
         "cdb_statement": 591,
-        "command": 264612,
+        "command": 264638,
         "formatted_value": 2728,
-        "hash_variable": 115977,
-        "if_block": 1205,
+        "hash_variable": 116329,
+        "if_block": 1258,
         "invalid_command": 0,
         "invalid_at_reference": 1,
         "literal_hash": 961,
-        "loop_block": 2021,
-        "number": 1050585,
+        "loop_block": 2103,
+        "number": 1050698,
         "number_list": 6319,
-        "orphan_endloop_record": 5,
+        "orphan_endloop_record": 8,
         "orphan_endif_record": 4,
         "orphan_text_end": 1,
         "picture_block": 9,
         "punctuated_value": 84,
-        "string": 31656,
+        "string": 31591,
         "unterminated_double_quoted_string": 3,
         "unterminated_input_block": 1,
-        "unterminated_single_quoted_string": 5
+        "unterminated_single_quoted_string": 10
       },
       "dynamicControlCommands": {},
       "invalidCommands": {},
       "invalidCommandFingerprints": [],
-      "invalidKopf": 0
+      "invalidKopf": 0,
+      "classifications": {},
+      "fileClassifications": {
+        "fragmentWithoutProgram": {
+          "files": 0,
+          "errorNodes": 0
+        },
+        "documentWithUnsupportedSyntax": {
+          "files": 0,
+          "errorNodes": 0
+        }
+      },
+      "failureFingerprints": []
     },
     "2026": {
       "discovered": 1392,
@@ -329,30 +401,42 @@
       "errorNodes": 0,
       "nodeCounts": {
         "cdb_statement": 653,
-        "command": 257669,
+        "command": 257691,
         "formatted_value": 3276,
-        "hash_variable": 112805,
-        "if_block": 1084,
+        "hash_variable": 113149,
+        "if_block": 1137,
         "invalid_command": 0,
         "invalid_at_reference": 1,
         "literal_hash": 961,
-        "loop_block": 1967,
-        "number": 1027136,
+        "loop_block": 2043,
+        "number": 1027241,
         "number_list": 6059,
-        "orphan_endloop_record": 5,
+        "orphan_endloop_record": 6,
         "orphan_endif_record": 4,
         "orphan_text_end": 1,
         "picture_block": 9,
         "punctuated_value": 84,
-        "string": 30777,
+        "string": 30711,
         "unterminated_double_quoted_string": 3,
         "unterminated_input_block": 1,
-        "unterminated_single_quoted_string": 5
+        "unterminated_single_quoted_string": 10
       },
       "dynamicControlCommands": {},
       "invalidCommands": {},
       "invalidCommandFingerprints": [],
-      "invalidKopf": 0
+      "invalidKopf": 0,
+      "classifications": {},
+      "fileClassifications": {
+        "fragmentWithoutProgram": {
+          "files": 0,
+          "errorNodes": 0
+        },
+        "documentWithUnsupportedSyntax": {
+          "files": 0,
+          "errorNodes": 0
+        }
+      },
+      "failureFingerprints": []
     }
   }
 }

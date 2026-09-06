@@ -134,6 +134,13 @@ test("keeps a root program boundary after a mojibake BOM", () => {
   );
 });
 
+test("keeps a same-line program boundary after a Unicode BOM", () => {
+  const tree = parse("+PROG AQUA\nHEAD A;\uFEFFPROG ASE\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.strictEqual(tree.rootNode.descendantsOfType("program").length, 2);
+  assert.strictEqual(tree.rootNode.descendantsOfType("unterminated_input_block").length, 1);
+});
+
 test("keeps hash variables visible next to units and inside calculations", () => {
   const tree = parse("+PROG SOFILOAD\nLINE QGRP 'PP' TYPE PG #q_bk[N/m] X1 #x1-#l_w/2 X2 #x2\nEND");
   assert.strictEqual(tree.rootNode.hasError, false);
@@ -725,6 +732,14 @@ test("marks globally known names that are invalid in the current context", () =>
   assert.strictEqual(tree.rootNode.descendantsOfType("invalid_module")[0].text, "UNKNOWN");
 });
 
+test("does not diagnose commands when an include fragment has no module context", () => {
+  const tree = parse(
+    "#DEFINE stage_design\nIF $(cs_design)>=11 ; LC 5011 TYPE G_1 ; ENDIF\n#ENDDEF",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.strictEqual(tree.rootNode.descendantsOfType("invalid_command").length, 0);
+});
+
 test("keeps invalid commands diagnostic after a valid command", () => {
   for (const separator of ["\n", "\r\n  ", "\n\t", ";", "; "]) {
     const tree = parse(`+PROG AQUA\nHEAD title${separator}NODE 1\nKOPF tail\nEND`);
@@ -774,11 +789,32 @@ test("keeps command-like enum values in continuation records", () => {
 });
 
 test("keeps legacy multiline text records out of invalid-command recovery", () => {
-  const tree = parse(
-    "+PROG SOFIMSHA\nTXBB Analysis\n       CV = 10\nMASS remains prose here\nTXEN\nEND",
-  );
-  assert.strictEqual(tree.rootNode.hasError, false);
-  assert.strictEqual(tree.rootNode.descendantsOfType("invalid_command").length, 0);
+  for (const start of ["TXAB", "TXBB", "TXEB"]) {
+    const tree = parse(
+      `+PROG SOFIMSHA\n${start} Analysis\n       CV = 10\nMASS #A "$(B)" remains prose here\nTXEN\nPAGE UNII 0\nEND`,
+    );
+    assert.strictEqual(tree.rootNode.hasError, false, start);
+    assert.strictEqual(tree.rootNode.descendantsOfType("invalid_command").length, 0, start);
+    assert.deepStrictEqual(
+      tree.rootNode.descendantsOfType("command_name").map((node) => node.text),
+      [start, "TXEN", "PAGE"],
+      start,
+    );
+    assert.ok(
+      tree.rootNode.descendantsOfType("bare_value").some((node) => node.text === "MASS"),
+      start,
+    );
+    assert.deepStrictEqual(
+      tree.rootNode.descendantsOfType("hash_variable").map((node) => node.text),
+      ["#A"],
+      start,
+    );
+    assert.deepStrictEqual(
+      tree.rootNode.descendantsOfType("dollar_variable").map((node) => node.text),
+      ["$(B)"],
+      start,
+    );
+  }
 });
 
 test("covers resolver vocabulary used across official module examples", () => {
@@ -1191,8 +1227,46 @@ test("lets the next program take scope when END is missing", () => {
   );
 });
 
+test("recovers a missing END before a same-line bare PROG", () => {
+  const tree = parse("+PROG AQUA\nHEAD first; PROG ASE\nHEAD second\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.strictEqual(tree.rootNode.descendantsOfType("program").length, 2);
+  assert.strictEqual(tree.rootNode.descendantsOfType("unterminated_input_block").length, 1);
+});
+
+test("does not end a program at directive-like values", () => {
+  for (const value of [
+    "PROG'S",
+    "PROG-X",
+    "APPLY/X",
+    "SYS-X",
+    "+PROG'S",
+    "-PROG'X",
+    "+APPLY'X",
+    "-SYS'X",
+    "$PROG-X",
+    "$PROG'S",
+    "$APPLY/X",
+    "$APPLY'S",
+  ]) {
+    const tree = parse(`+PROG AQUA\nHEAD first\n${value} prose\nHEAD second\nEND`);
+    assert.strictEqual(tree.rootNode.hasError, false, value);
+    assert.strictEqual(tree.rootNode.descendantsOfType("program").length, 1, value);
+    assert.strictEqual(
+      tree.rootNode.descendantsOfType("unterminated_input_block").length,
+      0,
+      value,
+    );
+  }
+});
+
 test("preserves a missing final END as a named diagnostic", () => {
-  for (const source of ["+PROG AQUA", "+PROG AQUA\nHEAD unfinished"]) {
+  for (const source of [
+    "+PROG AQUA",
+    "+PROG AQUA\nHEAD unfinished",
+    "+PROG AQUA\nHEAD unfinished\n ",
+    "+PROG AQUA\nHEAD unfinished\t\f",
+  ]) {
     const tree = parse(source);
     assert.strictEqual(tree.rootNode.hasError, false);
     assert.strictEqual(tree.rootNode.descendantsOfType("unterminated_input_block").length, 1);
@@ -1214,6 +1288,46 @@ test("keeps post-END statements in one program tail rather than another input bl
   );
   assert.strictEqual(firstProgram.descendantsOfType("invalid_command_record").length, 0);
   assert.strictEqual(firstProgram.endIndex, source.indexOf("+PROG ASE"));
+});
+
+test("parses attached-variable LOOP blocks in the program tail", () => {
+  const tree = parse(
+    "+PROG ASE\nHEAD example\nEND\nLOOP#i ASE_ITER ; STO#iter50(#i) #ASE_ITER(#i) ; ENDLOOP\nEND\nLC 5002\nEND",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+  const program = tree.rootNode.descendantsOfType("program")[0];
+  const loop = tree.rootNode.descendantsOfType("loop_block")[0];
+  assert.ok(loop);
+  assert.ok(
+    program
+      .childrenForFieldName("tail")
+      .some((node) => node.type === "loop_block" && node.startIndex === loop.startIndex),
+  );
+  assert.strictEqual(program.descendantsOfType("end_record").length, 3);
+  assert.deepStrictEqual(
+    program.descendantsOfType("command_name").map((node) => node.text.toUpperCase()),
+    ["HEAD", "LC"],
+  );
+  assert.deepStrictEqual(
+    loop.descendantsOfType("control_keyword").map((node) => node.text.toUpperCase()),
+    ["LOOP", "ENDLOOP"],
+  );
+  assert.deepStrictEqual(
+    loop.descendantsOfType("hash_variable").map((node) => node.text),
+    ["#i", "#iter50(#i)", "#i", "#ASE_ITER(#i)", "#i"],
+  );
+});
+
+test("parses repeated END and tail controls separated by semicolons", () => {
+  const tree = parse("+PROG ASE;END;END;LOOP#i 2;ENDLOOP;END");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  const program = tree.rootNode.descendantsOfType("program")[0];
+  assert.strictEqual(program.descendantsOfType("end_record").length, 3);
+  assert.strictEqual(program.descendantsOfType("loop_block").length, 1);
+  assert.deepStrictEqual(
+    program.descendantsOfType("control_keyword").map((node) => node.text.toUpperCase()),
+    ["END", "END", "LOOP", "ENDLOOP", "END"],
+  );
 });
 
 test("resets TEMPLATE context for every APPLY and SYS sigil", () => {
@@ -1306,6 +1420,7 @@ test("incremental edits match fresh parses across lexical and structural boundar
   const noPicture = wrap("HEAD A\n");
   const explicitProgramEnd = "+PROG AQUA\nHEAD A\nEND\n+PROG ASE\nEND";
   const implicitProgramEnd = "+PROG AQUA\nHEAD A\n+PROG ASE\nEND";
+  const semicolonProgramEnd = "+PROG AQUA\nHEAD A; PROG ASE\nEND";
   const inlineInvalidCandidate = wrap("HEAD A NODE 1\n");
   const lineInvalidCandidate = wrap("HEAD A\n  NODE 1\n");
   const semicolonInvalidCandidate = wrap("HEAD A; NODE 1\n");
@@ -1316,6 +1431,7 @@ test("incremental edits match fresh parses across lexical and structural boundar
     ["program boundary/replace", firstProgram, "+PROG ASE\nEND"],
     ["missing END/insert", implicitProgramEnd, explicitProgramEnd],
     ["missing END/delete", explicitProgramEnd, implicitProgramEnd],
+    ["missing END/replace", implicitProgramEnd, semicolonProgramEnd],
     ["invalid command boundary/insert", inlineInvalidCandidate, lineInvalidCandidate],
     ["invalid command boundary/delete", lineInvalidCandidate, inlineInvalidCandidate],
     ["invalid command boundary/replace", lineInvalidCandidate, semicolonInvalidCandidate],

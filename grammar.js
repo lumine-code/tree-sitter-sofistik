@@ -216,9 +216,7 @@ module.exports = grammar({
     sys_sigil: ($) => $._sys_sigil,
 
     end_record: ($) =>
-      prec.right(
-        seq(field("keyword", alias($._end_keyword, $.control_keyword)), optional($._record_end)),
-      ),
+      prec.right(seq(field("keyword", alias($._end_keyword, $.control_keyword)), $._record_end)),
 
     loop_block: ($) => seq($.loop_header, repeat($._control_body), $.endloop_record),
 
