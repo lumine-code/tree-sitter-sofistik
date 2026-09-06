@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
 const path = require("node:path");
+const { performance } = require("node:perf_hooks");
 const { before, test } = require("node:test");
 const TreeSitter = require("web-tree-sitter");
 
@@ -30,6 +31,11 @@ function pointAt(text, index) {
     row: prefix.split("\n").length - 1,
     column: Buffer.byteLength(prefix.slice(lineStart)),
   };
+}
+
+function median(values) {
+  const sorted = [...values].sort((left, right) => left - right);
+  return sorted[Math.floor(sorted.length / 2)];
 }
 
 before(async () => {
@@ -165,6 +171,53 @@ test("parses callback input in chunks no larger than 4096 bytes", () => {
     assert.ok(reads.some((read) => read.index >= 4096));
     assert.ok(reads.every((read) => read.bytes > 0 && read.bytes <= 4096));
     tree.delete();
+  } finally {
+    parser.delete();
+  }
+});
+
+test("keeps Wasm record and parenthesis scaling linear", { timeout: 30000 }, () => {
+  const parser = new TreeSitter.Parser();
+  parser.setLanguage(language);
+  const makeRecords = (count) =>
+    `+PROG TEMPLATE\n${Array.from(
+      { length: count },
+      (_, index) => `CMD${index} #VALUE${index} "quoted value"`,
+    ).join(" ; ")}\nEND`;
+  const makeNested = (depth) =>
+    `+PROG AQUA\nHEAD ${"(".repeat(depth)}#VALUE${")".repeat(depth)}\nEND`;
+
+  const measureBatch = (source, repetitions, rounds = 5) => {
+    const durations = [];
+    for (let round = 0; round < rounds; round++) {
+      const started = performance.now();
+      for (let iteration = 0; iteration < repetitions; iteration++) {
+        const tree = assertHealthyTree(parser.parse(source), `scaling parse ${round}:${iteration}`);
+        tree.delete();
+      }
+      durations.push(performance.now() - started);
+    }
+    return median(durations);
+  };
+
+  try {
+    const smallRecords = makeRecords(128);
+    const largeRecords = makeRecords(2048);
+    measureBatch(smallRecords, 1, 2);
+    measureBatch(largeRecords, 1, 2);
+    const smallBatch = measureBatch(smallRecords, 16);
+    const largeParse = measureBatch(largeRecords, 1);
+    assert.ok(
+      largeParse < smallBatch * 6,
+      `Wasm record parse scaled superlinearly: ${smallBatch.toFixed(2)}ms vs ${largeParse.toFixed(2)}ms`,
+    );
+
+    const nested800 = measureBatch(makeNested(800), 1, 7);
+    const nested1600 = measureBatch(makeNested(1600), 1, 7);
+    assert.ok(
+      nested1600 < nested800 * 3,
+      `Wasm parenthesis parse scaled superlinearly: ${nested800.toFixed(2)}ms vs ${nested1600.toFixed(2)}ms`,
+    );
   } finally {
     parser.delete();
   }
