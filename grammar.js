@@ -38,6 +38,7 @@ module.exports = grammar({
     $._end_of_file,
     $.ignored_text,
     $._preprocessor_recovery_value,
+    $.unterminated_input_block,
     $._error_sentinel,
   ],
 
@@ -101,7 +102,8 @@ module.exports = grammar({
 
     program_option: ($) => $._value,
 
-    input_block: ($) => seq(repeat($._program_body), $.end_record),
+    input_block: ($) =>
+      seq(repeat($._program_body), choice($.end_record, $.unterminated_input_block)),
 
     _program_body: ($) => choice($._nonblank_program_body, $._line_end),
 

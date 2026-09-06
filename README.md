@@ -12,6 +12,7 @@ Parses SOFiSTiK CADINP input with Tree-sitter.
 - **Transparent preprocessing**: preserves the active module across definition and conditional markers.
 - **Structure**: exposes programs, commands, records, control flow, CDB statements, TEXT, and PICT blocks.
 - **Tolerant diagnostics**: represents incomplete strings and orphan terminators with named nodes instead of parser recovery.
+- **Program recovery**: ends an unterminated input block at the next root directive so later modules keep their own scope.
 - **Values**: preserves numbers, strings, formatted values, positional references, and recursively nested variables.
 - **Generated schema**: derives its accepted vocabulary from the pinned `@lumine-code/sofistik-data` package.
 - **Bindings**: supports Node-API, source, and WebAssembly builds.
@@ -50,7 +51,7 @@ npm run generate
 npm run check:generated
 ```
 
-The compact `src/schema.h` scanner tables come directly from `getGrammarVocabulary()`. `schema/provenance.json` records the exact data commit together with the complete schema and grammar-vocabulary digests; the full versioned schema remains owned by `@lumine-code/sofistik-data` and is not copied into this repository.
+The compact `src/schema.h` scanner tables derive commands and items from `getGrammarVocabulary()` and retain only enum values that collide with command names for resolver disambiguation. `schema/provenance.json` records the exact data commit together with the complete schema and grammar-vocabulary digests; the full versioned schema remains owned by `@lumine-code/sofistik-data` and is not copied into this repository.
 
 An installed SOFiSTiK example tree can be checked without vendoring it by running `npm run test:corpus -- <directory>` or setting `SOFISTIK_CORPUS`. Add repeatable `--fallback-encoding <encoding>` options for legacy files and `--structure` when refreshing the recorded structural coverage snapshot.
 

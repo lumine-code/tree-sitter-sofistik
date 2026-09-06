@@ -8,8 +8,10 @@ const packageManifest = require("../package.json");
 const {
   DATA_PACKAGE,
   DATA_REPOSITORY,
+  COMMAND_OVERRIDES,
   UNIVERSAL_COMMANDS,
   buildProvenance,
+  buildResolverVocabulary,
   buildTables,
   dataCommit,
   generateSchema,
@@ -43,6 +45,14 @@ const fixtureMetadata = {
   schemaDigest: "fixture-schema-digest",
   grammarVocabularyDigest: fixtureVocabulary.digest,
 };
+const fixtureResolverVocabulary = {
+  BASIC: {
+    HEAD: ["PAGE", "PLAIN"],
+  },
+  AQUA: {
+    CONC: ["HEAD", "LOCAL"],
+  },
+};
 
 function commandsInRange(tables, start, count) {
   return new Map(
@@ -58,19 +68,38 @@ function commandsInRange(tables, start, count) {
 test("builds module-local scanner ranges with BASIC commands", () => {
   const tables = buildTables(fixtureVocabulary);
   assert.strictEqual(tables.basicCommandStart, 0);
-  assert.strictEqual(tables.basicCommandCount, 3);
+  assert.strictEqual(tables.basicCommandCount, 4);
   assert.deepStrictEqual(tables.modules, [
-    { name: "AQUA", commandStart: 3, commandCount: 2 },
-    { name: "ASE", commandStart: 5, commandCount: 0 },
+    { name: "AQUA", commandStart: 4, commandCount: 2 },
+    { name: "ASE", commandStart: 6, commandCount: 0 },
   ]);
   assert.deepStrictEqual(
     tables.commands.map((command) => command.name),
-    ["HEAD", "KOPF", "PAGE", "CONC", "HEAD"],
+    ["HEAD", "KOPF", "PAGE", "UNIT", "CONC", "HEAD"],
   );
   assert.deepStrictEqual(tables.items, ["TITL", "UNII", "NO", "TYPE", "LOCAL"]);
-  assert.deepStrictEqual(tables.globalCommands, ["CONC", "HEAD", "KOPF", "PAGE"]);
+  assert.deepStrictEqual(tables.globalCommands, ["CONC", "HEAD", "KOPF", "PAGE", "UNIT"]);
   assert.strictEqual("enums" in tables, false);
   assert.strictEqual("globalItems" in tables, false);
+});
+
+test("keeps command-like enum values local to their active command", () => {
+  const tables = buildTables(fixtureVocabulary, fixtureResolverVocabulary);
+  const valuesFor = (command) =>
+    tables.commandValues.slice(command.valueStart, command.valueStart + command.valueCount);
+  const basicHead = tables.commands[tables.basicCommandStart];
+  const aquaConc = tables.commands.find((command, index) => index >= 4 && command.name === "CONC");
+
+  assert.deepStrictEqual(valuesFor(basicHead), ["PAGE"]);
+  assert.deepStrictEqual(valuesFor(aquaConc), ["HEAD"]);
+  assert.deepStrictEqual(tables.commandValues, ["PAGE", "HEAD"]);
+});
+
+test("collects resolver values from every pinned schema", () => {
+  const resolverVocabulary = buildResolverVocabulary();
+  assert.ok(resolverVocabulary.AQB.COMB.includes("SUM"));
+  assert.ok(resolverVocabulary.AQB.COMB.includes("MIN"));
+  assert.ok(resolverVocabulary.AQB.COMB.includes("MAX"));
 });
 
 test("writes deterministic C tables and data provenance", (context) => {
@@ -80,6 +109,7 @@ test("writes deterministic C tables and data provenance", (context) => {
   context.after(() => fs.rmSync(temporaryDirectory, { recursive: true, force: true }));
   const options = {
     vocabulary: fixtureVocabulary,
+    resolverVocabulary: fixtureResolverVocabulary,
     metadata: fixtureMetadata,
     manifest: fixtureManifest,
     output,
@@ -95,10 +125,11 @@ test("writes deterministic C tables and data provenance", (context) => {
   assert.strictEqual(fs.readFileSync(provenanceOutput, "utf8"), firstProvenance);
   assert.match(firstHeader, /SOFISTIK_SCHEMA_DIGEST "fixture-schema-digest"/);
   assert.match(firstHeader, /SOFISTIK_GRAMMAR_VOCABULARY_DIGEST "fixture-vocabulary-digest"/);
-  assert.match(firstHeader, /\{"AQUA", 3, 2\}/);
+  assert.match(firstHeader, /\{"AQUA", 4, 2\}/);
   assert.match(firstHeader, /SOFISTIK_BASIC_COMMAND_START 0u/);
-  assert.match(firstHeader, /SOFISTIK_BASIC_COMMAND_COUNT 3u/);
+  assert.match(firstHeader, /SOFISTIK_BASIC_COMMAND_COUNT 4u/);
   assert.match(firstHeader, /static const char \*const SOFISTIK_ITEMS\[\]/);
+  assert.match(firstHeader, /static const char \*const SOFISTIK_COMMAND_VALUES\[\]/);
   assert.match(firstHeader, / {2}"TITL",\n {2}"UNII",\n {2}"NO",\n {2}"TYPE",\n {2}"LOCAL",/);
   assert.doesNotMatch(firstHeader, /SofistikItemSchema/);
   assert.doesNotMatch(firstHeader, /SOFISTIK_ENUM/);
@@ -126,6 +157,7 @@ test("preserves every command and item from the pinned grammar vocabulary", () =
     const expectedCommands = {
       ...UNIVERSAL_COMMANDS,
       ...vocabulary.modules.BASIC,
+      ...(COMMAND_OVERRIDES[schemaModuleName] || {}),
       ...vocabulary.modules[schemaModuleName],
     };
     delete expectedCommands.END;
@@ -166,15 +198,17 @@ test("maps executable module names to their data ranges", () => {
   }
 });
 
-test("adds parser-specific universal HEAD and KOPF vocabulary", () => {
+test("adds parser-specific universal command vocabulary", () => {
   const vocabulary = getGrammarVocabulary();
   const tables = buildTables(vocabulary);
   const basic = commandsInRange(tables, tables.basicCommandStart, tables.basicCommandCount);
 
   assert.strictEqual("HEAD" in vocabulary.modules.BASIC, false);
   assert.strictEqual("KOPF" in vocabulary.modules.BASIC, false);
+  assert.strictEqual("UNIT" in vocabulary.modules.BASIC, false);
   assert.deepStrictEqual(basic.get("HEAD"), []);
   assert.deepStrictEqual(basic.get("KOPF"), []);
+  assert.deepStrictEqual(basic.get("UNIT"), []);
 });
 
 test("records the exact data pin and both semantic digests", () => {

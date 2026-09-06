@@ -15,6 +15,7 @@ const TRACKED_NODE_TYPES = Object.freeze([
   "formatted_value",
   "hash_variable",
   "if_block",
+  "invalid_command",
   "invalid_at_reference",
   "literal_hash",
   "loop_block",
@@ -27,6 +28,7 @@ const TRACKED_NODE_TYPES = Object.freeze([
   "punctuated_value",
   "string",
   "unterminated_double_quoted_string",
+  "unterminated_input_block",
   "unterminated_single_quoted_string",
 ]);
 const DYNAMIC_CONTROL_WORDS = new Set(["ELSE", "ELSEIF", "ENDIF", "ENDLOOP", "IF", "LOOP"]);
@@ -143,7 +145,7 @@ function fingerprintFailure(file, failure) {
   };
 }
 
-function collectStructure(root, summary) {
+function collectStructure(root, summary, file = "") {
   const stack = [root];
   while (stack.length > 0) {
     const node = stack.pop();
@@ -155,8 +157,16 @@ function collectStructure(root, summary) {
       if (DYNAMIC_CONTROL_WORDS.has(word)) {
         summary.dynamicControlCommands[word] = (summary.dynamicControlCommands[word] || 0) + 1;
       }
-    } else if (node.type === "invalid_command" && node.text.toUpperCase() === "KOPF") {
-      summary.invalidKopf++;
+    } else if (node.type === "invalid_command") {
+      const word = node.text.toUpperCase();
+      summary.invalidCommands[word] = (summary.invalidCommands[word] || 0) + 1;
+      summary.invalidCommandFingerprints.push({
+        file,
+        row: node.startPosition.row + 1,
+        column: node.startPosition.column + 1,
+        text: node.text,
+      });
+      if (word === "KOPF") summary.invalidKopf++;
     }
     stack.push(...(node.namedChildren || node.children || []));
   }
@@ -192,6 +202,8 @@ function run(root, { fallbackEncodings = [], output = true, structure = false } 
   if (structure) {
     summary.nodeCounts = Object.fromEntries(TRACKED_NODE_TYPES.map((type) => [type, 0]));
     summary.dynamicControlCommands = {};
+    summary.invalidCommands = {};
+    summary.invalidCommandFingerprints = [];
     summary.invalidKopf = 0;
   }
   const started = performance.now();
@@ -211,7 +223,7 @@ function run(root, { fallbackEncodings = [], output = true, structure = false } 
     }
     const tree = parser.parse(decoded.source);
     if (structure) {
-      collectStructure(tree.rootNode, summary);
+      collectStructure(tree.rootNode, summary, relativeFile);
     }
     if (!tree.rootNode.hasError) continue;
     summary.badFiles++;
@@ -243,6 +255,11 @@ function run(root, { fallbackEncodings = [], output = true, structure = false } 
   summary.classifications = Object.fromEntries(
     Object.entries(summary.classifications).sort(([left], [right]) => left.localeCompare(right)),
   );
+  if (structure) {
+    summary.invalidCommands = Object.fromEntries(
+      Object.entries(summary.invalidCommands).sort(([left], [right]) => left.localeCompare(right)),
+    );
+  }
   if (output) {
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`);
   }

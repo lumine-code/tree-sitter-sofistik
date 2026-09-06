@@ -393,7 +393,9 @@ END
 Invalid contextual names
 ==========================
 +PROG AQUA
+HEAD title
 NODE 1
+KOPF tail
 END
 +PROG UNKNOWN
 END
@@ -405,9 +407,17 @@ END
       sigil: (program_sigil)
       module: (module_name))
     body: (input_block
+      (command
+        name: (command_name)
+        record: (record
+          (bare_value)))
       (invalid_command_record
         name: (invalid_command)
         (number))
+      (command
+        name: (command_name)
+        record: (record
+          (bare_value)))
       (end_record
         keyword: (control_keyword))))
   (program
@@ -415,6 +425,39 @@ END
       sigil: (program_sigil)
       module: (invalid_module))
     body: (input_block
+      (end_record
+        keyword: (control_keyword)))))
+
+===================================
+Missing END before the next program
+===================================
++PROG AQUA
+HEAD first
++PROG ASE
+HEAD second
+END
+---
+
+(source_file
+  (program
+    header: (program_header
+      sigil: (program_sigil)
+      module: (module_name))
+    body: (input_block
+      (command
+        name: (command_name)
+        record: (record
+          (bare_value)))
+      (unterminated_input_block)))
+  (program
+    header: (program_header
+      sigil: (program_sigil)
+      module: (module_name))
+    body: (input_block
+      (command
+        name: (command_name)
+        record: (record
+          (bare_value)))
       (end_record
         keyword: (control_keyword)))))
 

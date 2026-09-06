@@ -940,6 +940,10 @@
           "named": true
         },
         {
+          "type": "unterminated_input_block",
+          "named": true
+        },
+        {
           "type": "variable_statement",
           "named": true
         }
@@ -2572,6 +2576,10 @@
   },
   {
     "type": "unterminated_double_quoted_string",
+    "named": true
+  },
+  {
+    "type": "unterminated_input_block",
     "named": true
   },
   {

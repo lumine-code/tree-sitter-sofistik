@@ -238,8 +238,17 @@
           }
         },
         {
-          "type": "SYMBOL",
-          "name": "end_record"
+          "type": "CHOICE",
+          "members": [
+            {
+              "type": "SYMBOL",
+              "name": "end_record"
+            },
+            {
+              "type": "SYMBOL",
+              "name": "unterminated_input_block"
+            }
+          ]
         }
       ]
     },
@@ -3185,6 +3194,10 @@
     {
       "type": "SYMBOL",
       "name": "_preprocessor_recovery_value"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "unterminated_input_block"
     },
     {
       "type": "SYMBOL",

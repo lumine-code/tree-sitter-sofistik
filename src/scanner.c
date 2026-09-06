@@ -43,6 +43,7 @@ enum TokenType {
   END_OF_FILE,
   IGNORED_TEXT,
   PREPROCESSOR_RECOVERY_VALUE,
+  UNTERMINATED_INPUT_BLOCK,
   ERROR_SENTINEL,
 };
 
@@ -87,7 +88,8 @@ static bool is_bare_value_suffix(int32_t character) {
   return character == '.' || character == ':' || character == '+' ||
          character == '-' || character == '/' || character == ',' ||
          character == '\\' || character == '*' || character == '^' ||
-         character == '&' || character == '|' || character == '?';
+         character == '&' || character == '|' || character == '?' ||
+         character == '\'';
 }
 
 static bool is_bare_value_delimiter(int32_t character) {
@@ -596,11 +598,43 @@ static uint32_t find_item(uint32_t command, const char *name) {
   return SOFISTIK_UNKNOWN_ID;
 }
 
+static bool is_command_value(uint32_t command, const char *name) {
+  if (command >= SOFISTIK_COMMAND_COUNT) {
+    return false;
+  }
+  const SofistikCommandSchema *schema = &SOFISTIK_COMMANDS[command];
+  uint32_t left = schema->value_start;
+  uint32_t right = schema->value_start + schema->value_count;
+  while (left < right) {
+    uint32_t middle = left + (right - left) / 2;
+    int comparison = strcmp(SOFISTIK_COMMAND_VALUES[middle], name);
+    if (comparison < 0) {
+      left = middle + 1;
+    } else if (comparison > 0) {
+      right = middle;
+    } else {
+      return true;
+    }
+  }
+  return false;
+}
+
+static bool is_multiline_text_command(uint32_t command) {
+  if (command >= SOFISTIK_COMMAND_COUNT) {
+    return false;
+  }
+  const char *name = SOFISTIK_COMMANDS[command].name;
+  return strcmp(name, "TXA") == 0 || strcmp(name, "TXAB") == 0 ||
+         strcmp(name, "TXB") == 0 || strcmp(name, "TXBB") == 0 ||
+         strcmp(name, "TXE") == 0 || strcmp(name, "TXEB") == 0;
+}
+
 static bool scan_non_word_bare(
   Scanner *scanner,
   TSLexer *lexer,
   const bool *valid_symbols,
-  bool *reserved_root_word
+  bool *reserved_root_word,
+  uint32_t skipped_columns
 ) {
   if (
     is_schema_character(lexer->lookahead) ||
@@ -609,6 +643,7 @@ static bool scan_non_word_bare(
     return false;
   }
 
+  bool can_terminate_input = valid_symbols[UNTERMINATED_INPUT_BLOCK];
   char prefix[16] = {0};
   size_t length = 0;
   while (!is_bare_value_delimiter(lexer->lookahead)) {
@@ -658,7 +693,16 @@ static bool scan_non_word_bare(
     strcmp(prefix, "+APPLY") == 0 || strcmp(prefix, "-APPLY") == 0 ||
     strcmp(prefix, "+SYS") == 0 || strcmp(prefix, "-SYS") == 0
   ) {
-    if (valid_symbols[BARE_WORD] && !valid_symbols[IGNORED_TEXT]) {
+    if (can_terminate_input) {
+      lexer->result_symbol = UNTERMINATED_INPUT_BLOCK;
+      return true;
+    }
+    bool at_root_line_start =
+      lexer->get_column(lexer) == skipped_columns + strlen(prefix);
+    if (
+      valid_symbols[BARE_WORD] && !valid_symbols[IGNORED_TEXT] &&
+      !at_root_line_start
+    ) {
       lexer->mark_end(lexer);
       lexer->result_symbol = BARE_WORD;
       return true;
@@ -709,7 +753,8 @@ static bool read_word(
   char *word,
   size_t capacity,
   bool *contextual,
-  bool *followed_by_hash
+  bool *followed_by_hash,
+  bool mark_word_end
 ) {
   if (!is_schema_character(lexer->lookahead)) {
     return false;
@@ -738,7 +783,9 @@ static bool read_word(
       lexer->advance(lexer, false);
     }
   }
-  lexer->mark_end(lexer);
+  if (mark_word_end) {
+    lexer->mark_end(lexer);
+  }
   return true;
 }
 
@@ -754,14 +801,26 @@ static bool scan_word(
   char word[128] = {0};
   bool contextual = false;
   bool followed_by_hash = false;
+  bool can_terminate_input = valid_symbols[UNTERMINATED_INPUT_BLOCK];
   if (!read_word(
         lexer,
         word,
         sizeof(word),
         &contextual,
-        &followed_by_hash
+        &followed_by_hash,
+        !can_terminate_input
       )) {
     return false;
+  }
+  bool reserved_root_statement =
+    strcmp(word, "PROG") == 0 || strcmp(word, "APPLY") == 0 ||
+    strcmp(word, "SYS") == 0;
+  if (can_terminate_input && reserved_root_statement) {
+    lexer->result_symbol = UNTERMINATED_INPUT_BLOCK;
+    return true;
+  }
+  if (can_terminate_input) {
+    lexer->mark_end(lexer);
   }
   if (!valid_symbols[IGNORED_TEXT] && is_ascii_digit(word[0])) {
     return false;
@@ -821,9 +880,6 @@ static bool scan_word(
     return true;
   }
 
-  bool reserved_root_statement =
-    strcmp(word, "PROG") == 0 || strcmp(word, "APPLY") == 0 ||
-    strcmp(word, "SYS") == 0;
   if (reserved_root_statement) {
     if (!line_start_known && scanner->command != SOFISTIK_UNKNOWN_ID) {
       at_line_start =
@@ -853,6 +909,10 @@ static bool scan_word(
     return false;
   }
 
+  uint32_t item = valid_symbols[ITEM_NAME]
+    ? find_item(scanner->command, word)
+    : SOFISTIK_UNKNOWN_ID;
+
   if (
     (valid_symbols[COMMAND_NAME] || valid_symbols[INVALID_COMMAND]) &&
     !(valid_symbols[BARE_WORD] && valid_symbols[IGNORED_TEXT] &&
@@ -872,7 +932,12 @@ static bool scan_word(
     }
     if (
       valid_symbols[INVALID_COMMAND] &&
-      scanner->command == SOFISTIK_UNKNOWN_ID &&
+      scanner->text_state == OUTSIDE_TEXT &&
+      valid_symbols[END_KEYWORD] &&
+      command == SOFISTIK_UNKNOWN_ID &&
+      item == SOFISTIK_UNKNOWN_ID &&
+      !is_multiline_text_command(scanner->command) &&
+      !is_command_value(scanner->command, word) &&
       is_global_command(word)
     ) {
       reset_command(scanner);
@@ -887,12 +952,9 @@ static bool scan_word(
     return true;
   }
 
-  if (valid_symbols[ITEM_NAME]) {
-    uint32_t item = find_item(scanner->command, word);
-    if (item != SOFISTIK_UNKNOWN_ID) {
-      lexer->result_symbol = ITEM_NAME;
-      return true;
-    }
+  if (item != SOFISTIK_UNKNOWN_ID) {
+    lexer->result_symbol = ITEM_NAME;
+    return true;
   }
 
   if (valid_symbols[VARIABLE_KEYWORD] && is_variable_keyword(word)) {
@@ -918,6 +980,7 @@ static bool scan_dollar(
   TSLexer *lexer,
   const bool *valid_symbols
 ) {
+  bool can_terminate_input = valid_symbols[UNTERMINATED_INPUT_BLOCK];
   lexer->advance(lexer, false);
 
   if (lexer->lookahead == '(') {
@@ -958,6 +1021,10 @@ static bool scan_dollar(
     index++;
 
     if (could_be_prog && !prog[index] && !is_schema_character(lexer->lookahead)) {
+      if (can_terminate_input) {
+        lexer->result_symbol = UNTERMINATED_INPUT_BLOCK;
+        return true;
+      }
       if (valid_symbols[DOLLAR_PROG]) {
         reset_context(scanner);
         lexer->mark_end(lexer);
@@ -967,6 +1034,10 @@ static bool scan_dollar(
       could_be_prog = false;
     }
     if (could_be_apply && !apply[index] && !is_schema_character(lexer->lookahead)) {
+      if (can_terminate_input) {
+        lexer->result_symbol = UNTERMINATED_INPUT_BLOCK;
+        return true;
+      }
       if (valid_symbols[DOLLAR_APPLY]) {
         reset_context(scanner);
         lexer->mark_end(lexer);
@@ -1429,6 +1500,11 @@ bool tree_sitter_sofistik_external_scanner_scan(
     return true;
   }
 
+  if (valid_symbols[UNTERMINATED_INPUT_BLOCK] && !lexer->lookahead) {
+    lexer->result_symbol = UNTERMINATED_INPUT_BLOCK;
+    return true;
+  }
+
   if (
     valid_symbols[GENERATOR_SEPARATOR] &&
     (lexer->lookahead == ' ' || lexer->lookahead == '\t' ||
@@ -1439,6 +1515,10 @@ bool tree_sitter_sofistik_external_scanner_scan(
 
   bool needs_line_start = valid_symbols[BARE_WORD] && valid_symbols[IGNORED_TEXT];
   bool at_line_start = needs_line_start && lexer->get_column(lexer) == 0;
+
+  if (valid_symbols[UNTERMINATED_INPUT_BLOCK]) {
+    lexer->mark_end(lexer);
+  }
 
   uint32_t skipped_columns = 0;
   while (
@@ -1511,7 +1591,8 @@ bool tree_sitter_sofistik_external_scanner_scan(
       scanner,
       lexer,
       valid_symbols,
-      &reserved_root_word
+      &reserved_root_word,
+      skipped_columns
     )
   ) {
     return true;

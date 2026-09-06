@@ -1,6 +1,10 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { getGrammarVocabulary, getMetadata } = require("@lumine-code/sofistik-data");
+const {
+  getGrammarVocabulary,
+  getMetadata,
+  provider: getDataProvider,
+} = require("@lumine-code/sofistik-data");
 const packageManifest = require("../package.json");
 
 const root = path.join(__dirname, "..");
@@ -13,6 +17,18 @@ const RESERVED_COMMANDS = new Set(["END", "ENDE"]);
 const UNIVERSAL_COMMANDS = Object.freeze({
   HEAD: Object.freeze([]),
   KOPF: Object.freeze([]),
+  UNIT: Object.freeze([]),
+});
+const COMMAND_OVERRIDES = Object.freeze({
+  DYNA: Object.freeze({ TEST: Object.freeze([]) }),
+});
+const COMMAND_VALUE_OVERRIDES = Object.freeze({
+  AQUA: Object.freeze({
+    BLEC: Object.freeze(["TOPL"]),
+    LNAH: Object.freeze(["TOPL"]),
+    PLAT: Object.freeze(["TOPL"]),
+    WELD: Object.freeze(["TOPL"]),
+  }),
 });
 
 function cString(value) {
@@ -49,7 +65,38 @@ function buildProvenance(vocabulary, metadata, manifest = packageManifest) {
   };
 }
 
-function buildTables(vocabulary) {
+function buildResolverVocabulary(dataProvider = getDataProvider()) {
+  const metadata = dataProvider.getMetadata();
+  const modules = new Map();
+
+  for (const version of metadata.versions) {
+    for (const language of metadata.languages) {
+      const schema = dataProvider.loadSchemas(version, language);
+      for (const [moduleName, commands] of Object.entries(schema)) {
+        if (!modules.has(moduleName)) modules.set(moduleName, new Map());
+        const module = modules.get(moduleName);
+        for (const [commandName, command] of Object.entries(commands)) {
+          if (!module.has(commandName)) module.set(commandName, new Set());
+          const values = module.get(commandName);
+          for (const slot of command.slots) {
+            for (const value of slot.enumValues) values.add(String(value).toUpperCase());
+          }
+        }
+      }
+    }
+  }
+
+  return Object.fromEntries(
+    [...modules].map(([moduleName, commands]) => [
+      moduleName,
+      Object.fromEntries(
+        [...commands].map(([commandName, values]) => [commandName, [...values].sort()]),
+      ),
+    ]),
+  );
+}
+
+function buildTables(vocabulary, resolverVocabulary = {}) {
   const basic = { ...UNIVERSAL_COMMANDS, ...vocabulary.modules.BASIC };
   const moduleNames = Object.keys(vocabulary.modules)
     .filter((name) => name !== "BASIC")
@@ -57,9 +104,18 @@ function buildTables(vocabulary) {
   const modules = [];
   const commands = [];
   const items = [];
-  const globalCommands = new Set();
+  const commandValues = [];
+  const globalCommands = new Set(Object.keys(basic));
+  for (const [moduleName, commandMap] of Object.entries(vocabulary.modules)) {
+    for (const commandName of Object.keys({
+      ...(COMMAND_OVERRIDES[moduleName] || {}),
+      ...commandMap,
+    })) {
+      globalCommands.add(commandName);
+    }
+  }
 
-  function appendCommands(commandMap) {
+  function appendCommands(commandMap, resolverCommandMap = {}) {
     const names = Object.keys(commandMap)
       .filter((name) => !RESERVED_COMMANDS.has(name))
       .sort();
@@ -70,24 +126,38 @@ function buildTables(vocabulary) {
         throw new Error(`Expected ${commandName} items to be an array`);
       }
       const itemStart = items.length;
-      globalCommands.add(commandName);
+      const valueStart = commandValues.length;
+      const resolverValues = resolverCommandMap[commandName] || [];
 
       items.push(...commandItems);
+      commandValues.push(...resolverValues.filter((value) => globalCommands.has(value)));
       commands.push({
         name: commandName,
         itemStart,
         itemCount: items.length - itemStart,
+        valueStart,
+        valueCount: commandValues.length - valueStart,
       });
     }
   }
 
   const basicCommandStart = commands.length;
-  appendCommands(basic);
+  appendCommands(basic, resolverVocabulary.BASIC);
   const basicCommandCount = commands.length - basicCommandStart;
 
   for (const moduleName of moduleNames) {
     const commandStart = commands.length;
-    appendCommands(vocabulary.modules[moduleName]);
+    const commandMap = {
+      ...(COMMAND_OVERRIDES[moduleName] || {}),
+      ...vocabulary.modules[moduleName],
+    };
+    const resolverCommandMap = { ...(resolverVocabulary[moduleName] || {}) };
+    for (const [commandName, values] of Object.entries(COMMAND_VALUE_OVERRIDES[moduleName] || {})) {
+      resolverCommandMap[commandName] = [
+        ...new Set([...(resolverCommandMap[commandName] || []), ...values]),
+      ].sort();
+    }
+    appendCommands(commandMap, resolverCommandMap);
 
     modules.push({
       name: moduleName,
@@ -115,6 +185,7 @@ function buildTables(vocabulary) {
     modules,
     commands,
     items,
+    commandValues,
     globalCommands: [...globalCommands].sort(),
   };
 }
@@ -144,6 +215,8 @@ typedef struct {
   const char *name;
   uint32_t item_start;
   uint32_t item_count;
+  uint32_t value_start;
+  uint32_t value_count;
 } SofistikCommandSchema;
 
 static const SofistikModuleSchema SOFISTIK_MODULES[] = {
@@ -151,11 +224,15 @@ ${rows(tables.modules, (entry) => `{${cString(entry.name)}, ${entry.commandStart
 };
 
 static const SofistikCommandSchema SOFISTIK_COMMANDS[] = {
-${rows(tables.commands, (entry) => `{${cString(entry.name)}, ${entry.itemStart}, ${entry.itemCount}}`)}
+${rows(tables.commands, (entry) => `{${cString(entry.name)}, ${entry.itemStart}, ${entry.itemCount}, ${entry.valueStart}, ${entry.valueCount}}`)}
 };
 
 static const char *const SOFISTIK_ITEMS[] = {
 ${rows(tables.items, cString)}
+};
+
+static const char *const SOFISTIK_COMMAND_VALUES[] = {
+${rows(tables.commandValues, cString)}
 };
 
 static const char *const SOFISTIK_GLOBAL_COMMANDS[] = {
@@ -167,6 +244,7 @@ ${rows(tables.globalCommands, cString)}
 #define SOFISTIK_BASIC_COMMAND_COUNT ${tables.basicCommandCount}u
 #define SOFISTIK_COMMAND_COUNT ${tables.commands.length}u
 #define SOFISTIK_ITEM_COUNT ${tables.items.length}u
+#define SOFISTIK_COMMAND_VALUE_COUNT ${tables.commandValues.length}u
 #define SOFISTIK_GLOBAL_COMMAND_COUNT ${tables.globalCommands.length}u
 
 #endif
@@ -180,13 +258,14 @@ function writeJson(file, value) {
 
 function generateSchema({
   vocabulary = getGrammarVocabulary(),
+  resolverVocabulary = buildResolverVocabulary(),
   metadata = getMetadata(),
   manifest = packageManifest,
   output = outputPath,
   provenanceOutput = provenancePath,
 } = {}) {
   const provenance = buildProvenance(vocabulary, metadata, manifest);
-  const tables = buildTables(vocabulary);
+  const tables = buildTables(vocabulary, resolverVocabulary);
   const header = renderHeader(provenance, tables);
   fs.mkdirSync(path.dirname(output), { recursive: true });
   fs.writeFileSync(output, header);
@@ -205,8 +284,11 @@ if (require.main === module) {
 module.exports = {
   DATA_PACKAGE,
   DATA_REPOSITORY,
+  COMMAND_OVERRIDES,
+  COMMAND_VALUE_OVERRIDES,
   UNIVERSAL_COMMANDS,
   buildProvenance,
+  buildResolverVocabulary,
   buildTables,
   dataCommit,
   generateSchema,

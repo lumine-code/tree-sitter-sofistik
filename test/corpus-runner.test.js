@@ -100,6 +100,8 @@ test("collects structural coverage and resolver regressions", () => {
   const summary = {
     nodeCounts: { number: 0, hash_variable: 0 },
     dynamicControlCommands: {},
+    invalidCommands: {},
+    invalidCommandFingerprints: [],
     invalidKopf: 0,
   };
   collectStructure(
@@ -112,9 +114,14 @@ test("collects structural coverage and resolver regressions", () => {
       ],
     }),
     summary,
+    "example.dat",
   );
   assert.deepStrictEqual(summary.nodeCounts, { number: 1, hash_variable: 1 });
   assert.deepStrictEqual(summary.dynamicControlCommands, { IF: 1 });
+  assert.deepStrictEqual(summary.invalidCommands, { KOPF: 1 });
+  assert.deepStrictEqual(summary.invalidCommandFingerprints, [
+    { file: "example.dat", row: 1, column: 1, text: "KOPF" },
+  ]);
   assert.strictEqual(summary.invalidKopf, 1);
 });
 
@@ -146,7 +153,7 @@ test("distinguishes complete documents from include fragments", () => {
 });
 
 test("ties the recorded official corpus result to the generated data provenance", () => {
-  assert.strictEqual(officialCorpusSummary.formatVersion, 2);
+  assert.strictEqual(officialCorpusSummary.formatVersion, 3);
   assert.deepStrictEqual(officialCorpusSummary.data, provenance.source);
   assert.strictEqual(officialCorpusSummary.schemaDigest, provenance.schemaDigest);
   assert.strictEqual(
@@ -166,6 +173,12 @@ test("ties the recorded official corpus result to the generated data provenance"
     assert.strictEqual(summary.badFiles, 0, `${release} bad files`);
     assert.strictEqual(summary.errorNodes, 0, `${release} recovery nodes`);
     assert.deepStrictEqual(summary.dynamicControlCommands, {}, `${release} dynamic controls`);
+    assert.deepStrictEqual(summary.invalidCommands, {}, `${release} invalid commands`);
+    assert.deepStrictEqual(
+      summary.invalidCommandFingerprints,
+      [],
+      `${release} invalid command fingerprints`,
+    );
     assert.strictEqual(summary.invalidKopf, 0, `${release} invalid KOPF`);
     assert.ok(summary.nodeCounts.number > 1_000_000, `${release} numeric coverage`);
     assert.ok(summary.nodeCounts.hash_variable > 100_000, `${release} variable coverage`);

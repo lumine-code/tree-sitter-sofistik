@@ -124,9 +124,10 @@ test("exposes END and ENDE as control keywords", () => {
 
 test("keeps a root program boundary after a mojibake BOM", () => {
   const tree = parse("+PROG AQUA\nHEAD A\nï»¿PROG ASE\nEND");
-  assert.strictEqual(tree.rootNode.hasError, true);
+  assert.strictEqual(tree.rootNode.hasError, false);
   const programs = tree.rootNode.descendantsOfType("program");
   assert.strictEqual(programs.length, 2);
+  assert.strictEqual(programs[0].descendantsOfType("unterminated_input_block").length, 1);
   assert.strictEqual(
     programs[1].childForFieldName("header").childForFieldName("module").text,
     "ASE",
@@ -724,6 +725,74 @@ test("marks globally known names that are invalid in the current context", () =>
   assert.strictEqual(tree.rootNode.descendantsOfType("invalid_module")[0].text, "UNKNOWN");
 });
 
+test("keeps invalid commands diagnostic after a valid command", () => {
+  for (const separator of ["\n", "\r\n  ", "\n\t", ";", "; "]) {
+    const tree = parse(`+PROG AQUA\nHEAD title${separator}NODE 1\nKOPF tail\nEND`);
+    assert.strictEqual(tree.rootNode.hasError, false, JSON.stringify(separator));
+    assert.deepStrictEqual(
+      tree.rootNode.descendantsOfType("command_name").map((node) => node.text),
+      ["HEAD", "KOPF"],
+      JSON.stringify(separator),
+    );
+    assert.deepStrictEqual(
+      tree.rootNode.descendantsOfType("invalid_command").map((node) => node.text),
+      ["NODE"],
+      JSON.stringify(separator),
+    );
+  }
+
+  const inline = parse("+PROG AQUA\nHEAD title NODE 1\nEND");
+  assert.strictEqual(inline.rootNode.hasError, false);
+  assert.strictEqual(inline.rootNode.descendantsOfType("invalid_command").length, 0);
+  assert.ok(inline.rootNode.descendantsOfType("bare_value").some((node) => node.text === "NODE"));
+});
+
+test("prefers an active command item over an out-of-context command name", () => {
+  const tree = parse("+PROG AQB\nBEAM CS 1\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("command_name").map((node) => node.text),
+    ["BEAM"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("item_name").map((node) => node.text),
+    ["CS"],
+  );
+  assert.strictEqual(tree.rootNode.descendantsOfType("invalid_command").length, 0);
+});
+
+test("keeps command-like enum values in continuation records", () => {
+  const tree = parse(
+    "+PROG AQB\nCOMB EXTR SCOM TITL LCST LC1\n     SUM MY 'g1' 1001 G_1\n     MIN MY 'g2' 1002 G_2\nEND",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.strictEqual(tree.rootNode.descendantsOfType("invalid_command").length, 0);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("bare_value").map((node) => node.text),
+    ["SUM", "MY", "G_1", "MIN", "MY", "G_2"],
+  );
+});
+
+test("keeps legacy multiline text records out of invalid-command recovery", () => {
+  const tree = parse(
+    "+PROG SOFIMSHA\nTXBB Analysis\n       CV = 10\nMASS remains prose here\nTXEN\nEND",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.strictEqual(tree.rootNode.descendantsOfType("invalid_command").length, 0);
+});
+
+test("covers resolver vocabulary used across official module examples", () => {
+  const tree = parse(
+    "+PROG DYNA\nTEST 14\nEND\n+PROG AQUA\nPLAT REFA REFE\n  TOPL TOPR\nEND\n+PROG CSM\nUNIT 5\nEND",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.strictEqual(tree.rootNode.descendantsOfType("invalid_command").length, 0);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("command_name").map((node) => node.text),
+    ["TEST", "PLAT", "UNIT"],
+  );
+});
+
 test("preserves command state across a variable statement", () => {
   const tree = parse("+PROG SOFIMSHA\nNODE 1 X 0\nLET#A =1\nX 2 Y 0\nEND");
   assert.strictEqual(tree.rootNode.hasError, false);
@@ -1106,6 +1175,30 @@ test("recognizes root directives only at record boundaries", () => {
   );
 });
 
+test("lets the next program take scope when END is missing", () => {
+  const tree = parse("+PROG AQUA\nHEAD first\n+PROG ASE\nHEAD second\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  const programs = tree.rootNode.descendantsOfType("program");
+  assert.strictEqual(programs.length, 2);
+  assert.strictEqual(programs[0].descendantsOfType("unterminated_input_block").length, 1);
+  assert.deepStrictEqual(
+    programs.map((program) => program.descendantsOfType("module_name")[0].text),
+    ["AQUA", "ASE"],
+  );
+  assert.deepStrictEqual(
+    programs.map((program) => program.descendantsOfType("command_name")[0].text),
+    ["HEAD", "HEAD"],
+  );
+});
+
+test("preserves a missing final END as a named diagnostic", () => {
+  for (const source of ["+PROG AQUA", "+PROG AQUA\nHEAD unfinished"]) {
+    const tree = parse(source);
+    assert.strictEqual(tree.rootNode.hasError, false);
+    assert.strictEqual(tree.rootNode.descendantsOfType("unterminated_input_block").length, 1);
+  }
+});
+
 test("keeps post-END statements in one program tail rather than another input block", () => {
   const source =
     "+PROG AQUA\nHEAD first\nEND\nordinary prose\nNODE 1\nKOPF tail\nEND\n+PROG ASE\nEND";
@@ -1211,11 +1304,21 @@ test("incremental edits match fresh parses across lexical and structural boundar
   const noText = wrap("HEAD A\n");
   const picture = wrap("<PICT>\nHEAD old\n</PICT>\nHEAD A\n");
   const noPicture = wrap("HEAD A\n");
+  const explicitProgramEnd = "+PROG AQUA\nHEAD A\nEND\n+PROG ASE\nEND";
+  const implicitProgramEnd = "+PROG AQUA\nHEAD A\n+PROG ASE\nEND";
+  const inlineInvalidCandidate = wrap("HEAD A NODE 1\n");
+  const lineInvalidCandidate = wrap("HEAD A\n  NODE 1\n");
+  const semicolonInvalidCandidate = wrap("HEAD A; NODE 1\n");
 
   const cases = [
     ["program boundary/insert", firstProgram, firstProgram + secondProgram],
     ["program boundary/delete", firstProgram + secondProgram, firstProgram],
     ["program boundary/replace", firstProgram, "+PROG ASE\nEND"],
+    ["missing END/insert", implicitProgramEnd, explicitProgramEnd],
+    ["missing END/delete", explicitProgramEnd, implicitProgramEnd],
+    ["invalid command boundary/insert", inlineInvalidCandidate, lineInvalidCandidate],
+    ["invalid command boundary/delete", lineInvalidCandidate, inlineInvalidCandidate],
+    ["invalid command boundary/replace", lineInvalidCandidate, semicolonInvalidCandidate],
     ["command/insert", head, headAndKopf],
     ["command/delete", headAndKopf, head],
     ["command/replace", head, wrap("KOPF A\n")],
