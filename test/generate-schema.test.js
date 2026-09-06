@@ -58,17 +58,17 @@ function commandsInRange(tables, start, count) {
 test("builds module-local scanner ranges with BASIC commands", () => {
   const tables = buildTables(fixtureVocabulary);
   assert.strictEqual(tables.basicCommandStart, 0);
-  assert.strictEqual(tables.basicCommandCount, 2);
+  assert.strictEqual(tables.basicCommandCount, 3);
   assert.deepStrictEqual(tables.modules, [
-    { name: "AQUA", commandStart: 2, commandCount: 2 },
-    { name: "ASE", commandStart: 4, commandCount: 0 },
+    { name: "AQUA", commandStart: 3, commandCount: 2 },
+    { name: "ASE", commandStart: 5, commandCount: 0 },
   ]);
   assert.deepStrictEqual(
     tables.commands.map((command) => command.name),
-    ["HEAD", "PAGE", "CONC", "HEAD"],
+    ["HEAD", "KOPF", "PAGE", "CONC", "HEAD"],
   );
   assert.deepStrictEqual(tables.items, ["TITL", "UNII", "NO", "TYPE", "LOCAL"]);
-  assert.deepStrictEqual(tables.globalCommands, ["CONC", "HEAD", "PAGE"]);
+  assert.deepStrictEqual(tables.globalCommands, ["CONC", "HEAD", "KOPF", "PAGE"]);
   assert.strictEqual("enums" in tables, false);
   assert.strictEqual("globalItems" in tables, false);
 });
@@ -95,9 +95,9 @@ test("writes deterministic C tables and data provenance", (context) => {
   assert.strictEqual(fs.readFileSync(provenanceOutput, "utf8"), firstProvenance);
   assert.match(firstHeader, /SOFISTIK_SCHEMA_DIGEST "fixture-schema-digest"/);
   assert.match(firstHeader, /SOFISTIK_GRAMMAR_VOCABULARY_DIGEST "fixture-vocabulary-digest"/);
-  assert.match(firstHeader, /\{"AQUA", 2, 2\}/);
+  assert.match(firstHeader, /\{"AQUA", 3, 2\}/);
   assert.match(firstHeader, /SOFISTIK_BASIC_COMMAND_START 0u/);
-  assert.match(firstHeader, /SOFISTIK_BASIC_COMMAND_COUNT 2u/);
+  assert.match(firstHeader, /SOFISTIK_BASIC_COMMAND_COUNT 3u/);
   assert.match(firstHeader, /static const char \*const SOFISTIK_ITEMS\[\]/);
   assert.match(firstHeader, / {2}"TITL",\n {2}"UNII",\n {2}"NO",\n {2}"TYPE",\n {2}"LOCAL",/);
   assert.doesNotMatch(firstHeader, /SofistikItemSchema/);
@@ -166,13 +166,15 @@ test("maps executable module names to their data ranges", () => {
   }
 });
 
-test("adds parser-specific universal HEAD vocabulary", () => {
+test("adds parser-specific universal HEAD and KOPF vocabulary", () => {
   const vocabulary = getGrammarVocabulary();
   const tables = buildTables(vocabulary);
   const basic = commandsInRange(tables, tables.basicCommandStart, tables.basicCommandCount);
 
   assert.strictEqual("HEAD" in vocabulary.modules.BASIC, false);
+  assert.strictEqual("KOPF" in vocabulary.modules.BASIC, false);
   assert.deepStrictEqual(basic.get("HEAD"), []);
+  assert.deepStrictEqual(basic.get("KOPF"), []);
 });
 
 test("records the exact data pin and both semantic digests", () => {

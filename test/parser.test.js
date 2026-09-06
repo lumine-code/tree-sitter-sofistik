@@ -10,6 +10,41 @@ function parse(source) {
   return parser.parse(source);
 }
 
+function pointAt(source, index) {
+  const lines = source.slice(0, index).split("\n");
+  return { row: lines.length - 1, column: lines.at(-1).length };
+}
+
+function incrementalParse(parser, before, after) {
+  let startIndex = 0;
+  while (startIndex < before.length && startIndex < after.length) {
+    if (before[startIndex] !== after[startIndex]) break;
+    startIndex++;
+  }
+
+  let commonSuffixLength = 0;
+  while (
+    commonSuffixLength < before.length - startIndex &&
+    commonSuffixLength < after.length - startIndex &&
+    before[before.length - commonSuffixLength - 1] === after[after.length - commonSuffixLength - 1]
+  ) {
+    commonSuffixLength++;
+  }
+
+  const oldEndIndex = before.length - commonSuffixLength;
+  const newEndIndex = after.length - commonSuffixLength;
+  const tree = parser.parse(before);
+  tree.edit({
+    startIndex,
+    oldEndIndex,
+    newEndIndex,
+    startPosition: pointAt(before, startIndex),
+    oldEndPosition: pointAt(before, oldEndIndex),
+    newEndPosition: pointAt(after, newEndIndex),
+  });
+  return parser.parse(after, tree);
+}
+
 test("parses CRLF input without a final newline", () => {
   const tree = parse("+PROG AQUA\r\nHEAD Example\r\nEND");
   assert.strictEqual(tree.rootNode.hasError, false);
@@ -158,8 +193,10 @@ test("exposes variables in parenthesized expressions without claiming them as ge
   assert.strictEqual(tree.rootNode.hasError, false);
   assert.strictEqual(tree.rootNode.descendantsOfType("sequence_generator").length, 0);
   assert.strictEqual(tree.rootNode.descendantsOfType("generator_literal").length, 0);
-  assert.strictEqual(tree.rootNode.descendantsOfType("parenthesized_expression").length, 5);
-  assert.strictEqual(tree.rootNode.descendantsOfType("generic_expression")[0].text, "(D)");
+  const parentheses = tree.rootNode.descendantsOfType("parenthesized_expression");
+  assert.strictEqual(parentheses.length, 6);
+  assert.strictEqual(parentheses[1].text, "(D)");
+  assert.strictEqual(tree.rootNode.descendantsOfType("generic_expression").length, 0);
   assert.deepStrictEqual(
     tree.rootNode.descendantsOfType("hash_variable").map((node) => node.text),
     ["#L_1", "#L_1", "#L_2", "#L_1", "#L_0", "#i", "#L_n"],
@@ -321,11 +358,12 @@ test("keeps a single-line DEFINE value neutral while exposing variables", () => 
   assert.strictEqual(statement.descendantsOfType("expression").length, 0);
 });
 
-test("keeps malformed hash prose recovery to its original error range", () => {
+test("keeps a standalone prose hash as a named literal", () => {
   const tree = parse("-prog template urs:13\nhead # CDB_IER=1 - Usage for Support Forces\nend");
+  assert.strictEqual(tree.rootNode.hasError, false);
   assert.deepStrictEqual(
-    tree.rootNode.descendantsOfType("ERROR").map((node) => node.text),
-    ["# CDB_IER=1 - Usage for Support Forces", "#"],
+    tree.rootNode.descendantsOfType("literal_hash").map((node) => node.text),
+    ["#"],
   );
 });
 
@@ -658,7 +696,11 @@ test("keeps enum-looking TENDON values as ordinary bare values", () => {
   assert.strictEqual(tree.rootNode.descendantsOfType("enum_value").length, 0);
   assert.deepStrictEqual(
     tree.rootNode.descendantsOfType("bare_value").map((node) => node.text),
-    ["QUAD", "11", "QUAD"],
+    ["QUAD", "QUAD"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("number").map((node) => node.text),
+    ["11"],
   );
 });
 
@@ -840,4 +882,375 @@ test("restores TEXT scanner state during an incremental reparse", () => {
     reparsed.rootNode.descendantsOfType("dollar_variable").map((node) => node.text),
     ["$(NAME)"],
   );
+});
+
+test("separates CDB statements, metadata, and every supported at-reference", () => {
+  const tree = parse(
+    "+PROG TEMPLATE\n" +
+      "@KEY SECRET ; IF #A > 0\n" +
+      "WHATEVER @name,@1,@-2,@(#A+1),@???\n" +
+      "ENDIF\n" +
+      "@CDB 7\n" +
+      "@ descriptive metadata\n" +
+      "END",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+
+  const statements = tree.rootNode.descendantsOfType("cdb_statement");
+  assert.deepStrictEqual(
+    statements.map((statement) => statement.childForFieldName("keyword").text),
+    ["@KEY", "@CDB"],
+  );
+  assert.deepStrictEqual(
+    statements.map((statement) =>
+      statement.childrenForFieldName("argument").map((argument) => argument.text),
+    ),
+    [["SECRET"], ["7"]],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("at_reference").map((node) => node.text),
+    ["@name", "@1", "@-2", "@(#A+1)"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("invalid_at_reference").map((node) => node.text),
+    ["@???"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("metadata").map((node) => node.text),
+    ["@ descriptive metadata"],
+  );
+  assert.strictEqual(tree.rootNode.descendantsOfType("if_block").length, 1);
+});
+
+test("exposes recursive hash arguments, formatted values, and literal hashes", () => {
+  const tree = parse("+PROG AQUA\nHEAD #BN(#BN(0)) #(#Nold,8.1) # literal\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+
+  const variables = tree.rootNode.descendantsOfType("hash_variable");
+  assert.deepStrictEqual(
+    variables.map((node) => node.text),
+    ["#BN(#BN(0))", "#BN(0)", "#Nold"],
+  );
+  assert.deepStrictEqual(
+    variables.map((node) => node.childForFieldName("name").text),
+    ["#BN", "#BN", "#Nold"],
+  );
+  assert.strictEqual(variables[0].childForFieldName("arguments").type, "hash_arguments");
+  assert.strictEqual(
+    variables[0].childForFieldName("arguments").descendantsOfType("hash_variable").length,
+    1,
+  );
+
+  const formatted = tree.rootNode.descendantsOfType("formatted_value");
+  assert.strictEqual(formatted.length, 1);
+  assert.strictEqual(formatted[0].text, "#(#Nold,8.1)");
+  assert.strictEqual(formatted[0].childForFieldName("value").type, "parenthesized_expression");
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("literal_hash").map((node) => node.text),
+    ["#"],
+  );
+});
+
+test("distinguishes quoted, doubled, unterminated, and suffix-apostrophe values", () => {
+  const tree = parse(
+    "+PROG AQUA\n" +
+      "HEAD ''single doubled'' \"\"double doubled\"\" 'single ''quoted'' $(single)' \"double \"\"quoted\"\" $(double)\"\n" +
+      "HEAD BAUMANN'S f'= tent'\n" +
+      "HEAD 'unterminated\n" +
+      'HEAD "unterminated\n' +
+      "END",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("string").map((node) => node.namedChild(0).type),
+    [
+      "single_doubled_quoted_string",
+      "double_doubled_quoted_string",
+      "single_quoted_string",
+      "double_quoted_string",
+    ],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("dollar_variable").map((node) => node.text),
+    ["$(single)", "$(double)"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("unterminated_string").map((node) => node.namedChild(0).type),
+    ["unterminated_single_quoted_string", "unterminated_double_quoted_string"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("bare_value").map((node) => node.text),
+    ["BAUMANN'S", "f'=", "tent'"],
+  );
+});
+
+test("keeps TEMPLATE control flow and variables ahead of dynamic commands", () => {
+  const tree = parse(
+    "+PROG TEMPLATE\n" +
+      "KOPF Universal heading\n" +
+      "IF #A > 0\n" +
+      "WHATEVER 1\n" +
+      "ELSEIF #A < 0\n" +
+      "OTHER 2\n" +
+      "ELSE\n" +
+      "THIRD 3\n" +
+      "ENDIF\n" +
+      "LOOP 2\n" +
+      "CUSTOM 4\n" +
+      "ENDLOOP\n" +
+      "LET#RESULT 5\n" +
+      "END",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("command_name").map((node) => node.text),
+    ["KOPF"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("dynamic_command_name").map((node) => node.text),
+    ["WHATEVER", "OTHER", "THIRD", "CUSTOM"],
+  );
+  assert.strictEqual(tree.rootNode.descendantsOfType("if_block").length, 1);
+  assert.strictEqual(tree.rootNode.descendantsOfType("loop_block").length, 1);
+  assert.strictEqual(tree.rootNode.descendantsOfType("variable_statement").length, 1);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("control_keyword").map((node) => node.text),
+    ["IF", "ELSEIF", "ELSE", "ENDIF", "LOOP", "ENDLOOP", "END"],
+  );
+});
+
+test("preserves unmatched block terminators as named orphan records", () => {
+  const tree = parse(
+    "+PROG AQUA\n" +
+      "ELSEIF #A\n" +
+      "ELSE note\n" +
+      "ENDIF\n" +
+      "ENDLOOP 3\n" +
+      "</TEXT>\n" +
+      "</PICT>\n" +
+      "END",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    [
+      "orphan_elseif_record",
+      "orphan_else_record",
+      "orphan_endif_record",
+      "orphan_endloop_record",
+      "orphan_text_end",
+      "orphan_picture_end",
+    ].map((type) => tree.rootNode.descendantsOfType(type).map((node) => node.text)),
+    [["ELSEIF #A\n"], ["ELSE note\n"], ["ENDIF\n"], ["ENDLOOP 3\n"], ["</TEXT>\n"], ["</PICT>\n"]],
+  );
+});
+
+test("parses PICT blocks in the input body and the module tail", () => {
+  const tree = parse(
+    "+PROG AQUA\n" +
+      "<PICT>\n" +
+      "HEAD #inside 'body'\n" +
+      "</PICT>\n" +
+      "END\n" +
+      "<PICT>\n" +
+      'HEAD $(tail) "tail"\n' +
+      "</PICT>\n" +
+      "+PROG AQUA\n" +
+      "END",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+
+  const programs = tree.rootNode.descendantsOfType("program");
+  const pictures = tree.rootNode.descendantsOfType("picture_block");
+  assert.strictEqual(pictures.length, 2);
+  assert.strictEqual(pictures[0].parent.type, "input_block");
+  assert.strictEqual(pictures[1].parent.id, programs[0].id);
+  assert.ok(programs[0].childrenForFieldName("tail").some((node) => node.id === pictures[1].id));
+  assert.deepStrictEqual(
+    pictures.map((picture) => picture.descendantsOfType("command_name").map((node) => node.text)),
+    [["HEAD"], ["HEAD"]],
+  );
+  assert.deepStrictEqual(
+    pictures.flatMap((picture) => picture.descendantsOfType("string").map((node) => node.text)),
+    ["'body'", '"tail"'],
+  );
+});
+
+test("classifies scalar, list, and punctuated values before bare text", () => {
+  const tree = parse("+PROG AQUA\nHEAD 1 -1.5 2e3 1,2,3 :AXIS ~OR \\REF\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("number").map((node) => node.text),
+    ["1", "-1.5", "2e3"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("number_list").map((node) => node.text),
+    ["1,2,3"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("punctuated_value").map((node) => node.text),
+    [":AXIS", "~OR", "\\REF"],
+  );
+  assert.strictEqual(tree.rootNode.descendantsOfType("bare_value").length, 0);
+});
+
+test("recognizes root directives only at record boundaries", () => {
+  const tree = parse("+PROG AQUA\nHEAD analysis without +apply or APPLY and SYS and PROG ASE\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.strictEqual(tree.rootNode.descendantsOfType("program").length, 1);
+  assert.strictEqual(tree.rootNode.descendantsOfType("apply_statement").length, 0);
+  assert.strictEqual(tree.rootNode.descendantsOfType("sys_statement").length, 0);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("bare_value").map((node) => node.text),
+    ["analysis", "without", "+apply", "or", "APPLY", "and", "SYS", "and", "PROG", "ASE"],
+  );
+});
+
+test("keeps post-END statements in one program tail rather than another input block", () => {
+  const source =
+    "+PROG AQUA\nHEAD first\nEND\nordinary prose\nNODE 1\nKOPF tail\nEND\n+PROG ASE\nEND";
+  const tree = parse(source);
+  assert.strictEqual(tree.rootNode.hasError, false);
+
+  const firstProgram = tree.rootNode.descendantsOfType("program")[0];
+  assert.strictEqual(firstProgram.childrenForFieldName("body").length, 1);
+  assert.strictEqual(firstProgram.descendantsOfType("input_block").length, 1);
+  assert.deepStrictEqual(
+    firstProgram.childrenForFieldName("tail").map((node) => node.type),
+    ["ignored_text", "ignored_text", "command", "end_record"],
+  );
+  assert.strictEqual(firstProgram.descendantsOfType("invalid_command_record").length, 0);
+  assert.strictEqual(firstProgram.endIndex, source.indexOf("+PROG ASE"));
+});
+
+test("resets TEMPLATE context for every APPLY and SYS sigil", () => {
+  const directives = [
+    ["APPLY file.dat", "apply_statement"],
+    ["+APPLY file.dat", "apply_statement"],
+    ["-APPLY file.dat", "apply_statement"],
+    ["$APPLY file.dat", "apply_statement"],
+    ["SYS echo done", "sys_statement"],
+    ["+SYS echo done", "sys_statement"],
+    ["-SYS echo done", "sys_statement"],
+  ];
+
+  for (const [directive, statementType] of directives) {
+    const tree = parse(`+PROG TEMPLATE\nEND\nCUSTOM before\n${directive}\nCUSTOM after\n`);
+    assert.strictEqual(tree.rootNode.hasError, false, directive);
+    assert.strictEqual(tree.rootNode.descendantsOfType(statementType).length, 1, directive);
+    assert.deepStrictEqual(
+      tree.rootNode.descendantsOfType("dynamic_command_name").map((node) => node.text),
+      ["CUSTOM"],
+      directive,
+    );
+    assert.deepStrictEqual(
+      tree.rootNode.descendantsOfType("ignored_text").map((node) => node.text.trim()),
+      ["CUSTOM after"],
+      directive,
+    );
+  }
+});
+
+test("scales linearly when parenthesized expression depth doubles", { timeout: 10000 }, () => {
+  const makeSource = (depth) =>
+    `+PROG AQUA\nHEAD ${"(".repeat(depth)}#VALUE${")".repeat(depth)}\nEND`;
+  const smallDepth = 800;
+  const largeDepth = smallDepth * 2;
+  const smallSource = makeSource(smallDepth);
+  const largeSource = makeSource(largeDepth);
+  const parser = new Parser();
+  parser.setLanguage(SOFiSTiK);
+
+  const measureFastest = (source) => {
+    let fastest = Infinity;
+    for (let round = 0; round < 3; round++) {
+      const started = performance.now();
+      for (let repetition = 0; repetition < 5; repetition++) {
+        assert.strictEqual(parser.parse(source).rootNode.hasError, false);
+      }
+      fastest = Math.min(fastest, (performance.now() - started) / 5);
+    }
+    return fastest;
+  };
+
+  parser.parse(smallSource);
+  parser.parse(largeSource);
+  const smallDuration = measureFastest(smallSource);
+  const largeDuration = measureFastest(largeSource);
+  assert.ok(
+    largeDuration < smallDuration * 3,
+    `nested parse scaled superlinearly: ${smallDuration.toFixed(2)}ms at depth ${smallDepth}, ${largeDuration.toFixed(2)}ms at depth ${largeDepth}`,
+  );
+
+  const tree = parser.parse(largeSource);
+  assert.strictEqual(
+    tree.rootNode.descendantsOfType("parenthesized_expression").length,
+    largeDepth,
+  );
+});
+
+test("incremental edits match fresh parses across lexical and structural boundaries", () => {
+  const wrap = (body) => `+PROG AQUA\n${body}END`;
+  const firstProgram = "+PROG AQUA\nEND";
+  const secondProgram = "\n+PROG ASE\nEND";
+  const head = wrap("HEAD A\n");
+  const headAndKopf = wrap("HEAD A\nKOPF B\n");
+  const semicolon = wrap("HEAD A ; HEAD B\n");
+  const sameLine = wrap("HEAD A HEAD B\n");
+  const separateLines = wrap("HEAD A\nHEAD B\n");
+  const key = wrap("@KEY SECRET\n");
+  const cdb = wrap("@CDB 7\n");
+  const reference = wrap("HEAD @name VALUE\n");
+  const noReference = wrap("HEAD VALUE\n");
+  const parentheses = wrap("HEAD () A\n");
+  const noParentheses = wrap("HEAD A\n");
+  const singleString = wrap("HEAD 'one' A\n");
+  const noString = wrap("HEAD A\n");
+  const text = wrap("<TEXT>\nold #A\n</TEXT>\nHEAD A\n");
+  const noText = wrap("HEAD A\n");
+  const picture = wrap("<PICT>\nHEAD old\n</PICT>\nHEAD A\n");
+  const noPicture = wrap("HEAD A\n");
+
+  const cases = [
+    ["program boundary/insert", firstProgram, firstProgram + secondProgram],
+    ["program boundary/delete", firstProgram + secondProgram, firstProgram],
+    ["program boundary/replace", firstProgram, "+PROG ASE\nEND"],
+    ["command/insert", head, headAndKopf],
+    ["command/delete", headAndKopf, head],
+    ["command/replace", head, wrap("KOPF A\n")],
+    ["semicolon/insert", sameLine, semicolon],
+    ["semicolon/delete", semicolon, sameLine],
+    ["semicolon/replace", semicolon, separateLines],
+    ["@KEY/insert", wrap(""), key],
+    ["@KEY/delete", key, wrap("")],
+    ["@KEY/replace", key, cdb],
+    ["at-reference/insert", noReference, reference],
+    ["at-reference/delete", reference, noReference],
+    ["at-reference/replace", reference, wrap("HEAD @-2 VALUE\n")],
+    ["parentheses/insert", noParentheses, parentheses],
+    ["parentheses/delete", parentheses, noParentheses],
+    ["parentheses/replace", wrap("HEAD (A)\n"), wrap("HEAD (#B)\n")],
+    ["string/insert", noString, singleString],
+    ["string/delete", singleString, noString],
+    ["string/replace", singleString, wrap('HEAD "two $(VALUE)" A\n')],
+    ["TEXT/insert", noText, text],
+    ["TEXT/delete", text, noText],
+    ["TEXT/replace", text, wrap("<TEXT>\nnew #B\n</TEXT>\nHEAD A\n")],
+    ["PICT/insert", noPicture, picture],
+    ["PICT/delete", picture, noPicture],
+    ["PICT/replace", picture, wrap("<PICT>\nKOPF new\n</PICT>\nHEAD A\n")],
+  ];
+  const parser = new Parser();
+  parser.setLanguage(SOFiSTiK);
+
+  for (const [label, before, after] of cases) {
+    const incremental = incrementalParse(parser, before, after);
+    const fresh = parser.parse(after);
+    assert.strictEqual(fresh.rootNode.hasError, false, `${label}: fresh parse has recovery`);
+    assert.strictEqual(
+      incremental.rootNode.toString(),
+      fresh.rootNode.toString(),
+      `${label}: incremental tree differs from fresh tree`,
+    );
+  }
 });

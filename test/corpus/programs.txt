@@ -15,18 +15,198 @@ END
       (command
         name: (command_name)
         record: (record
-          (bare_value)
+          (number)
           (item_sequence
             item: (item_name)
-            value: (bare_value))
+            value: (number))
           (item_sequence
             item: (item_name)
-            value: (bare_value))
+            value: (number))
           (item_sequence
             item: (item_name)
-            value: (bare_value))))
+            value: (number))))
       (end_record
         keyword: (control_keyword)))))
+
+====================================
+Single input block and program tail
+====================================
++PROG AQUA
+HEAD body
+END
+ordinary prose
+NODE 1
+KOPF tail
+END
++PROG ASE
+END
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (command
+        (command_name)
+        (record
+          (bare_value)))
+      (end_record
+        (control_keyword)))
+    (ignored_text)
+    (ignored_text)
+    (command
+      (command_name)
+      (record
+        (bare_value)))
+    (end_record
+      (control_keyword)))
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (end_record
+        (control_keyword)))))
+
+=============================================
+Root directive words stay values inside records
+=============================================
++PROG AQUA
+HEAD analysis without +apply or APPLY and SYS and PROG ASE
+END
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (command
+        (command_name)
+        (record
+          (bare_value)
+          (bare_value)
+          (bare_value)
+          (bare_value)
+          (bare_value)
+          (bare_value)
+          (bare_value)
+          (bare_value)
+          (bare_value)
+          (bare_value)))
+      (end_record
+        (control_keyword)))))
+
+=============================================
+Template controls precede the dynamic fallback
+=============================================
++PROG TEMPLATE
+KOPF Universal heading
+IF #A > 0
+WHATEVER 1
+ELSE
+OTHER 2
+ENDIF
+LOOP 2
+CUSTOM 3
+ENDLOOP
+LET#RESULT 4
+END
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (command
+        (command_name)
+        (record
+          (bare_value)
+          (bare_value)))
+      (if_block
+        (if_header
+          (control_keyword)
+          (hash_variable
+            (hash_variable_name))
+          (generic_expression)
+          (number))
+        (dynamic_record
+          (dynamic_command_name)
+          (number))
+        (else_header
+          (control_keyword))
+        (dynamic_record
+          (dynamic_command_name)
+          (number))
+        (endif_record
+          (control_keyword)))
+      (loop_block
+        (loop_header
+          (control_keyword)
+          (number))
+        (dynamic_record
+          (dynamic_command_name)
+          (number))
+        (endloop_record
+          (control_keyword)))
+      (variable_statement
+        (variable_keyword)
+        (hash_variable
+          (hash_variable_name))
+        (number))
+      (end_record
+        (control_keyword)))))
+
+==================================
+Apply and SYS reset template context
+==================================
++PROG TEMPLATE
+END
+CUSTOM before
++APPLY first.dat
+CUSTOM after apply
++PROG TEMPLATE
+END
+CUSTOM before
+SYS echo done
+CUSTOM after sys
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (end_record
+        (control_keyword)))
+    (dynamic_record
+      (dynamic_command_name)
+      (bare_value)))
+  (apply_statement
+    (apply_sigil)
+    (bare_value))
+  (ignored_text)
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (end_record
+        (control_keyword)))
+    (dynamic_record
+      (dynamic_command_name)
+      (bare_value)))
+  (sys_statement
+    (sys_sigil)
+    (bare_value)
+    (bare_value))
+  (ignored_text))
 
 ========================================
 Transparent tail belongs to real program
@@ -56,15 +236,15 @@ END
     (command
       (command_name)
       (record
-        (bare_value)))
+        (number)))
     (command
       (command_name)
       (record
-        (bare_value)))
+        (number)))
     (command
       (command_name)
       (record
-        (bare_value)))
+        (number)))
     (preprocessor_enddef_record
       (preprocessor_keyword)))
   (program
@@ -101,7 +281,7 @@ PAGE UNII 0
       (record
         (item_sequence
           (item_name)
-          (bare_value))))
+          (number))))
     (preprocessor_enddef_record
       (preprocessor_keyword)))
   (commented_program_scope
@@ -116,7 +296,7 @@ PAGE UNII 0
       (record
         (item_sequence
           (item_name)
-          (bare_value))))
+          (number))))
     (preprocessor_enddef_record
       (preprocessor_keyword))))
 
@@ -168,7 +348,7 @@ END
         record: (record
           (item_sequence
             item: (item_name)
-            value: (bare_value)
+            value: (number)
             value: (bare_value))))
       (end_record
         keyword: (control_keyword)))))
@@ -197,15 +377,15 @@ END
           item: (item_name)
           item: (item_name))
         record: (table_row
-          value: (bare_value)
-          value: (bare_value)
-          value: (bare_value)
-          value: (bare_value))
+          value: (number)
+          value: (number)
+          value: (number)
+          value: (number))
         record: (table_row
-          value: (bare_value)
-          value: (bare_value)
-          value: (bare_value)
-          value: (bare_value)))
+          value: (number)
+          value: (number)
+          value: (number)
+          value: (number)))
       (end_record
         keyword: (control_keyword)))))
 
@@ -227,7 +407,7 @@ END
     body: (input_block
       (invalid_command_record
         name: (invalid_command)
-        (bare_value))
+        (number))
       (end_record
         keyword: (control_keyword))))
   (program
@@ -258,6 +438,8 @@ END
         value: (bare_value)
         value: (bare_value)
         value: (bare_value))
-      (metadata)
+      (cdb_statement
+        keyword: (cdb_keyword)
+        argument: (bare_value))
       (end_record
         keyword: (control_keyword)))))

@@ -63,9 +63,11 @@ end
     (preprocessor_keyword)
     (preprocessor_name)
     (preprocessor_value
-      (hash_variable)
+      (hash_variable
+        (hash_variable_name))
       (preprocessor_literal)
-      (hash_variable)))
+      (hash_variable
+        (hash_variable_name))))
   (preprocessor_if_header
     (preprocessor_keyword)
     (preprocessor_condition
@@ -75,7 +77,8 @@ end
   (preprocessor_elseif_header
     (preprocessor_keyword)
     (preprocessor_condition
-      (hash_variable)
+      (hash_variable
+        (hash_variable_name))
       (preprocessor_literal)))
   (preprocessor_endif_record
     (preprocessor_keyword))
@@ -88,18 +91,279 @@ end
         (command_name)
         (record
           (parenthesized_expression
-            (hash_variable))
+            (hash_variable
+              (hash_variable_name)))
           (bare_value)
           (parenthesized_expression
-            (hash_variable)
-            (hash_variable)
-            (hash_variable))
+            (hash_variable
+              (hash_variable_name))
+            (parenthesized_content)
+            (hash_variable
+              (hash_variable_name))
+            (parenthesized_content)
+            (hash_variable
+              (hash_variable_name)))
           (bare_value)
           (parenthesized_expression
-            (hash_variable)
+            (hash_variable
+              (hash_variable_name))
+            (parenthesized_content)
             (parenthesized_expression
-              (hash_variable)))
-          (generic_expression)))
+              (hash_variable
+                (hash_variable_name))
+              (parenthesized_content)))
+          (parenthesized_expression
+            (parenthesized_content))))
+      (end_record
+        (control_keyword)))))
+
+========================================
+CDB statements and positional references
+========================================
++PROG TEMPLATE
+@KEY SECRET ; IF #A > 0
+WHATEVER @name,@1,@-2,@(#A+1),@???
+ENDIF
+@CDB 7
+@ descriptive metadata
+END
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (cdb_statement
+        (cdb_keyword)
+        (bare_value))
+      (if_block
+        (if_header
+          (control_keyword)
+          (hash_variable
+            (hash_variable_name))
+          (generic_expression)
+          (number))
+        (dynamic_record
+          (dynamic_command_name)
+          (at_reference)
+          (bare_value)
+          (at_reference)
+          (bare_value)
+          (at_reference)
+          (bare_value)
+          (at_reference)
+          (bare_value)
+          (invalid_at_reference))
+        (endif_record
+          (control_keyword)))
+      (cdb_statement
+        (cdb_keyword)
+        (number))
+      (metadata)
+      (end_record
+        (control_keyword)))))
+
+================================================
+Recursive hash arguments and formatted variables
+================================================
++PROG AQUA
+HEAD #BN(#BN(0)) #(#Nold,8.1) # literal
+END
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (command
+        (command_name)
+        (record
+          (hash_variable
+            (hash_variable_name)
+            (hash_arguments
+              (hash_variable
+                (hash_variable_name)
+                (hash_arguments
+                  (hash_argument_content)))))
+          (formatted_value
+            (parenthesized_expression
+              (hash_variable
+                (hash_variable_name))
+              (parenthesized_content)))
+          (literal_hash)
+          (bare_value)))
+      (end_record
+        (control_keyword)))))
+
+=========================================
+Quoted and suffix-apostrophe value forms
+=========================================
++PROG AQUA
+HEAD ''single doubled'' ""double doubled"" 'single ''quoted'' $(single)' "double ""quoted"" $(double)"
+HEAD BAUMANN'S f'= tent'
+HEAD 'unterminated
+HEAD "unterminated
+END
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (command
+        (command_name)
+        (record
+          (string
+            (single_doubled_quoted_string))
+          (string
+            (double_doubled_quoted_string))
+          (string
+            (single_quoted_string
+              (dollar_variable)))
+          (string
+            (double_quoted_string
+              (dollar_variable)))))
+      (command
+        (command_name)
+        (record
+          (bare_value)
+          (bare_value)
+          (bare_value)))
+      (command
+        (command_name)
+        (record
+          (unterminated_string
+            (unterminated_single_quoted_string))))
+      (command
+        (command_name)
+        (record
+          (unterminated_string
+            (unterminated_double_quoted_string))))
+      (end_record
+        (control_keyword)))))
+
+========================
+Named orphan terminators
+========================
++PROG AQUA
+ELSEIF #A
+ELSE note
+ENDIF
+ENDLOOP 3
+</TEXT>
+</PICT>
+END
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (orphan_elseif_record
+        (control_keyword)
+        (hash_variable
+          (hash_variable_name)))
+      (orphan_else_record
+        (control_keyword)
+        (bare_value))
+      (orphan_endif_record
+        (control_keyword))
+      (orphan_endloop_record
+        (control_keyword)
+        (number))
+      (orphan_text_end
+        (text_delimiter))
+      (orphan_picture_end
+        (picture_delimiter))
+      (end_record
+        (control_keyword)))))
+
+==============================
+Picture blocks in body and tail
+==============================
++PROG AQUA
+<PICT>
+HEAD #inside 'body'
+</PICT>
+END
+<PICT>
+HEAD $(tail) "tail"
+</PICT>
++PROG AQUA
+END
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (picture_block
+        (picture_start
+          (picture_delimiter))
+        (command
+          (command_name)
+          (record
+            (hash_variable
+              (hash_variable_name))
+            (string
+              (single_quoted_string))))
+        (picture_end
+          (picture_delimiter)))
+      (end_record
+        (control_keyword)))
+    (picture_block
+      (picture_start
+        (picture_delimiter))
+      (command
+        (command_name)
+        (record
+          (dollar_variable)
+          (string
+            (double_quoted_string))))
+      (picture_end
+        (picture_delimiter))))
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (end_record
+        (control_keyword)))))
+
+====================================
+Numeric lists and punctuated values
+====================================
++PROG AQUA
+HEAD 1 -1.5 2e3 1,2,3 :AXIS ~OR \REF
+END
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (command
+        (command_name)
+        (record
+          (number)
+          (number)
+          (number)
+          (number_list)
+          (punctuated_value)
+          (punctuated_value)
+          (punctuated_value)))
       (end_record
         (control_keyword)))))
 
@@ -160,15 +424,18 @@ ende
         (command_name)
         (record
           (bare_value)
-          (string)
+          (string
+            (single_quoted_string))
           (item_sequence
             (item_name)
             (bare_value)
-            (hash_variable)
+            (hash_variable
+              (hash_variable_name))
             (unit))
           (item_sequence
             (item_name)
-            (hash_variable))))
+            (hash_variable
+              (hash_variable_name)))))
       (end_record
         (control_keyword))))
   (program
@@ -180,22 +447,29 @@ ende
         (command_name)
         (record
           (sequence_generator
-            (generator_literal)
-            (generator_literal)
-            (generator_literal))
+            (generator_part
+              (generator_literal))
+            (generator_part
+              (generator_literal))
+            (generator_part
+              (generator_literal)))
           (bare_value)
-          (bare_value)
+          (number)
           (item_sequence
             (item_name)
-            (bare_value))))
+            (number))))
       (command
         (command_name)
         (record
           (sequence_generator
-            (generator_literal)
-            (generator_literal)
-            (hash_variable)
-            (generator_literal))))
+            (generator_part
+              (generator_literal))
+            (generator_part
+              (generator_literal)
+              (hash_variable
+                (hash_variable_name)))
+            (generator_part
+              (generator_literal)))))
       (end_record
         (control_keyword)))))
 
@@ -218,10 +492,10 @@ ENDE
         (command_name)
         (record
           (bare_value)
-          (bare_value)
+          (number)
           (continuation)
           (bare_value)
-          (bare_value)))
+          (number)))
       (end_record
         (control_keyword)))))
 
@@ -245,10 +519,10 @@ END
       (command
         (command_name)
         (record
-          (bare_value)
+          (number)
           (item_sequence
             (item_name)
-            (bare_value)))
+            (number)))
         (preprocessor_directive
           (preprocessor_keyword)
           (bare_value))
@@ -260,10 +534,10 @@ END
         (implicit_record
           (item_sequence
             (item_name)
-            (bare_value))
+            (number))
           (item_sequence
             (item_name)
-            (bare_value))))
+            (number))))
       (end_record
         (control_keyword)))))
 
@@ -306,34 +580,34 @@ ENDE
         (command_name)
         (record
           (bare_value)
-          (bare_value)
-          (bare_value)
+          (number)
+          (number)
           (item_sequence
             (item_name)
-            (bare_value)))
+            (punctuated_value)))
         (implicit_record
           (bare_value)
-          (bare_value)
-          (bare_value)
+          (number)
+          (number)
           (item_sequence
             (item_name)
-            (bare_value)))
+            (punctuated_value)))
         (implicit_record
-          (bare_value)
-          (bare_value)
-          (bare_value)
+          (number)
+          (number)
+          (number)
           (item_sequence
             (item_name)
             (bare_value)
             (bare_value)))
         (implicit_record
-          (bare_value)
-          (bare_value)
-          (bare_value)
+          (number)
+          (number)
+          (number)
           (item_sequence
             (item_name)
             (bare_value)
-            (bare_value))))
+            (punctuated_value))))
       (end_record
         (control_keyword)))))
 
@@ -360,13 +634,12 @@ END
           (bare_value)))
       (end_record
         (control_keyword)))
-    (input_block
-      (command
-        (command_name)
-        (record
-          (bare_value)))
-      (end_record
-        (control_keyword)))))
+    (command
+      (command_name)
+      (record
+        (bare_value)))
+    (end_record
+      (control_keyword))))
 
 ====================================
 Variable with semicolon command list
@@ -389,8 +662,9 @@ END
         (record)
         (variable_statement
           (variable_keyword)
-          (hash_variable)
-          (bare_value)))
+          (hash_variable
+            (hash_variable_name))
+          (number)))
       (command
         (command_name)
         (record
@@ -399,36 +673,38 @@ END
             (bare_value))
           (item_sequence
             (item_name)
-            (bare_value))
+            (number))
           (item_sequence
             (item_name)
-            (hash_variable)
-            (bare_value))))
+            (hash_variable
+              (hash_variable_name))
+            (number))))
       (command
         (command_name)
         (record
-          (bare_value)
+          (number)
           (bare_value)))
       (command
         (command_name)
         (record
           (bare_value)
-          (bare_value)
+          (number)
           (item_sequence
             (item_name)
-            (bare_value))))
+            (number))))
       (command
         (command_name)
         (record
           (bare_value)
-          (bare_value)))
+          (number)))
       (command
         (command_name)
         (record
-          (hash_variable)
+          (hash_variable
+            (hash_variable_name))
           (item_sequence
             (item_name)
-            (bare_value))))
+            (number))))
       (end_record
         (control_keyword)))))
 
@@ -451,28 +727,28 @@ END
       (command
         (command_name)
         (record
-          (bare_value)
+          (number)
           (item_sequence
             (item_name)
-            (bare_value))
+            (number))
           (continuation)
           (item_sequence
             (item_name)
-            (bare_value))
+            (number))
           (item_sequence
             (item_name)
-            (bare_value)))
+            (number)))
         (implicit_record
-          (bare_value)
+          (number)
           (item_sequence
             (item_name)
-            (bare_value))
+            (number))
           (item_sequence
             (item_name)
-            (bare_value))
+            (number))
           (item_sequence
             (item_name)
-            (bare_value))))
+            (number))))
       (end_record
         (control_keyword)))))
 
@@ -495,15 +771,15 @@ END
         (record
           (item_sequence
             (item_name)
-            (bare_value))
+            (number))
           (item_sequence
             (item_name)
-            (bare_value))))
+            (number))))
       (command
         (command_name)
         (record
           (bare_value)
-          (bare_value)))
+          (number)))
       (end_record
         (control_keyword)))))
 
@@ -531,20 +807,21 @@ END
       (if_block
         (if_header
           (control_keyword)
-          (hash_variable)
+          (hash_variable
+            (hash_variable_name))
           (generic_expression)
-          (bare_value))
+          (number))
         (loop_block
           (loop_header
             (control_keyword)
-            (bare_value))
+            (number))
           (command
             (command_name)
             (record
-              (bare_value)
+              (number)
               (item_sequence
                 (item_name)
-                (bare_value))))
+                (number))))
           (exit_iteration_record
             (control_keyword))
           (endloop_record
@@ -554,10 +831,10 @@ END
         (command
           (command_name)
           (record
-            (bare_value)
+            (number)
             (item_sequence
               (item_name)
-              (bare_value))))
+              (number))))
         (endif_record
           (control_keyword)))
       (end_record
@@ -598,9 +875,11 @@ SYS echo hi
   (preprocessor_if_header
     (preprocessor_keyword)
     (preprocessor_condition
-      (hash_variable)
+      (hash_variable
+        (hash_variable_name))
       (preprocessor_literal)
-      (hash_variable)
+      (hash_variable
+        (hash_variable_name))
       (preprocessor_literal)))
   (program
     (program_header
@@ -616,7 +895,8 @@ SYS echo hi
     (preprocessor_elseif_header
       (preprocessor_keyword)
       (preprocessor_condition
-        (hash_variable)
+        (hash_variable
+          (hash_variable_name))
         (preprocessor_literal))))
   (program
     (program_header
@@ -626,10 +906,10 @@ SYS echo hi
       (command
         (command_name)
         (record
-          (bare_value)
+          (number)
           (item_sequence
             (item_name)
-            (bare_value))))
+            (number))))
       (end_record
         (control_keyword)))
     (preprocessor_else_header
@@ -660,21 +940,23 @@ END
       (command
         (command_name)
         (record
-          (bare_value)
+          (number)
           (item_sequence
             (item_name)
-            (bare_value)))
+            (number)))
         (variable_statement
           (variable_keyword)
-          (hash_variable)
-          (expression))
+          (hash_variable
+            (hash_variable_name))
+          (expression)
+          (number))
         (implicit_record
           (item_sequence
             (item_name)
-            (bare_value))
+            (number))
           (item_sequence
             (item_name)
-            (bare_value))))
+            (number))))
       (end_record
         (control_keyword)))))
 
@@ -698,7 +980,8 @@ END
       (command
         (command_name)
         (record
-          (string)))
+          (string
+            (single_quoted_string))))
       (text_block
         (text_start
           (text_delimiter)
@@ -745,11 +1028,11 @@ ENDE
         (command_name)
         (record
           (bare_value)
-          (bare_value)
-          (bare_value))
+          (number)
+          (number))
         (implicit_record
           (bare_value)
-          (bare_value)
-          (bare_value)))
+          (number)
+          (number)))
       (end_record
         (control_keyword)))))

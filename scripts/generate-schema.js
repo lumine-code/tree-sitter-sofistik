@@ -12,6 +12,7 @@ const DATA_PIN_PATTERN = /^github:lumine-code\/sofistik-data#([a-f0-9]{40})$/;
 const RESERVED_COMMANDS = new Set(["END", "ENDE"]);
 const UNIVERSAL_COMMANDS = Object.freeze({
   HEAD: Object.freeze([]),
+  KOPF: Object.freeze([]),
 });
 
 function cString(value) {
