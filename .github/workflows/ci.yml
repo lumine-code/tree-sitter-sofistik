@@ -34,6 +34,8 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
-      - run: npm test
       - run: npm run build:wasm
+      - run: npm run test:wasm
+      - run: npm test
+      - run: npm run test:fuzz
       - run: npm pack --dry-run

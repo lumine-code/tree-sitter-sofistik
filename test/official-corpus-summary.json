@@ -1,5 +1,6 @@
 {
-  "corpus": "SOFiSTiK 2026 installed DAT examples",
+  "formatVersion": 2,
+  "corpus": "Installed SOFiSTiK DAT examples",
   "data": {
     "package": "@lumine-code/sofistik-data",
     "repository": "https://github.com/lumine-code/sofistik-data",
@@ -7,151 +8,323 @@
   },
   "schemaDigest": "3e8a9c02c4cad1af851fee8fb01749c2878909da812c57253d0ede5a817b9180",
   "grammarVocabularyDigest": "72be0544f22ddf57cc66fbaed42b103d699c8b4e0170d55c3ea8264f0441d74c",
-  "discovered": 1392,
-  "parsed": 1391,
-  "skipped": {
-    "nul": 1,
-    "invalidUtf8": 0
-  },
-  "badFiles": 40,
-  "errorNodes": 109,
-  "classifications": {
-    "ERROR": 67,
-    "MISSING:;": 17,
-    "MISSING:'": 15,
-    "MISSING:\"": 5,
-    "MISSING:control_keyword": 5
-  },
-  "fileClassifications": {
-    "fragmentWithoutProgram": {
-      "files": 0,
-      "errorNodes": 0
+  "releases": {
+    "2018": {
+      "discovered": 1295,
+      "parsed": 1292,
+      "skipped": {
+        "nul": 3,
+        "invalidUtf8": 0
+      },
+      "skippedFiles": [
+        {
+          "file": "icudtl.dat",
+          "reason": "nul"
+        },
+        {
+          "file": "soficadlogo.dat",
+          "reason": "nul"
+        },
+        {
+          "file": "sofistiklogo.dat",
+          "reason": "nul"
+        }
+      ],
+      "fallbackFiles": [
+        {
+          "file": "interfaces/examples/cadinp/read_quads_nodes_groups.dat",
+          "encoding": "windows-1252"
+        }
+      ],
+      "fallbackEncodings": ["windows-1252"],
+      "badFiles": 0,
+      "errorNodes": 0,
+      "nodeCounts": {
+        "cdb_statement": 554,
+        "command": 242939,
+        "formatted_value": 2595,
+        "hash_variable": 100568,
+        "if_block": 1015,
+        "invalid_at_reference": 1,
+        "literal_hash": 968,
+        "loop_block": 1757,
+        "number": 1019596,
+        "number_list": 5063,
+        "orphan_endloop_record": 3,
+        "orphan_endif_record": 4,
+        "orphan_text_end": 1,
+        "picture_block": 9,
+        "punctuated_value": 84,
+        "string": 24226,
+        "unterminated_double_quoted_string": 3,
+        "unterminated_single_quoted_string": 1
+      },
+      "dynamicControlCommands": {},
+      "invalidKopf": 0
     },
-    "documentWithUnsupportedSyntax": {
-      "files": 40,
-      "errorNodes": 109
+    "2020": {
+      "discovered": 1331,
+      "parsed": 1328,
+      "skipped": {
+        "nul": 3,
+        "invalidUtf8": 0
+      },
+      "skippedFiles": [
+        {
+          "file": "icudtl.dat",
+          "reason": "nul"
+        },
+        {
+          "file": "soficadlogo.dat",
+          "reason": "nul"
+        },
+        {
+          "file": "sofistiklogo.dat",
+          "reason": "nul"
+        }
+      ],
+      "fallbackFiles": [],
+      "fallbackEncodings": [],
+      "badFiles": 0,
+      "errorNodes": 0,
+      "nodeCounts": {
+        "cdb_statement": 567,
+        "command": 250507,
+        "formatted_value": 2596,
+        "hash_variable": 105974,
+        "if_block": 1075,
+        "invalid_at_reference": 1,
+        "literal_hash": 964,
+        "loop_block": 1912,
+        "number": 1033271,
+        "number_list": 5574,
+        "orphan_endloop_record": 3,
+        "orphan_endif_record": 4,
+        "orphan_text_end": 1,
+        "picture_block": 9,
+        "punctuated_value": 84,
+        "string": 26321,
+        "unterminated_double_quoted_string": 3,
+        "unterminated_single_quoted_string": 1
+      },
+      "dynamicControlCommands": {},
+      "invalidKopf": 0
+    },
+    "2022": {
+      "discovered": 1365,
+      "parsed": 1362,
+      "skipped": {
+        "nul": 3,
+        "invalidUtf8": 0
+      },
+      "skippedFiles": [
+        {
+          "file": "icudtl.dat",
+          "reason": "nul"
+        },
+        {
+          "file": "soficadlogo.dat",
+          "reason": "nul"
+        },
+        {
+          "file": "sofistiklogo.dat",
+          "reason": "nul"
+        }
+      ],
+      "fallbackFiles": [],
+      "fallbackEncodings": [],
+      "badFiles": 0,
+      "errorNodes": 0,
+      "nodeCounts": {
+        "cdb_statement": 577,
+        "command": 250905,
+        "formatted_value": 2689,
+        "hash_variable": 110368,
+        "if_block": 1125,
+        "invalid_at_reference": 1,
+        "literal_hash": 964,
+        "loop_block": 1958,
+        "number": 1026268,
+        "number_list": 5813,
+        "orphan_endloop_record": 3,
+        "orphan_endif_record": 4,
+        "orphan_text_end": 1,
+        "picture_block": 9,
+        "punctuated_value": 84,
+        "string": 27430,
+        "unterminated_double_quoted_string": 3,
+        "unterminated_single_quoted_string": 0
+      },
+      "dynamicControlCommands": {},
+      "invalidKopf": 0
+    },
+    "2023": {
+      "discovered": 1392,
+      "parsed": 1390,
+      "skipped": {
+        "nul": 2,
+        "invalidUtf8": 0
+      },
+      "skippedFiles": [
+        {
+          "file": "soficadlogo.dat",
+          "reason": "nul"
+        },
+        {
+          "file": "sofistiklogo.dat",
+          "reason": "nul"
+        }
+      ],
+      "fallbackFiles": [],
+      "fallbackEncodings": [],
+      "badFiles": 0,
+      "errorNodes": 0,
+      "nodeCounts": {
+        "cdb_statement": 582,
+        "command": 254309,
+        "formatted_value": 2692,
+        "hash_variable": 112009,
+        "if_block": 1142,
+        "invalid_at_reference": 1,
+        "literal_hash": 965,
+        "loop_block": 1979,
+        "number": 1031864,
+        "number_list": 5940,
+        "orphan_endloop_record": 3,
+        "orphan_endif_record": 4,
+        "orphan_text_end": 1,
+        "picture_block": 9,
+        "punctuated_value": 84,
+        "string": 28589,
+        "unterminated_double_quoted_string": 3,
+        "unterminated_single_quoted_string": 1
+      },
+      "dynamicControlCommands": {},
+      "invalidKopf": 0
+    },
+    "2024": {
+      "discovered": 1417,
+      "parsed": 1415,
+      "skipped": {
+        "nul": 2,
+        "invalidUtf8": 0
+      },
+      "skippedFiles": [
+        {
+          "file": "soficadlogo.dat",
+          "reason": "nul"
+        },
+        {
+          "file": "sofistiklogo.dat",
+          "reason": "nul"
+        }
+      ],
+      "fallbackFiles": [],
+      "fallbackEncodings": [],
+      "badFiles": 0,
+      "errorNodes": 0,
+      "nodeCounts": {
+        "cdb_statement": 589,
+        "command": 259827,
+        "formatted_value": 2714,
+        "hash_variable": 114521,
+        "if_block": 1187,
+        "invalid_at_reference": 1,
+        "literal_hash": 965,
+        "loop_block": 2026,
+        "number": 1041199,
+        "number_list": 6126,
+        "orphan_endloop_record": 5,
+        "orphan_endif_record": 4,
+        "orphan_text_end": 1,
+        "picture_block": 9,
+        "punctuated_value": 84,
+        "string": 30207,
+        "unterminated_double_quoted_string": 3,
+        "unterminated_single_quoted_string": 4
+      },
+      "dynamicControlCommands": {},
+      "invalidKopf": 0
+    },
+    "2025": {
+      "discovered": 1440,
+      "parsed": 1439,
+      "skipped": {
+        "nul": 1,
+        "invalidUtf8": 0
+      },
+      "skippedFiles": [
+        {
+          "file": "sofistiklogo.dat",
+          "reason": "nul"
+        }
+      ],
+      "fallbackFiles": [],
+      "fallbackEncodings": [],
+      "badFiles": 0,
+      "errorNodes": 0,
+      "nodeCounts": {
+        "cdb_statement": 591,
+        "command": 264415,
+        "formatted_value": 2728,
+        "hash_variable": 115989,
+        "if_block": 1207,
+        "invalid_at_reference": 1,
+        "literal_hash": 961,
+        "loop_block": 2026,
+        "number": 1050586,
+        "number_list": 6319,
+        "orphan_endloop_record": 5,
+        "orphan_endif_record": 4,
+        "orphan_text_end": 1,
+        "picture_block": 9,
+        "punctuated_value": 84,
+        "string": 31656,
+        "unterminated_double_quoted_string": 3,
+        "unterminated_single_quoted_string": 5
+      },
+      "dynamicControlCommands": {},
+      "invalidKopf": 0
+    },
+    "2026": {
+      "discovered": 1392,
+      "parsed": 1391,
+      "skipped": {
+        "nul": 1,
+        "invalidUtf8": 0
+      },
+      "skippedFiles": [
+        {
+          "file": "sofistiklogo.dat",
+          "reason": "nul"
+        }
+      ],
+      "fallbackFiles": [],
+      "fallbackEncodings": [],
+      "badFiles": 0,
+      "errorNodes": 0,
+      "nodeCounts": {
+        "cdb_statement": 653,
+        "command": 257500,
+        "formatted_value": 3276,
+        "hash_variable": 112817,
+        "if_block": 1086,
+        "invalid_at_reference": 1,
+        "literal_hash": 961,
+        "loop_block": 1972,
+        "number": 1027137,
+        "number_list": 6059,
+        "orphan_endloop_record": 5,
+        "orphan_endif_record": 4,
+        "orphan_text_end": 1,
+        "picture_block": 9,
+        "punctuated_value": 84,
+        "string": 30777,
+        "unterminated_double_quoted_string": 3,
+        "unterminated_single_quoted_string": 5
+      },
+      "dynamicControlCommands": {},
+      "invalidKopf": 0
     }
-  },
-  "firstFailures": [
-    {
-      "file": "ase.dat/deutsch/bridge/m_n_interaction_plot.dat",
-      "row": 430,
-      "column": 46,
-      "type": "ERROR"
-    },
-    {
-      "file": "ase.dat/deutsch/bridge/stahl_verbund_einfeldtraeger.dat",
-      "row": 326,
-      "column": 93,
-      "type": "MISSING:\""
-    },
-    {
-      "file": "ase.dat/english/active_bending/active_bending_throw_tent.dat",
-      "row": 68,
-      "column": 32,
-      "type": "MISSING:'"
-    },
-    {
-      "file": "ase.dat/english/bric/bric_th2.dat",
-      "row": 138,
-      "column": 22,
-      "type": "MISSING:'"
-    },
-    {
-      "file": "ase.dat/english/bridge/m_n_interaction_plot.dat",
-      "row": 430,
-      "column": 46,
-      "type": "ERROR"
-    },
-    {
-      "file": "ase.dat/english/bridge/steel_composite_singlespan_girder.dat",
-      "row": 326,
-      "column": 80,
-      "type": "MISSING:\""
-    },
-    {
-      "file": "ase.dat/english/dynamics/movs_train_on_axis.dat",
-      "row": 50,
-      "column": 21,
-      "type": "MISSING:'"
-    },
-    {
-      "file": "csm.dat/deutsch/optimize/csm23_schraegseil_optimierung_2.dat",
-      "row": 287,
-      "column": 1,
-      "type": "ERROR"
-    },
-    {
-      "file": "csm.dat/deutsch/optimize/csm26_precamber_feldweise.dat",
-      "row": 121,
-      "column": 35,
-      "type": "ERROR"
-    },
-    {
-      "file": "csm.dat/deutsch/optimize/geometry_opti_arch.dat",
-      "row": 145,
-      "column": 34,
-      "type": "ERROR"
-    },
-    {
-      "file": "csm.dat/english/design/csm31_partial_prestress.dat",
-      "row": 511,
-      "column": 25,
-      "type": "MISSING:\""
-    },
-    {
-      "file": "csm.dat/english/incremental_launching/csm40_incremental_launching_introduction.dat",
-      "row": 222,
-      "column": 74,
-      "type": "MISSING:'"
-    },
-    {
-      "file": "csm.dat/english/more/csm31_design_india.dat",
-      "row": 346,
-      "column": 32,
-      "type": "MISSING:'"
-    },
-    {
-      "file": "csm.dat/english/optimize/csm23_cable_stay_optimisation_2.dat",
-      "row": 277,
-      "column": 1,
-      "type": "ERROR"
-    },
-    {
-      "file": "csm.dat/english/optimize/csm26_precamber_spanbyspan.dat",
-      "row": 112,
-      "column": 1,
-      "type": "ERROR"
-    },
-    {
-      "file": "csm.dat/english/optimize/geometry_opti_arch.dat",
-      "row": 145,
-      "column": 34,
-      "type": "ERROR"
-    },
-    {
-      "file": "csm.dat/english/optimize/more_opti/csm_insert_hangers_forcefree.dat",
-      "row": 442,
-      "column": 63,
-      "type": "MISSING:'"
-    },
-    {
-      "file": "dolfyn.dat/deutsch/gebaeude_3D/high_rise_cylind.dat",
-      "row": 82,
-      "column": 1,
-      "type": "ERROR"
-    },
-    {
-      "file": "dolfyn.dat/deutsch/tests/abl3d.dat",
-      "row": 166,
-      "column": 11,
-      "type": "ERROR"
-    },
-    {
-      "file": "dolfyn.dat/english/buildings_3D/city.dat",
-      "row": 70,
-      "column": 57,
-      "type": "MISSING:\""
-    }
-  ]
+  }
 }
