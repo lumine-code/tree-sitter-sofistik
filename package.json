@@ -65,9 +65,10 @@
     "generate:schema": "node scripts/generate-schema.js",
     "install": "node-gyp-build",
     "lint": "eslint .",
-    "test": "npm run lint && npm run check:format && npm run check:generated && npm run build && node --test bindings/node/binding_test.js test/*.test.js && tree-sitter test",
+    "test": "npm run lint && npm run check:format && npm run check:generated && npm run build && npm run test:node && npm run test:wasm && tree-sitter test",
     "test:corpus": "node scripts/test-corpus.js",
     "test:fuzz": "tree-sitter fuzz --iterations 100 --edits 5",
+    "test:node": "node --test --test-concurrency=1 bindings/node/binding_test.js test/corpus-runner.test.js test/generate-schema.test.js test/parser.test.js",
     "test:wasm": "node --test test/wasm.test.js"
   }
 }
