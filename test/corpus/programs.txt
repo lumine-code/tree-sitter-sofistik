@@ -501,6 +501,78 @@ END
     tail: (end_record
       keyword: (control_keyword))))
 
+=================================
+Semicolon commands in module tail
+=================================
++PROG STAR2
+END
+CTRL I ; GRP 2 ; LC 200 FACT 1.0 ; LCC 2 ; END
+END
+---
+
+(source_file
+  (program
+    header: (program_header
+      sigil: (program_sigil)
+      module: (module_name))
+    body: (input_block
+      (end_record
+        keyword: (control_keyword)))
+    tail: (command
+      name: (command_name)
+      record: (record
+        (bare_value)))
+    tail: (command
+      name: (command_name)
+      record: (record
+        (number)))
+    tail: (command
+      name: (command_name)
+      record: (record
+        (number)
+        (item_sequence
+          item: (item_name)
+          value: (number))))
+    tail: (command
+      name: (command_name)
+      record: (record
+        (number)))
+    tail: (end_record
+      keyword: (control_keyword))
+    tail: (end_record
+      keyword: (control_keyword))))
+
+==============================================
+Typed table values after an intermediate END
+==============================================
++PROG SIR
+END
+SECT NO XS XM
+2 0.0 -1.5
+END
+---
+
+(source_file
+  (program
+    header: (program_header
+      sigil: (program_sigil)
+      module: (module_name))
+    body: (input_block
+      (end_record
+        keyword: (control_keyword)))
+    tail: (command
+      name: (command_name)
+      record: (table_definition
+        item: (item_name)
+        item: (item_name)
+        item: (item_name))
+      record: (table_row
+        value: (number)
+        value: (number)
+        value: (number)))
+    tail: (end_record
+      keyword: (control_keyword))))
+
 =======================
 Dynamic template record
 =======================

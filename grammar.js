@@ -12,6 +12,7 @@ module.exports = grammar({
     $.hash_variable_name,
     $.literal_hash,
     $._bare_word,
+    $._value_separator,
     $.dynamic_command_name,
     $._template_command_name,
     $._end_keyword,
@@ -171,13 +172,13 @@ module.exports = grammar({
       ),
 
     invalid_command_record: ($) =>
-      seq(field("name", $.invalid_command), repeat($._value), $._record_end),
+      seq(field("name", $.invalid_command), repeat($._separated_value), $._record_end),
 
     variable_statement: ($) =>
       seq(
         field("keyword", $.variable_keyword),
         field("variable", $.hash_variable),
-        repeat(field("value", $._value)),
+        repeat(field("value", $._separated_value)),
         $._statement_end,
       ),
 
@@ -189,28 +190,42 @@ module.exports = grammar({
 
     _implicit_start: ($) => choice($.item_sequence, $._value),
 
-    _record_element: ($) => choice($.item_sequence, $._value, $._continued_line),
+    _record_element: ($) =>
+      choice($.item_sequence, $._value, $._value_separator, $._continued_line),
 
     item_sequence: ($) =>
-      prec.right(seq(field("item", $.item_name), repeat(field("value", $._value)))),
+      prec.right(seq(field("item", $.item_name), repeat(field("value", $._separated_value)))),
 
     table_definition: ($) =>
       prec.dynamic(2, seq(repeat1(field("item", $.item_name)), $._record_end)),
 
-    table_row: ($) => seq(repeat1(field("value", $._value)), $._record_end),
+    table_row: ($) =>
+      seq(
+        field("value", $._value),
+        repeat(choice($._value_separator, field("value", $._value))),
+        $._record_end,
+      ),
 
     _continued_line: ($) => seq($.continuation, $._line_end),
 
     apply_statement: ($) =>
       prec.right(
-        seq(field("sigil", $.apply_sigil), repeat(field("argument", $._value)), $._statement_end),
+        seq(
+          field("sigil", $.apply_sigil),
+          repeat(field("argument", $._separated_value)),
+          $._statement_end,
+        ),
       ),
 
     apply_sigil: ($) => choice($._dollar_apply, $._apply_sigil),
 
     sys_statement: ($) =>
       prec.right(
-        seq(field("sigil", $.sys_sigil), repeat(field("argument", $._value)), $._statement_end),
+        seq(
+          field("sigil", $.sys_sigil),
+          repeat(field("argument", $._separated_value)),
+          $._statement_end,
+        ),
       ),
 
     sys_sigil: ($) => $._sys_sigil,
@@ -224,6 +239,8 @@ module.exports = grammar({
       choice(
         $._structured_program_body_start,
         $.invalid_command_record,
+        $.orphan_text_end,
+        $.orphan_picture_end,
         $.implicit_record,
         $._line_end,
         $.end_record,
@@ -336,7 +353,7 @@ module.exports = grammar({
       seq(
         field("keyword", alias(ci("#DEFINE"), $.preprocessor_keyword)),
         field("name", $.preprocessor_name),
-        repeat(field("value", $._value)),
+        repeat(field("value", $._separated_value)),
         $._record_end,
       ),
 
@@ -376,7 +393,7 @@ module.exports = grammar({
         choice(
           seq(
             field("keyword", alias(ci("#INCLUDE"), $.preprocessor_keyword)),
-            repeat(field("argument", $._value)),
+            repeat(field("argument", $._separated_value)),
             $._statement_end,
           ),
           seq(
@@ -389,7 +406,11 @@ module.exports = grammar({
 
     cdb_statement: ($) =>
       prec.right(
-        seq(field("keyword", $.cdb_keyword), repeat(field("argument", $._value)), $._statement_end),
+        seq(
+          field("keyword", $.cdb_keyword),
+          repeat(field("argument", $._separated_value)),
+          $._statement_end,
+        ),
       ),
 
     cdb_keyword: ($) => choice(ci("@KEY"), ci("@CDB")),
@@ -399,7 +420,7 @@ module.exports = grammar({
     _template_record: ($) =>
       seq(
         field("name", alias($._template_command_name, $.dynamic_command_name)),
-        repeat(field("value", choice($._value, $.continuation))),
+        repeat(field("value", choice($._value, $._value_separator, $.continuation))),
         $._record_end,
       ),
 
@@ -457,7 +478,7 @@ module.exports = grammar({
     picture_start: ($) =>
       seq(
         field("delimiter", alias(ci("<PICT>"), $.picture_delimiter)),
-        repeat(field("argument", $._value)),
+        repeat(field("argument", $._separated_value)),
         $._record_end,
       ),
 
@@ -487,6 +508,8 @@ module.exports = grammar({
     metadata: ($) => token(seq("@", /[ \t]+[^;\r\n]*/)),
 
     _value: ($) => choice($._non_bare_value, $.bare_value),
+
+    _separated_value: ($) => choice($._value, $._value_separator),
 
     _non_bare_value: ($) =>
       choice(
@@ -616,7 +639,9 @@ module.exports = grammar({
       token(
         prec(
           4,
-          new RegExp("[^ \\t\\r\\n();!$'\"#@\\[\\]]+[*+\\u002d/^&|][^ \\t\\r\\n();!$'\"#@\\[\\]]+"),
+          new RegExp(
+            "[^ \\t\\r\\n(),;!$'\"#@\\[\\]]+[*+\\u002d/^&|][^ \\t\\r\\n(),;!$'\"#@\\[\\]]+",
+          ),
         ),
       ),
 

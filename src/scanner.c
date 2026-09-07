@@ -17,6 +17,7 @@ enum TokenType {
   HASH_VARIABLE_NAME,
   LITERAL_HASH,
   BARE_WORD,
+  VALUE_SEPARATOR,
   DYNAMIC_COMMAND_NAME,
   TEMPLATE_COMMAND_NAME,
   END_KEYWORD,
@@ -108,6 +109,11 @@ static bool is_root_directive_separator(int32_t character) {
   return !character || character == ' ' || character == '\t' ||
          character == '\f' || character == '\r' || character == '\n' ||
          character == ';' || character == '!';
+}
+
+static bool is_internal_value_start(int32_t character) {
+  return character == '=' || character == '[' || character == ')' ||
+         character == '>';
 }
 
 static void extend_bare_with_attached_quote(TSLexer *lexer) {
@@ -659,6 +665,7 @@ static bool scan_non_word_bare(
   TSLexer *lexer,
   const bool *valid_symbols,
   bool *reserved_root_word,
+  bool *defer_to_internal_lexer,
   uint32_t skipped_columns
 ) {
   if (
@@ -705,11 +712,14 @@ static bool scan_non_word_bare(
   }
 
   if (
-    !valid_symbols[IGNORED_TEXT] &&
+    valid_symbols[BARE_WORD] &&
+    (!valid_symbols[IGNORED_TEXT] ||
+     scanner->command != SOFISTIK_UNKNOWN_ID) &&
     (is_number_text(prefix) ||
      ((prefix[0] == ':' || prefix[0] == '~' || prefix[0] == '\\') &&
       ((prefix[1] >= 'A' && prefix[1] <= 'Z') || prefix[1] == '_')))
   ) {
+    *defer_to_internal_lexer = true;
     return false;
   }
 
@@ -806,7 +816,20 @@ static bool read_word(
   *contextual = !overflow && !is_bare_value_suffix(lexer->lookahead);
   if (!*contextual) {
     while (!is_bare_value_delimiter(lexer->lookahead)) {
+      int32_t character = lexer->lookahead;
+      if (length + 1 < capacity && character < 128) {
+        if (character >= 'a' && character <= 'z') {
+          character -= 'a' - 'A';
+        }
+        word[length++] = (char)character;
+      } else {
+        overflow = true;
+      }
       lexer->advance(lexer, false);
+    }
+    word[length] = '\0';
+    if (overflow) {
+      word[0] = '\0';
     }
   }
   if (mark_word_end) {
@@ -820,6 +843,7 @@ static bool scan_word(
   TSLexer *lexer,
   const bool *valid_symbols,
   bool *reserved_root_word,
+  bool *defer_to_internal_lexer,
   bool at_line_start,
   bool line_start_known,
   uint32_t skipped_columns
@@ -841,10 +865,24 @@ static bool scan_word(
   bool reserved_root_statement =
     strcmp(word, "PROG") == 0 || strcmp(word, "APPLY") == 0 ||
     strcmp(word, "SYS") == 0;
-  if (!valid_symbols[IGNORED_TEXT] && is_ascii_digit(word[0])) {
+  if (
+    valid_symbols[BARE_WORD] &&
+    (!valid_symbols[IGNORED_TEXT] ||
+     scanner->command != SOFISTIK_UNKNOWN_ID) &&
+    is_ascii_digit(word[0])
+  ) {
+    *defer_to_internal_lexer = true;
     return false;
   }
   if (!contextual) {
+    if (
+      valid_symbols[ITEM_NAME] &&
+      find_item(scanner->command, word) != SOFISTIK_UNKNOWN_ID
+    ) {
+      lexer->mark_end(lexer);
+      lexer->result_symbol = ITEM_NAME;
+      return true;
+    }
     if (valid_symbols[BARE_WORD]) {
       extend_bare_with_attached_quote(lexer);
       lexer->result_symbol = BARE_WORD;
@@ -962,8 +1000,6 @@ static bool scan_word(
 
   if (
     (valid_symbols[COMMAND_NAME] || valid_symbols[INVALID_COMMAND]) &&
-    !(valid_symbols[BARE_WORD] && valid_symbols[IGNORED_TEXT] &&
-      !at_line_start) &&
     !(valid_symbols[IGNORED_TEXT] && scanner->module == SOFISTIK_UNKNOWN_ID)
   ) {
     uint32_t command = find_command(scanner->module, word);
@@ -1198,7 +1234,10 @@ static bool scan_generator_separator(TSLexer *lexer) {
   return true;
 }
 
-static bool scan_preprocessor_literal(TSLexer *lexer) {
+static bool scan_preprocessor_literal(
+  TSLexer *lexer,
+  const bool *valid_symbols
+) {
   bool has_content = false;
   while (
     lexer->lookahead && lexer->lookahead != '\r' &&
@@ -1206,6 +1245,26 @@ static bool scan_preprocessor_literal(TSLexer *lexer) {
     lexer->lookahead != '#' && lexer->lookahead != '$' &&
     lexer->lookahead != '\'' && lexer->lookahead != '"'
   ) {
+    if (lexer->lookahead == '/') {
+      lexer->mark_end(lexer);
+      lexer->advance(lexer, false);
+      if (lexer->lookahead == '/') {
+        if (!has_content) {
+          if (!valid_symbols[COMMENT]) {
+            return false;
+          }
+          lexer->advance(lexer, false);
+          consume_line(lexer);
+          lexer->mark_end(lexer);
+          lexer->result_symbol = COMMENT;
+          return true;
+        }
+        lexer->result_symbol = PREPROCESSOR_LITERAL;
+        return true;
+      }
+      has_content = true;
+      continue;
+    }
     lexer->advance(lexer, false);
     has_content = true;
   }
@@ -1594,11 +1653,25 @@ bool tree_sitter_sofistik_external_scanner_scan(
     return scan_text_start_open(scanner, lexer);
   }
 
+  if (valid_symbols[VALUE_SEPARATOR] && lexer->lookahead == ',') {
+    lexer->advance(lexer, false);
+    lexer->mark_end(lexer);
+    lexer->result_symbol = VALUE_SEPARATOR;
+    return true;
+  }
+
   if (
     (lexer->lookahead == '\'' || lexer->lookahead == '"') &&
-    scan_unterminated_string(lexer, valid_symbols)
+    valid_symbols[IGNORED_TEXT] && !valid_symbols[BARE_WORD]
   ) {
+    consume_line(lexer);
+    lexer->mark_end(lexer);
+    lexer->result_symbol = IGNORED_TEXT;
     return true;
+  }
+
+  if (lexer->lookahead == '\'' || lexer->lookahead == '"') {
+    return scan_unterminated_string(lexer, valid_symbols);
   }
 
   if (
@@ -1623,7 +1696,7 @@ bool tree_sitter_sofistik_external_scanner_scan(
 
   if (
     valid_symbols[PREPROCESSOR_LITERAL] &&
-    scan_preprocessor_literal(lexer)
+    scan_preprocessor_literal(lexer, valid_symbols)
   ) {
     return true;
   }
@@ -1643,12 +1716,17 @@ bool tree_sitter_sofistik_external_scanner_scan(
   bool has_ignored_text_start =
     lexer->lookahead && lexer->lookahead != '\r' && lexer->lookahead != '\n';
   bool reserved_root_word = false;
+  bool defer_to_internal_lexer =
+    valid_symbols[BARE_WORD] && valid_symbols[IGNORED_TEXT] &&
+    scanner->command != SOFISTIK_UNKNOWN_ID &&
+    is_internal_value_start(initial_lookahead);
   if (
     scan_non_word_bare(
       scanner,
       lexer,
       valid_symbols,
       &reserved_root_word,
+      &defer_to_internal_lexer,
       skipped_columns
     )
   ) {
@@ -1659,6 +1737,7 @@ bool tree_sitter_sofistik_external_scanner_scan(
         lexer,
         valid_symbols,
         &reserved_root_word,
+        &defer_to_internal_lexer,
         at_line_start,
         needs_line_start,
         skipped_columns
@@ -1667,7 +1746,8 @@ bool tree_sitter_sofistik_external_scanner_scan(
   }
   if (
     valid_symbols[IGNORED_TEXT] && has_ignored_text_start &&
-    !reserved_root_word && initial_lookahead != '#' &&
+    !reserved_root_word && !defer_to_internal_lexer &&
+    initial_lookahead != '#' &&
     initial_lookahead != '<' && initial_lookahead != '@'
   ) {
     consume_line(lexer);

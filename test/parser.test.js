@@ -366,6 +366,19 @@ test("keeps a single-line DEFINE value neutral while exposing variables", () => 
   assert.strictEqual(statement.descendantsOfType("expression").length, 0);
 });
 
+test("distinguishes slash comments from slashes in preprocessor values", () => {
+  const tree = parse("#DEFINE lt=0.1 // lt < 1.0 m\n#DEFINE path=/tmp/value\n");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("preprocessor_literal").map((node) => node.text),
+    ["0.1 ", "/tmp/value"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("comment").map((node) => node.text),
+    ["// lt < 1.0 m"],
+  );
+});
+
 test("keeps a standalone prose hash as a named literal", () => {
   const tree = parse("-prog template urs:13\nhead # CDB_IER=1 - Usage for Support Forces\nend");
   assert.strictEqual(tree.rootNode.hasError, false);
@@ -604,6 +617,15 @@ test("accepts descriptive text between program scopes", () => {
   );
 });
 
+test("keeps quoted prose in the module tail neutral", () => {
+  const tree = parse("+PROG AQUA\nEND\n'ordinary quoted prose'\n\"double quoted prose\"\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("ignored_text").map((node) => node.text),
+    ["'ordinary quoted prose'", '"double quoted prose"'],
+  );
+});
+
 test("keeps SYS and APPLY arguments ahead of the flat-text fallback", () => {
   const tree = parse('SYS command args\n+SYS wait copy "a.cdb" "b.cdb"\nAPPLY file.dat');
   assert.strictEqual(tree.rootNode.hasError, false);
@@ -698,6 +720,25 @@ test("keeps a colliding enum-like token as a schema item", () => {
   assert.strictEqual(tree.rootNode.descendantsOfType("enum_value").length, 0);
 });
 
+test("preserves punctuated schema item names", () => {
+  const tree = parse(
+    "+PROG AQUA\n" +
+      "SMAT NO 111 P+ 1 P- -1 MY+ 2 MZ- -2\n" +
+      "END\n" +
+      "+PROG SOFILOAD\n" +
+      "VOLU A/U 3.0/2 TYPE PV\n" +
+      "END\n" +
+      "+PROG TENDON\n" +
+      "SYSP MUE- 0.2\n" +
+      "END",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("item_name").map((node) => node.text),
+    ["NO", "P+", "P-", "MY+", "MZ-", "A/U", "TYPE", "MUE-"],
+  );
+});
+
 test("keeps enum-looking TENDON values as ordinary bare values", () => {
   const tree = parse("+PROG TENDON\nAXES KIND QUAD\nAXES VAL3 11 QUAD\nEND");
   assert.strictEqual(tree.rootNode.hasError, false);
@@ -719,9 +760,17 @@ test("separates comma-delimited substitutions without hiding later variables", (
     tree.rootNode.descendantsOfType("dollar_variable").map((node) => node.text),
     ["$(actqs)", "$(roads)", "$(third)"],
   );
+  assert.strictEqual(tree.rootNode.descendantsOfType("bare_value").length, 0);
+});
+
+test("separates adjacent quoted values in comma-delimited lists", () => {
+  const tree = parse(
+    "+PROG TEMPLATE\nLET#literal 'Literal0','Literal1'\nSTO#time '0:00','1:00'\nEND",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
   assert.deepStrictEqual(
-    tree.rootNode.descendantsOfType("bare_value").map((node) => node.text),
-    [",", ","],
+    tree.rootNode.descendantsOfType("single_quoted_string").map((node) => node.text),
+    ["'Literal0'", "'Literal1'", "'0:00'", "'1:00'"],
   );
 });
 
@@ -1150,6 +1199,14 @@ test("preserves unmatched block terminators as named orphan records", () => {
   );
 });
 
+test("preserves unmatched block terminators inside control flow", () => {
+  const tree = parse("+PROG TEMPLATE\nLOOP#i 1\n</text>\nENDLOOP\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.strictEqual(tree.rootNode.descendantsOfType("loop_block").length, 1);
+  assert.strictEqual(tree.rootNode.descendantsOfType("orphan_text_end").length, 1);
+  assert.strictEqual(tree.rootNode.descendantsOfType("operator_expression").length, 0);
+});
+
 test("parses PICT blocks in the input body and the module tail", () => {
   const tree = parse(
     "+PROG AQUA\n" +
@@ -1182,7 +1239,7 @@ test("parses PICT blocks in the input body and the module tail", () => {
 });
 
 test("classifies scalar, list, and punctuated values before bare text", () => {
-  const tree = parse("+PROG AQUA\nHEAD 1 -1.5 2e3 1,2,3 :AXIS ~OR \\REF\nEND");
+  const tree = parse("+PROG AQUA\nHEAD 1 -1.5 2e3 1,2,3 1,-2 1,2e-3 :AXIS ~OR \\REF\nEND");
   assert.strictEqual(tree.rootNode.hasError, false);
   assert.deepStrictEqual(
     tree.rootNode.descendantsOfType("number").map((node) => node.text),
@@ -1190,7 +1247,7 @@ test("classifies scalar, list, and punctuated values before bare text", () => {
   );
   assert.deepStrictEqual(
     tree.rootNode.descendantsOfType("number_list").map((node) => node.text),
-    ["1,2,3"],
+    ["1,2,3", "1,-2", "1,2e-3"],
   );
   assert.deepStrictEqual(
     tree.rootNode.descendantsOfType("punctuated_value").map((node) => node.text),
@@ -1330,6 +1387,49 @@ test("parses repeated END and tail controls separated by semicolons", () => {
   );
 });
 
+test("starts every semicolon-delimited command in the module tail", () => {
+  const tree = parse("+PROG STAR2\nEND\nCTRL I ; GRP 2 ; LC 200 FACT 1.0 ; LCC 2 ; END\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  const program = tree.rootNode.descendantsOfType("program")[0];
+  assert.deepStrictEqual(
+    program.descendantsOfType("command_name").map((node) => node.text),
+    ["CTRL", "GRP", "LC", "LCC"],
+  );
+  assert.deepStrictEqual(
+    program.descendantsOfType("item_name").map((node) => node.text),
+    ["FACT"],
+  );
+  assert.deepStrictEqual(
+    program.childrenForFieldName("tail").map((node) => node.type),
+    ["command", "command", "command", "command", "end_record", "end_record"],
+  );
+});
+
+test("keeps typed implicit records after an intermediate END", () => {
+  const tree = parse("+PROG AQUA\nEND\nHEAD tail\n= #A\n[m]\n>0\n)\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.strictEqual(tree.rootNode.descendantsOfType("ignored_text").length, 0);
+  assert.strictEqual(tree.rootNode.descendantsOfType("expression").length, 1);
+  assert.strictEqual(tree.rootNode.descendantsOfType("hash_variable").length, 1);
+  assert.strictEqual(tree.rootNode.descendantsOfType("unit").length, 1);
+  assert.strictEqual(tree.rootNode.descendantsOfType("generic_expression").length, 1);
+  assert.strictEqual(tree.rootNode.descendantsOfType("literal_closing_parenthesis").length, 1);
+});
+
+test("keeps typed values in tables after an intermediate END", () => {
+  const tree = parse("+PROG SIR\nEND\nSECT NO XS XM\n2 0.0 -1.5\nEND");
+  assert.strictEqual(tree.rootNode.hasError, false);
+  const row = tree.rootNode.descendantsOfType("table_row")[0];
+  assert.deepStrictEqual(
+    row.childrenForFieldName("value").map((node) => [node.type, node.text]),
+    [
+      ["number", "2"],
+      ["number", "0.0"],
+      ["number", "-1.5"],
+    ],
+  );
+});
+
 test("resets TEMPLATE context for every APPLY and SYS sigil", () => {
   const directives = [
     ["APPLY file.dat", "apply_statement"],
@@ -1413,6 +1513,7 @@ test("incremental edits match fresh parses across lexical and structural boundar
   const parentheses = wrap("HEAD () A\n");
   const noParentheses = wrap("HEAD A\n");
   const singleString = wrap("HEAD 'one' A\n");
+  const stringList = wrap("HEAD 'one','two' A\n");
   const noString = wrap("HEAD A\n");
   const text = wrap("<TEXT>\nold #A\n</TEXT>\nHEAD A\n");
   const noText = wrap("HEAD A\n");
@@ -1453,6 +1554,9 @@ test("incremental edits match fresh parses across lexical and structural boundar
     ["string/insert", noString, singleString],
     ["string/delete", singleString, noString],
     ["string/replace", singleString, wrap('HEAD "two $(VALUE)" A\n')],
+    ["comma list/insert", singleString, stringList],
+    ["comma list/delete", stringList, singleString],
+    ["comma list/replace", stringList, wrap("HEAD @1,@-2 A\n")],
     ["TEXT/insert", noText, text],
     ["TEXT/delete", text, noText],
     ["TEXT/replace", text, wrap("<TEXT>\nnew #B\n</TEXT>\nHEAD A\n")],

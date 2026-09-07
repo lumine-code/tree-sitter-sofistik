@@ -148,13 +148,9 @@ END
         (dynamic_record
           (dynamic_command_name)
           (at_reference)
-          (bare_value)
           (at_reference)
-          (bare_value)
           (at_reference)
-          (bare_value)
           (at_reference)
-          (bare_value)
           (invalid_at_reference))
         (endif_record
           (control_keyword)))
@@ -245,6 +241,40 @@ END
         (record
           (unterminated_string
             (unterminated_double_quoted_string))))
+      (end_record
+        (control_keyword)))))
+
+=========================================
+Adjacent strings in comma-separated lists
+=========================================
++PROG TEMPLATE
+LET#literal 'Literal0','Literal1'
+STO#time '0:00','1:00'
+END
+---
+
+(source_file
+  (program
+    (program_header
+      (program_sigil)
+      (module_name))
+    (input_block
+      (variable_statement
+        (variable_keyword)
+        (hash_variable
+          (hash_variable_name))
+        (string
+          (single_quoted_string))
+        (string
+          (single_quoted_string)))
+      (variable_statement
+        (variable_keyword)
+        (hash_variable
+          (hash_variable_name))
+        (string
+          (single_quoted_string))
+        (string
+          (single_quoted_string)))
       (end_record
         (control_keyword)))))
 
