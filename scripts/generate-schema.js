@@ -78,8 +78,10 @@ function buildResolverVocabulary(dataProvider = getDataProvider()) {
         for (const [commandName, command] of Object.entries(commands)) {
           if (!module.has(commandName)) module.set(commandName, new Set());
           const values = module.get(commandName);
-          for (const slot of command.slots) {
-            for (const value of slot.enumValues) values.add(String(value).toUpperCase());
+          for (const form of command.forms) {
+            for (const slot of form.slots) {
+              for (const value of slot.enumValues) values.add(String(value).toUpperCase());
+            }
           }
         }
       }

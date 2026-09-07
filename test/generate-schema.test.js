@@ -102,6 +102,32 @@ test("collects resolver values from every pinned schema", () => {
   assert.ok(resolverVocabulary.AQB.COMB.includes("MAX"));
 });
 
+test("collects resolver values from every alternative command form", () => {
+  const dataProvider = {
+    getMetadata() {
+      return { versions: ["2026"], languages: ["en"] };
+    },
+    loadSchemas() {
+      return {
+        TEST: {
+          ITEM: {
+            forms: [
+              {
+                slots: [{ enumValues: ["FIRST"] }, { enumValues: [] }],
+              },
+              { slots: [{ enumValues: ["SECOND", "FIRST"] }] },
+            ],
+          },
+        },
+      };
+    },
+  };
+
+  assert.deepStrictEqual(buildResolverVocabulary(dataProvider), {
+    TEST: { ITEM: ["FIRST", "SECOND"] },
+  });
+});
+
 test("writes deterministic C tables and data provenance", (context) => {
   const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "tree-sitter-sofistik-"));
   const output = path.join(temporaryDirectory, "schema.h");
@@ -216,7 +242,7 @@ test("records the exact data pin and both semantic digests", () => {
   const metadata = getMetadata();
   const provenance = buildProvenance(vocabulary, metadata);
 
-  assert.strictEqual(dataCommit(), "2c29877467e64dadc5aa85adf6c7517dca18d99f");
+  assert.strictEqual(dataCommit(), "fe7faee6f4a31b802ddaef9b5ff69a403330cdfd");
   assert.strictEqual(provenance.source.repository, DATA_REPOSITORY);
   assert.strictEqual(provenance.source.commit, dataCommit(packageManifest));
   assert.strictEqual(provenance.schemaDigest, metadata.schemaDigest);

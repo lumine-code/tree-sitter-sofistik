@@ -38,7 +38,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@lumine-code/sofistik-data": "github:lumine-code/sofistik-data#2c29877467e64dadc5aa85adf6c7517dca18d99f",
+    "@lumine-code/sofistik-data": "github:lumine-code/sofistik-data#fe7faee6f4a31b802ddaef9b5ff69a403330cdfd",
     "eslint": "^10.9.1",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.11.0",

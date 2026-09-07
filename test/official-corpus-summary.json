@@ -4,9 +4,9 @@
   "data": {
     "package": "@lumine-code/sofistik-data",
     "repository": "https://github.com/lumine-code/sofistik-data",
-    "commit": "2c29877467e64dadc5aa85adf6c7517dca18d99f"
+    "commit": "fe7faee6f4a31b802ddaef9b5ff69a403330cdfd"
   },
-  "schemaDigest": "7fab577eb8eec056549952ccd9c81ae6a1a57184f04c04401099b1e9256dd7e5",
+  "schemaDigest": "50e75b78f14d3a17bf52786fac977ea9610d61d54acb06c3fac10fbf86fa879e",
   "grammarVocabularyDigest": "d77106a81beb9718078898bdae9802921670b05a5b26ef8629342c93af90650c",
   "releases": {
     "2018": {
