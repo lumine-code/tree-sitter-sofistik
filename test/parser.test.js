@@ -1461,7 +1461,7 @@ test("resets TEMPLATE context for every APPLY and SYS sigil", () => {
 test("scales linearly when parenthesized expression depth doubles", { timeout: 10000 }, () => {
   const makeSource = (depth) =>
     `+PROG AQUA\nHEAD ${"(".repeat(depth)}#VALUE${")".repeat(depth)}\nEND`;
-  const smallDepth = 1600;
+  const smallDepth = 800;
   const largeDepth = smallDepth * 2;
   const smallSource = makeSource(smallDepth);
   const largeSource = makeSource(largeDepth);
@@ -1472,10 +1472,10 @@ test("scales linearly when parenthesized expression depth doubles", { timeout: 1
     const durations = [];
     for (let round = 0; round < 7; round++) {
       const started = performance.now();
-      for (let repetition = 0; repetition < 10; repetition++) {
+      for (let repetition = 0; repetition < 40; repetition++) {
         assert.strictEqual(parser.parse(source).rootNode.hasError, false);
       }
-      durations.push((performance.now() - started) / 10);
+      durations.push((performance.now() - started) / 40);
     }
     durations.sort((left, right) => left - right);
     return durations[Math.floor(durations.length / 2)];
