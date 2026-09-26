@@ -279,10 +279,6 @@
             "named": true
           },
           {
-            "type": "dynamic_record",
-            "named": true
-          },
-          {
             "type": "end_record",
             "named": true
           },
@@ -400,36 +396,6 @@
           "named": true
         }
       ]
-    }
-  },
-  {
-    "type": "dynamic_record",
-    "named": true,
-    "fields": {
-      "name": {
-        "multiple": false,
-        "required": true,
-        "types": [
-          {
-            "type": "dynamic_command_name",
-            "named": true
-          }
-        ]
-      },
-      "value": {
-        "multiple": true,
-        "required": false,
-        "types": [
-          {
-            "type": "_value",
-            "named": true
-          },
-          {
-            "type": "continuation",
-            "named": true
-          }
-        ]
-      }
     }
   },
   {
@@ -684,10 +650,6 @@
           "named": true
         },
         {
-          "type": "dynamic_record",
-          "named": true
-        },
-        {
           "type": "else_header",
           "named": true
         },
@@ -849,10 +811,6 @@
         },
         {
           "type": "command",
-          "named": true
-        },
-        {
-          "type": "dynamic_record",
           "named": true
         },
         {
@@ -1029,10 +987,6 @@
         },
         {
           "type": "command",
-          "named": true
-        },
-        {
-          "type": "dynamic_record",
           "named": true
         },
         {
@@ -1363,10 +1317,6 @@
         },
         {
           "type": "command",
-          "named": true
-        },
-        {
-          "type": "dynamic_record",
           "named": true
         },
         {
@@ -1799,10 +1749,6 @@
             "named": true
           },
           {
-            "type": "dynamic_record",
-            "named": true
-          },
-          {
             "type": "end_record",
             "named": true
           },
@@ -2039,10 +1985,6 @@
         },
         {
           "type": "commented_program_scope",
-          "named": true
-        },
-        {
-          "type": "dynamic_record",
           "named": true
         },
         {
@@ -2472,10 +2414,6 @@
   },
   {
     "type": "double_doubled_quoted_string",
-    "named": true
-  },
-  {
-    "type": "dynamic_command_name",
     "named": true
   },
   {

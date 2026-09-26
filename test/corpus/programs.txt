@@ -101,7 +101,7 @@ END
         (control_keyword)))))
 
 =============================================
-Template controls precede the dynamic fallback
+Template controls precede invalid command records
 =============================================
 +PROG TEMPLATE
 KOPF Universal heading
@@ -135,13 +135,13 @@ END
             (hash_variable_name))
           (generic_expression)
           (number))
-        (dynamic_record
-          (dynamic_command_name)
+        (invalid_command_record
+          (invalid_command)
           (number))
         (else_header
           (control_keyword))
-        (dynamic_record
-          (dynamic_command_name)
+        (invalid_command_record
+          (invalid_command)
           (number))
         (endif_record
           (control_keyword)))
@@ -149,8 +149,8 @@ END
         (loop_header
           (control_keyword)
           (number))
-        (dynamic_record
-          (dynamic_command_name)
+        (invalid_command_record
+          (invalid_command)
           (number))
         (endloop_record
           (control_keyword)))
@@ -163,7 +163,7 @@ END
         (control_keyword)))))
 
 ==================================
-Apply and SYS reset template context
+Apply and SYS keep unknown tail text neutral
 ==================================
 +PROG TEMPLATE
 END
@@ -185,9 +185,7 @@ CUSTOM after sys
     (input_block
       (end_record
         (control_keyword)))
-    (dynamic_record
-      (dynamic_command_name)
-      (bare_value)))
+    (ignored_text))
   (apply_statement
     (apply_sigil)
     (bare_value))
@@ -199,9 +197,7 @@ CUSTOM after sys
     (input_block
       (end_record
         (control_keyword)))
-    (dynamic_record
-      (dynamic_command_name)
-      (bare_value)))
+    (ignored_text))
   (sys_statement
     (sys_sigil)
     (bare_value)
@@ -574,10 +570,11 @@ END
       keyword: (control_keyword))))
 
 =======================
-Dynamic template record
+Invalid template records
 =======================
 +PROG TEMPLATE
-WHATEVER A B C
+GRP2 A B C
+asdasdasdas 1
 @KEY VALUE
 END
 ---
@@ -588,11 +585,14 @@ END
       sigil: (program_sigil)
       module: (module_name))
     body: (input_block
-      (dynamic_record
-        name: (dynamic_command_name)
-        value: (bare_value)
-        value: (bare_value)
-        value: (bare_value))
+      (invalid_command_record
+        name: (invalid_command)
+        (bare_value)
+        (bare_value)
+        (bare_value))
+      (invalid_command_record
+        name: (invalid_command)
+        (number))
       (cdb_statement
         keyword: (cdb_keyword)
         argument: (bare_value))

@@ -182,7 +182,7 @@ test("keeps Wasm record and parenthesis scaling linear", { timeout: 30000 }, () 
   const makeRecords = (count) =>
     `+PROG TEMPLATE\n${Array.from(
       { length: count },
-      (_, index) => `CMD${index} #VALUE${index} "quoted value"`,
+      (_, index) => `KOPF "${index} quoted value"`,
     ).join(" ; ")}\nEND`;
   const makeNested = (depth) =>
     `+PROG AQUA\nHEAD ${"(".repeat(depth)}#VALUE${")".repeat(depth)}\nEND`;

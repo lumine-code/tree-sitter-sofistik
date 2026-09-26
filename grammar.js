@@ -13,8 +13,6 @@ module.exports = grammar({
     $.literal_hash,
     $._bare_word,
     $._value_separator,
-    $.dynamic_command_name,
-    $._template_command_name,
     $._end_keyword,
     $.variable_keyword,
     $._dollar_prog,
@@ -138,7 +136,6 @@ module.exports = grammar({
         $.preprocessor_directive,
         $.cdb_statement,
         $.variable_statement,
-        alias($._template_record, $.dynamic_record),
         $.text_block,
         $.picture_block,
         $.metadata,
@@ -415,14 +412,7 @@ module.exports = grammar({
 
     cdb_keyword: ($) => choice(ci("@KEY"), ci("@CDB")),
 
-    preprocessor_name: ($) => /#?[A-Za-z0-9_][A-Za-z0-9_-]*/,
-
-    _template_record: ($) =>
-      seq(
-        field("name", alias($._template_command_name, $.dynamic_command_name)),
-        repeat(field("value", choice($._value, $._value_separator, $.continuation))),
-        $._record_end,
-      ),
+    preprocessor_name: ($) => /#?[A-Za-z0-9_][A-Za-z0-9_.-]*/,
 
     text_block: ($) =>
       prec.right(

@@ -52,16 +52,16 @@ test("parses CRLF input without a final newline", () => {
   assert.strictEqual(tree.rootNode.descendantsOfType("command_name")[0].text, "HEAD");
 });
 
-test("uses schema commands before the dynamic TEMPLATE fallback", () => {
-  const tree = parse("+PROG TEMPLATE\nHEAD Variables\nWHATEVER A B\nEND");
+test("rejects unknown TEMPLATE commands while accepting schema commands", () => {
+  const tree = parse("+PROG TEMPLATE\nHEAD Variables\nGRP2 A B\nasdasdasdas C D\nTEST OPT1 1\nEND");
   assert.strictEqual(tree.rootNode.hasError, false);
   assert.deepStrictEqual(
     tree.rootNode.descendantsOfType("command_name").map((node) => node.text),
-    ["HEAD"],
+    ["HEAD", "TEST"],
   );
   assert.deepStrictEqual(
-    tree.rootNode.descendantsOfType("dynamic_command_name").map((node) => node.text),
-    ["WHATEVER"],
+    tree.rootNode.descendantsOfType("invalid_command").map((node) => node.text),
+    ["GRP2", "asdasdasdas"],
   );
 });
 
@@ -72,7 +72,7 @@ test(
     const makeSource = (count) =>
       `+PROG TEMPLATE\n${Array.from({ length: count }, (_, index) => {
         const suffix = String(index).padStart(4, "0");
-        return `CMD${suffix} #VALUE${suffix} "quoted value"`;
+        return `KOPF "${suffix} quoted value"`;
       }).join(" ; ")}\nEND`;
     const smallRecordCount = 128;
     const scale = 16;
@@ -105,10 +105,10 @@ test(
     );
 
     const tree = parser.parse(largeSource);
-    const records = tree.rootNode.descendantsOfType("dynamic_record");
+    const records = tree.rootNode.descendantsOfType("command");
     assert.strictEqual(records.length, smallRecordCount * scale);
-    assert.strictEqual(records[0].childForFieldName("name").text, "CMD0000");
-    assert.strictEqual(records.at(-1).childForFieldName("name").text, "CMD2047");
+    assert.strictEqual(records[0].childForFieldName("name").text, "KOPF");
+    assert.strictEqual(records.at(-1).childForFieldName("name").text, "KOPF");
     assert.strictEqual(tree.rootNode.descendantsOfType("string").length, smallRecordCount * scale);
   },
 );
@@ -364,6 +364,30 @@ test("keeps a single-line DEFINE value neutral while exposing variables", () => 
     ["'PP'"],
   );
   assert.strictEqual(statement.descendantsOfType("expression").length, 0);
+});
+
+test("allows dots only in DEFINE names, not in hash variables", () => {
+  const tree = parse(
+    "#define ella-dyn-t.1-1=1.291354058607521\n" +
+      "#define ella-linf-t.1\n" +
+      "+PROG TEMPLATE\n" +
+      "STO#plain.name 1\n" +
+      "LET#other.name 2\n" +
+      "END",
+  );
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("preprocessor_name").map((node) => node.text),
+    ["ella-dyn-t.1-1", "ella-linf-t.1"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("hash_variable").map((node) => node.text),
+    ["#plain", "#other"],
+  );
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("bare_value").map((node) => node.text),
+    [".name", ".name"],
+  );
 });
 
 test("distinguishes slash comments from slashes in preprocessor values", () => {
@@ -1042,7 +1066,7 @@ test("separates CDB statements, metadata, and every supported at-reference", () 
   const tree = parse(
     "+PROG TEMPLATE\n" +
       "@KEY SECRET ; IF #A > 0\n" +
-      "WHATEVER @name,@1,@-2,@(#A+1),@???\n" +
+      "HEAD @name,@1,@-2,@(#A+1),@???\n" +
       "ENDIF\n" +
       "@CDB 7\n" +
       "@ descriptive metadata\n" +
@@ -1139,7 +1163,7 @@ test("distinguishes quoted, doubled, unterminated, and suffix-apostrophe values"
   );
 });
 
-test("keeps TEMPLATE control flow and variables ahead of dynamic commands", () => {
+test("keeps TEMPLATE control flow and variables ahead of invalid commands", () => {
   const tree = parse(
     "+PROG TEMPLATE\n" +
       "KOPF Universal heading\n" +
@@ -1162,7 +1186,7 @@ test("keeps TEMPLATE control flow and variables ahead of dynamic commands", () =
     ["KOPF"],
   );
   assert.deepStrictEqual(
-    tree.rootNode.descendantsOfType("dynamic_command_name").map((node) => node.text),
+    tree.rootNode.descendantsOfType("invalid_command").map((node) => node.text),
     ["WHATEVER", "OTHER", "THIRD", "CUSTOM"],
   );
   assert.strictEqual(tree.rootNode.descendantsOfType("if_block").length, 1);
@@ -1430,7 +1454,7 @@ test("keeps typed values in tables after an intermediate END", () => {
   );
 });
 
-test("resets TEMPLATE context for every APPLY and SYS sigil", () => {
+test("keeps unknown text neutral around every APPLY and SYS sigil", () => {
   const directives = [
     ["APPLY file.dat", "apply_statement"],
     ["+APPLY file.dat", "apply_statement"],
@@ -1446,13 +1470,8 @@ test("resets TEMPLATE context for every APPLY and SYS sigil", () => {
     assert.strictEqual(tree.rootNode.hasError, false, directive);
     assert.strictEqual(tree.rootNode.descendantsOfType(statementType).length, 1, directive);
     assert.deepStrictEqual(
-      tree.rootNode.descendantsOfType("dynamic_command_name").map((node) => node.text),
-      ["CUSTOM"],
-      directive,
-    );
-    assert.deepStrictEqual(
       tree.rootNode.descendantsOfType("ignored_text").map((node) => node.text.trim()),
-      ["CUSTOM after"],
+      ["CUSTOM before", "CUSTOM after"],
       directive,
     );
   }

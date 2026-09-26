@@ -31,8 +31,6 @@ const TRACKED_NODE_TYPES = Object.freeze([
   "unterminated_input_block",
   "unterminated_single_quoted_string",
 ]);
-const DYNAMIC_CONTROL_WORDS = new Set(["ELSE", "ELSEIF", "ENDIF", "ENDLOOP", "IF", "LOOP"]);
-
 function compareText(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
 }
@@ -160,12 +158,7 @@ function collectStructure(root, summary, file = "") {
     if (Object.hasOwn(summary.nodeCounts, node.type)) {
       summary.nodeCounts[node.type]++;
     }
-    if (node.type === "dynamic_command_name") {
-      const word = node.text.toUpperCase();
-      if (DYNAMIC_CONTROL_WORDS.has(word)) {
-        summary.dynamicControlCommands[word] = (summary.dynamicControlCommands[word] || 0) + 1;
-      }
-    } else if (node.type === "invalid_command") {
+    if (node.type === "invalid_command") {
       const word = node.text.toUpperCase();
       summary.invalidCommands[word] = (summary.invalidCommands[word] || 0) + 1;
       summary.invalidCommandFingerprints.push({
@@ -212,7 +205,6 @@ function run(root, { fallbackEncodings = [], output = true, structure = false } 
   };
   if (structure) {
     summary.nodeCounts = Object.fromEntries(TRACKED_NODE_TYPES.map((type) => [type, 0]));
-    summary.dynamicControlCommands = {};
     summary.invalidCommands = {};
     summary.invalidCommandFingerprints = [];
     summary.invalidKopf = 0;

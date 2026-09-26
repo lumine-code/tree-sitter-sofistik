@@ -107,7 +107,6 @@ test("collects and fingerprints only topmost recovery locations", () => {
 test("collects structural coverage and resolver regressions", () => {
   const summary = {
     nodeCounts: { number: 0, hash_variable: 0 },
-    dynamicControlCommands: {},
     invalidCommands: {},
     invalidCommandFingerprints: [],
     invalidKopf: 0,
@@ -117,7 +116,6 @@ test("collects structural coverage and resolver regressions", () => {
       children: [
         node("number", { text: "1" }),
         node("hash_variable", { text: "#A" }),
-        node("dynamic_command_name", { text: "IF" }),
         node("invalid_command", { text: "KOPF" }),
       ],
     }),
@@ -125,7 +123,6 @@ test("collects structural coverage and resolver regressions", () => {
     "example.dat",
   );
   assert.deepStrictEqual(summary.nodeCounts, { number: 1, hash_variable: 1 });
-  assert.deepStrictEqual(summary.dynamicControlCommands, { IF: 1 });
   assert.deepStrictEqual(summary.invalidCommands, { KOPF: 1 });
   assert.deepStrictEqual(summary.invalidCommandFingerprints, [
     { file: "example.dat", row: 1, column: 1, text: "KOPF" },
@@ -239,7 +236,6 @@ test("ties the recorded official corpus result to the generated data provenance"
       [...TRACKED_NODE_TYPES],
       `${release} structural keys`,
     );
-    assert.deepStrictEqual(summary.dynamicControlCommands, {}, `${release} dynamic controls`);
     assert.deepStrictEqual(summary.invalidCommands, {}, `${release} invalid commands`);
     assert.deepStrictEqual(
       summary.invalidCommandFingerprints,

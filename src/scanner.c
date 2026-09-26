@@ -18,8 +18,6 @@ enum TokenType {
   LITERAL_HASH,
   BARE_WORD,
   VALUE_SEPARATOR,
-  DYNAMIC_COMMAND_NAME,
-  TEMPLATE_COMMAND_NAME,
   END_KEYWORD,
   VARIABLE_KEYWORD,
   DOLLAR_PROG,
@@ -56,12 +54,6 @@ enum TextState {
   IN_TEXT_HEADER,
   IN_TEXT_BODY,
 };
-
-// A TEMPLATE command has no schema row, but it is still an active command.
-// Keep that state distinct from UNKNOWN so the words that follow its name are
-// scanned as values instead of repeatedly competing with a fresh command at
-// every position on a semicolon-delimited line.
-#define SOFISTIK_DYNAMIC_COMMAND_ID SOFISTIK_COMMAND_COUNT
 
 typedef struct {
   uint32_t module;
@@ -283,7 +275,7 @@ static bool scan_hash_variable_candidate(TSLexer *lexer) {
     (lexer->lookahead >= 'A' && lexer->lookahead <= 'Z') ||
     lexer->lookahead == '_'
   ) {
-    while (is_schema_character(lexer->lookahead) || lexer->lookahead == '.') {
+    while (is_schema_character(lexer->lookahead)) {
       lexer->advance(lexer, false);
     }
   } else if (lexer->lookahead >= '0' && lexer->lookahead <= '9') {
@@ -335,7 +327,7 @@ static bool scan_hash_token(
     (lexer->lookahead >= 'A' && lexer->lookahead <= 'Z') ||
     lexer->lookahead == '_'
   ) {
-    while (is_schema_character(lexer->lookahead) || lexer->lookahead == '.') {
+    while (is_schema_character(lexer->lookahead)) {
       int32_t character = lexer->lookahead;
       if (length + 1 < sizeof(word) && character < 128) {
         if (character >= 'a' && character <= 'z') {
@@ -372,8 +364,7 @@ static bool scan_hash_token(
       return true;
     }
     if (
-      valid_symbols[COMMAND_NAME] || valid_symbols[INVALID_COMMAND] ||
-      valid_symbols[DYNAMIC_COMMAND_NAME] || valid_symbols[TEMPLATE_COMMAND_NAME]
+      valid_symbols[COMMAND_NAME] || valid_symbols[INVALID_COMMAND]
     ) {
       return false;
     }
@@ -779,11 +770,6 @@ static bool is_global_command(const char *name) {
   return false;
 }
 
-static bool is_template_module(uint32_t module) {
-  return module < SOFISTIK_MODULE_COUNT &&
-         strcmp(SOFISTIK_MODULES[module].name, "TEMPLATE") == 0;
-}
-
 static bool read_word(
   TSLexer *lexer,
   char *word,
@@ -951,12 +937,6 @@ static bool scan_word(
     return false;
   }
 
-  if (valid_symbols[DYNAMIC_COMMAND_NAME]) {
-    scanner->command = SOFISTIK_DYNAMIC_COMMAND_ID;
-    lexer->result_symbol = DYNAMIC_COMMAND_NAME;
-    return true;
-  }
-
   if (
     followed_by_hash && valid_symbols[VARIABLE_KEYWORD] &&
     is_variable_keyword(word)
@@ -986,12 +966,7 @@ static bool scan_word(
     if (valid_symbols[IGNORED_TEXT]) {
       *reserved_root_word = true;
     }
-    if (
-      valid_symbols[DYNAMIC_COMMAND_NAME] || valid_symbols[TEMPLATE_COMMAND_NAME] ||
-      valid_symbols[IGNORED_TEXT]
-    ) {
-      return false;
-    }
+    return false;
   }
 
   uint32_t item = valid_symbols[ITEM_NAME]
@@ -1009,11 +984,6 @@ static bool scan_word(
       lexer->result_symbol = COMMAND_NAME;
       return true;
     }
-    if (valid_symbols[TEMPLATE_COMMAND_NAME] && is_template_module(scanner->module)) {
-      scanner->command = SOFISTIK_DYNAMIC_COMMAND_ID;
-      lexer->result_symbol = TEMPLATE_COMMAND_NAME;
-      return true;
-    }
     if (
       valid_symbols[INVALID_COMMAND] &&
       scanner->text_state == OUTSIDE_TEXT &&
@@ -1023,18 +993,14 @@ static bool scan_word(
       item == SOFISTIK_UNKNOWN_ID &&
       !is_text_value_command(scanner->command) &&
       !is_command_value(scanner->command, word) &&
-      is_global_command(word)
+      (is_global_command(word) ||
+       (scanner->module < SOFISTIK_MODULE_COUNT &&
+        strcmp(SOFISTIK_MODULES[scanner->module].name, "TEMPLATE") == 0))
     ) {
       reset_command(scanner);
       lexer->result_symbol = INVALID_COMMAND;
       return true;
     }
-  }
-
-  if (valid_symbols[TEMPLATE_COMMAND_NAME] && is_template_module(scanner->module)) {
-    scanner->command = SOFISTIK_DYNAMIC_COMMAND_ID;
-    lexer->result_symbol = TEMPLATE_COMMAND_NAME;
-    return true;
   }
 
   if (item != SOFISTIK_UNKNOWN_ID) {
@@ -1790,7 +1756,7 @@ void tree_sitter_sofistik_external_scanner_deserialize(
   if (scanner->module >= SOFISTIK_MODULE_COUNT) {
     scanner->module = SOFISTIK_UNKNOWN_ID;
   }
-  if (scanner->command > SOFISTIK_DYNAMIC_COMMAND_ID) {
+  if (scanner->command >= SOFISTIK_COMMAND_COUNT) {
     scanner->command = SOFISTIK_UNKNOWN_ID;
   }
   if (scanner->text_state > IN_TEXT_BODY) {

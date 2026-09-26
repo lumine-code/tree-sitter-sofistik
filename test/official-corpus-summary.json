@@ -61,7 +61,6 @@
         "unterminated_input_block": 2,
         "unterminated_single_quoted_string": 1
       },
-      "dynamicControlCommands": {},
       "invalidCommands": {},
       "invalidCommandFingerprints": [],
       "invalidKopf": 0,
@@ -125,7 +124,6 @@
         "unterminated_input_block": 2,
         "unterminated_single_quoted_string": 1
       },
-      "dynamicControlCommands": {},
       "invalidCommands": {},
       "invalidCommandFingerprints": [],
       "invalidKopf": 0,
@@ -189,7 +187,6 @@
         "unterminated_input_block": 2,
         "unterminated_single_quoted_string": 0
       },
-      "dynamicControlCommands": {},
       "invalidCommands": {},
       "invalidCommandFingerprints": [],
       "invalidKopf": 0,
@@ -249,7 +246,6 @@
         "unterminated_input_block": 1,
         "unterminated_single_quoted_string": 1
       },
-      "dynamicControlCommands": {},
       "invalidCommands": {},
       "invalidCommandFingerprints": [],
       "invalidKopf": 0,
@@ -309,7 +305,6 @@
         "unterminated_input_block": 1,
         "unterminated_single_quoted_string": 4
       },
-      "dynamicControlCommands": {},
       "invalidCommands": {},
       "invalidCommandFingerprints": [],
       "invalidKopf": 0,
@@ -365,7 +360,6 @@
         "unterminated_input_block": 1,
         "unterminated_single_quoted_string": 5
       },
-      "dynamicControlCommands": {},
       "invalidCommands": {},
       "invalidCommandFingerprints": [],
       "invalidKopf": 0,
@@ -421,7 +415,6 @@
         "unterminated_input_block": 1,
         "unterminated_single_quoted_string": 5
       },
-      "dynamicControlCommands": {},
       "invalidCommands": {},
       "invalidCommandFingerprints": [],
       "invalidKopf": 0,
