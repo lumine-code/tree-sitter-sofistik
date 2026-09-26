@@ -306,6 +306,25 @@ test("treats block DEFINE markers as transparent to the active module", () => {
   );
 });
 
+test("exposes variables in unscoped DEFINE bodies before the first program", () => {
+  const tree = parse(
+    "#define ella-lanes\n" +
+      "lane t.1 $(lanes-props)\n" +
+      "lane t.2 $(lanes-props)\n" +
+      "lane t.3 $(lanes-props)\n" +
+      "lane t.4 $(lanes-props)\n" +
+      "#enddef\n",
+  );
+
+  assert.strictEqual(tree.rootNode.hasError, false);
+  assert.strictEqual(tree.rootNode.descendantsOfType("unscoped_record").length, 4);
+  assert.deepStrictEqual(
+    tree.rootNode.descendantsOfType("dollar_variable").map((node) => node.text),
+    Array(4).fill("$(lanes-props)"),
+  );
+  assert.strictEqual(tree.rootNode.descendantsOfType("ignored_text").length, 0);
+});
+
 test("keeps block DEFINE markers transparent after a command inside a program", () => {
   const tree = parse(
     "+prog maxima\nhead macro\n#define maxima-supp\nsupp $(no) mami auto\n#enddef\nend",

@@ -25,10 +25,42 @@
           },
           {
             "type": "SYMBOL",
+            "name": "unscoped_record"
+          },
+          {
+            "type": "SYMBOL",
             "name": "_module_tail_statement"
           }
         ]
       }
+    },
+    "unscoped_record": {
+      "type": "SEQ",
+      "members": [
+        {
+          "type": "FIELD",
+          "name": "value",
+          "content": {
+            "type": "SYMBOL",
+            "name": "bare_value"
+          }
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "FIELD",
+            "name": "value",
+            "content": {
+              "type": "SYMBOL",
+              "name": "_record_element"
+            }
+          }
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_record_end"
+        }
+      ]
     },
     "program": {
       "type": "PREC_RIGHT",

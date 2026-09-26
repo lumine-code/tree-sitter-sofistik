@@ -2088,6 +2088,10 @@
           "named": true
         },
         {
+          "type": "unscoped_record",
+          "named": true
+        },
+        {
           "type": "variable_statement",
           "named": true
         }
@@ -2298,6 +2302,30 @@
         "types": [
           {
             "type": "text_delimiter",
+            "named": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "unscoped_record",
+    "named": true,
+    "fields": {
+      "value": {
+        "multiple": true,
+        "required": true,
+        "types": [
+          {
+            "type": "_value",
+            "named": true
+          },
+          {
+            "type": "continuation",
+            "named": true
+          },
+          {
+            "type": "item_sequence",
             "named": true
           }
         ]

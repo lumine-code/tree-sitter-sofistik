@@ -117,6 +117,30 @@ end
       (end_record
         (control_keyword)))))
 
+===========================================================
+Unscoped DEFINE bodies expose variables before first program
+===========================================================
+#DEFINE ella-lanes
+lane t.1 $(lanes-props)
+lane t.2 $(lanes-props)
+#ENDDEF
+---
+
+(source_file
+  (preprocessor_define_header
+    (preprocessor_keyword)
+    (preprocessor_name))
+  (unscoped_record
+    (bare_value)
+    (bare_value)
+    (dollar_variable))
+  (unscoped_record
+    (bare_value)
+    (bare_value)
+    (dollar_variable))
+  (preprocessor_enddef_record
+    (preprocessor_keyword)))
+
 ========================================
 CDB statements and positional references
 ========================================
@@ -900,7 +924,11 @@ SYS echo hi
   (preprocessor_define_header
     (preprocessor_keyword)
     (preprocessor_name))
-  (ignored_text)
+  (unscoped_record
+    (bare_value)
+    (bare_value)
+    (hash_variable
+      (hash_variable_name)))
   (preprocessor_enddef_record
     (preprocessor_keyword))
   (preprocessor_if_header

@@ -402,6 +402,32 @@ static bool scan_dollar_variable_candidate(TSLexer *lexer) {
   return true;
 }
 
+static bool remaining_line_has_variable(TSLexer *lexer) {
+  while (
+    lexer->lookahead && lexer->lookahead != '\r' &&
+    lexer->lookahead != '\n'
+  ) {
+    if (lexer->lookahead == '!') {
+      return false;
+    }
+    if (lexer->lookahead == '/') {
+      lexer->advance(lexer, false);
+      if (lexer->lookahead == '/') {
+        return false;
+      }
+      continue;
+    }
+    if (
+      (lexer->lookahead == '$' && scan_dollar_variable_candidate(lexer)) ||
+      (lexer->lookahead == '#' && scan_hash_variable_candidate(lexer))
+    ) {
+      return true;
+    }
+    lexer->advance(lexer, false);
+  }
+  return false;
+}
+
 static bool scan_string_candidate(TSLexer *lexer, int32_t quote) {
   if (lexer->lookahead != quote) {
     return false;
@@ -747,6 +773,21 @@ static bool scan_non_word_bare(
     return false;
   }
 
+  if (
+    valid_symbols[IGNORED_TEXT] &&
+    scanner->command == SOFISTIK_UNKNOWN_ID
+  ) {
+    lexer->mark_end(lexer);
+    if (
+      scanner->module == SOFISTIK_UNKNOWN_ID &&
+      remaining_line_has_variable(lexer)
+    ) {
+      lexer->result_symbol = BARE_WORD;
+      return true;
+    }
+    return false;
+  }
+
   extend_bare_with_attached_quote(lexer);
   lexer->mark_end(lexer);
   lexer->result_symbol = BARE_WORD;
@@ -870,6 +911,19 @@ static bool scan_word(
       return true;
     }
     if (valid_symbols[BARE_WORD]) {
+      if (
+        valid_symbols[IGNORED_TEXT] &&
+        scanner->command == SOFISTIK_UNKNOWN_ID
+      ) {
+        if (
+          scanner->module == SOFISTIK_UNKNOWN_ID &&
+          remaining_line_has_variable(lexer)
+        ) {
+          lexer->result_symbol = BARE_WORD;
+          return true;
+        }
+        return false;
+      }
       extend_bare_with_attached_quote(lexer);
       lexer->result_symbol = BARE_WORD;
       return true;
@@ -1020,6 +1074,19 @@ static bool scan_word(
        scanner->command == SOFISTIK_UNKNOWN_ID && valid_symbols[COMMAND_NAME]) ||
      valid_symbols[IGNORED_TEXT])
   ) {
+    if (
+      valid_symbols[IGNORED_TEXT] &&
+      scanner->command == SOFISTIK_UNKNOWN_ID
+    ) {
+      if (
+        scanner->module == SOFISTIK_UNKNOWN_ID &&
+        remaining_line_has_variable(lexer)
+      ) {
+        lexer->result_symbol = BARE_WORD;
+        return true;
+      }
+      return false;
+    }
     extend_bare_with_attached_quote(lexer);
     lexer->result_symbol = BARE_WORD;
     return true;
@@ -1628,7 +1695,8 @@ bool tree_sitter_sofistik_external_scanner_scan(
 
   if (
     (lexer->lookahead == '\'' || lexer->lookahead == '"') &&
-    valid_symbols[IGNORED_TEXT] && !valid_symbols[BARE_WORD]
+    valid_symbols[IGNORED_TEXT] &&
+    (!valid_symbols[BARE_WORD] || scanner->command == SOFISTIK_UNKNOWN_ID)
   ) {
     consume_line(lexer);
     lexer->mark_end(lexer);
