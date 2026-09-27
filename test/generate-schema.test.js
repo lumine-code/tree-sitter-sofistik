@@ -242,7 +242,7 @@ test("records the exact data pin and both semantic digests", () => {
   const metadata = getMetadata();
   const provenance = buildProvenance(vocabulary, metadata);
 
-  assert.strictEqual(dataCommit(), "fe7faee6f4a31b802ddaef9b5ff69a403330cdfd");
+  assert.strictEqual(dataCommit(), "b37428c7907d17c53df446ba68f114b9fbc6cdac");
   assert.strictEqual(provenance.source.repository, DATA_REPOSITORY);
   assert.strictEqual(provenance.source.commit, dataCommit(packageManifest));
   assert.strictEqual(provenance.schemaDigest, metadata.schemaDigest);
