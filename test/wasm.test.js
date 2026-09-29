@@ -176,6 +176,62 @@ test("parses callback input in chunks no larger than 4096 bytes", () => {
   }
 });
 
+test("reuses large program bodies when typing after END", () => {
+  const commandCount = 8192;
+  const originalSource = [
+    "+PROG SOFIMSHA",
+    ...Array.from({ length: commandCount }, (_, index) => `NODE ${index + 1} X ${index} Y 0 Z 0`),
+    "END",
+    "",
+  ].join("\n");
+  const parser = new TreeSitter.Parser();
+  parser.setLanguage(language);
+  let tree;
+
+  try {
+    tree = assertHealthyTree(parser.parse(originalSource), "large program parse");
+    const block = tree.rootNode.namedChildren[0].childForFieldName("body");
+    assert.strictEqual(block.namedChildCount, commandCount + 1);
+    assert.strictEqual(block.namedChildren[0].type, "command");
+    assert.strictEqual(block.namedChildren.at(-1).type, "end_record");
+
+    const position = pointAt(originalSource, originalSource.length);
+    tree.edit({
+      startIndex: originalSource.length,
+      oldEndIndex: originalSource.length,
+      newEndIndex: originalSource.length + 1,
+      startPosition: position,
+      oldEndPosition: position,
+      newEndPosition: { row: position.row, column: position.column + 1 },
+    });
+
+    let processCount = 0;
+    parser.setLogger((message) => {
+      if (message.startsWith("process ")) processCount++;
+    });
+    const updatedSource = `${originalSource}x`;
+    const updatedTree = assertHealthyTree(parser.parse(updatedSource, tree), "large program edit");
+    parser.setLogger(null);
+    tree.delete();
+    tree = updatedTree;
+
+    assert.ok(
+      processCount < commandCount / 8,
+      `An end edit replayed ${processCount} parser steps for ${commandCount} commands`,
+    );
+    const freshTree = assertHealthyTree(parser.parse(updatedSource), "large program fresh parse");
+    try {
+      assert.strictEqual(tree.rootNode.toString(), freshTree.rootNode.toString());
+    } finally {
+      freshTree.delete();
+    }
+  } finally {
+    parser.setLogger(null);
+    tree?.delete();
+    parser.delete();
+  }
+});
+
 test("keeps Wasm record and parenthesis scaling linear", { timeout: 30000 }, () => {
   const parser = new TreeSitter.Parser();
   parser.setLanguage(language);

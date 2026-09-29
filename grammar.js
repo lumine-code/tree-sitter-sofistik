@@ -106,7 +106,14 @@ module.exports = grammar({
     program_option: ($) => $._value,
 
     input_block: ($) =>
-      seq(repeat($._program_body), choice($.end_record, $.unterminated_input_block)),
+      seq(repeat($._program_body_group), choice($.end_record, $.unterminated_input_block)),
+
+    // Hidden groups keep the public tree flat while giving incremental parses
+    // reusable boundaries inside large programs. Tree-sitter's repetition
+    // nodes are fragile, so a single repeat otherwise replays every command.
+    _program_body_group: ($) => boundedChunk($._program_body_chunk),
+
+    _program_body_chunk: ($) => boundedChunk($._program_body),
 
     _program_body: ($) => choice($._nonblank_program_body, $._line_end),
 
@@ -667,6 +674,11 @@ function quotedString($, quote, contentToken) {
     ),
     token.immediate(prec(10, quote)),
   );
+}
+
+function boundedChunk(element, size = 8) {
+  // Consume a complete group when possible, with a shorter final group.
+  return prec.right(seq(element, ...Array.from({ length: size - 1 }, () => optional(element))));
 }
 
 function orphanControl($, keyword) {
