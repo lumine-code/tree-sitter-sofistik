@@ -10,6 +10,115 @@ function parse(source) {
   return parser.parse(source);
 }
 
+test("keeps control words inside command prose as bare values", () => {
+  for (const command of ["HEAD", "TXB"]) {
+    for (const word of ["ELSE", "ELSEIF", "ENDIF", "ENDLOOP", "EXIT_ITERATION", "IF", "LOOP"]) {
+      const source = `+PROG TEMPLATE\n${command} example ${word.toLowerCase()} prose\nEND\n`;
+      const tree = parse(source);
+      const context = `${command} ${word}`;
+      assert.strictEqual(tree.rootNode.hasError, false, context);
+      assert.deepStrictEqual(
+        tree.rootNode.descendantsOfType("command_name").map((node) => node.text),
+        [command],
+        context,
+      );
+      assert.deepStrictEqual(
+        tree.rootNode.descendantsOfType("bare_value").map((node) => node.text),
+        ["example", word.toLowerCase(), "prose"],
+        context,
+      );
+      assert.deepStrictEqual(
+        tree.rootNode.descendantsOfType("control_keyword").map((node) => node.text),
+        ["END"],
+        context,
+      );
+    }
+  }
+});
+
+test("defers foreign commands only inside TEMPLATE block DEFINE bodies", () => {
+  for (const comment of ["", " $ deferred", " ! deferred", " // deferred"]) {
+    const tree = parse(
+      "+PROG TEMPLATE\nDSLC 1\n" +
+        `#define outer-block${comment}\nHEAD macro\nDSLC 2\n` +
+        "#define inner\nDSLC 3\n#enddef\nDSLN 4\n#enddef\nDSLC 5\n" +
+        "#define repeated\nDSLC 6\nTXB description\n#enddef\nDSLC 7\nEND\n",
+    );
+    assert.strictEqual(tree.rootNode.hasError, false, comment);
+    assert.deepStrictEqual(
+      tree.rootNode.descendantsOfType("invalid_command").map((node) => node.text),
+      ["DSLC", "DSLC", "DSLC"],
+      comment,
+    );
+    assert.deepStrictEqual(
+      tree.rootNode.descendantsOfType("command_name").map((node) => node.text),
+      ["HEAD", "TXB"],
+      comment,
+    );
+    assert.strictEqual(tree.rootNode.descendantsOfType("preprocessor_define_header").length, 3);
+    assert.strictEqual(tree.rootNode.descendantsOfType("preprocessor_enddef_record").length, 3);
+    assert.deepStrictEqual(
+      tree.rootNode.descendantsOfType("bare_value").map((node) => node.text),
+      ["macro", "DSLC", "DSLC", "DSLN", "DSLC", "description"],
+      comment,
+    );
+  }
+});
+
+test("keeps TEMPLATE validation active after scalar DEFINE and new module headers", () => {
+  for (const definition of [
+    "#DEFINE scalar=1",
+    "#DEFINE scalar = $(VALUE)",
+    "#DEFINE scalar value",
+  ]) {
+    const tree = parse(`+PROG TEMPLATE\n${definition}\nDSLC 1\nEND\n`);
+    assert.strictEqual(tree.rootNode.hasError, false, definition);
+    assert.deepStrictEqual(
+      tree.rootNode.descendantsOfType("invalid_command").map((node) => node.text),
+      ["DSLC"],
+      definition,
+    );
+  }
+  for (const header of ["+PROG TEMPLATE", "$PROG TEMPLATE"]) {
+    const tree = parse(`+PROG TEMPLATE\n#define open\nDSLC 1\nEND\n${header}\nDSLC 2\nEND\n`);
+    assert.strictEqual(tree.rootNode.hasError, false, header);
+    assert.deepStrictEqual(
+      tree.rootNode.descendantsOfType("invalid_command").map((node) => node.text),
+      header.startsWith("+") ? ["DSLC"] : [],
+      header,
+    );
+    if (header.startsWith("$")) {
+      assert.deepStrictEqual(
+        tree.rootNode.descendantsOfType("ignored_text").map((node) => node.text.trim()),
+        ["DSLC 2"],
+      );
+    }
+  }
+});
+
+test("restores TEMPLATE DEFINE depth across incremental body and boundary edits", () => {
+  const before = "+PROG TEMPLATE\n#define block\nDSLC 1\n#enddef\nDSLC 2\nEND\n";
+  const parser = new Parser();
+  parser.setLanguage(SOFiSTiK);
+  for (const [after, invalidCount] of [
+    [before.replace("DSLC 1", "DSLN 1"), 1],
+    [before.replace("#define block", "#define block=1"), 2],
+    [before.replace("#enddef\n", ""), 0],
+    [before.replace("#define block\n", "#define block\n#define inner\n"), 0],
+    [before.replace("#enddef", "+PROG TEMPLATE"), 1],
+  ]) {
+    const incremental = incrementalParse(parser, before, after);
+    const fresh = parse(after);
+    assert.strictEqual(incremental.rootNode.hasError, false, after);
+    assert.strictEqual(incremental.rootNode.toString(), fresh.rootNode.toString(), after);
+    assert.strictEqual(
+      incremental.rootNode.descendantsOfType("invalid_command").length,
+      invalidCount,
+      after,
+    );
+  }
+});
+
 function pointAt(source, index) {
   const lines = source.slice(0, index).split("\n");
   return { row: lines.length - 1, column: lines.at(-1).length };
@@ -1471,6 +1580,43 @@ test("keeps typed values in tables after an intermediate END", () => {
       ["number", "-1.5"],
     ],
   );
+});
+
+test("keeps command and table rows in module scope across blank lines", () => {
+  for (const [source, recordCount] of [
+    ["+PROG AQUA\nEND\nHEAD foo\n\n1 text\nEND\n", 2],
+    ["+PROG SIR\nEND\nSECT NO XS XM\n2 0.0 -1.5\n\n3 1.0 -2.5\nEND\n", 3],
+  ]) {
+    const tree = parse(source);
+    assert.strictEqual(tree.rootNode.hasError, false);
+    assert.strictEqual(tree.rootNode.descendantsOfType("program").length, 1);
+    assert.strictEqual(tree.rootNode.descendantsOfType("cdb_statement").length, 0);
+    const command = tree.rootNode.descendantsOfType("command")[0];
+    assert.strictEqual(command.childrenForFieldName("record").length, recordCount);
+    assert.strictEqual(command.parent.type, "program");
+  }
+});
+
+test("allows inline heading prose while retaining invalid-command diagnostics", () => {
+  for (const command of ["HEAD", "KOPF"]) {
+    const tree = parse(
+      `+PROG TEMPLATE\n${command} @NAME ; selector KWL not necessary\n` +
+        "UNKNOWN new line\nHEAD text ; NODE 1\nEND\n",
+    );
+    assert.strictEqual(tree.rootNode.hasError, false);
+    assert.deepStrictEqual(
+      tree.rootNode.descendantsOfType("invalid_command").map((node) => node.text),
+      ["UNKNOWN", "NODE"],
+    );
+    assert.deepStrictEqual(
+      tree.rootNode
+        .descendantsOfType("command")[0]
+        .childrenForFieldName("record")[1]
+        .descendantsOfType("bare_value")
+        .map((node) => node.text),
+      ["selector", "KWL", "not", "necessary"],
+    );
+  }
 });
 
 test("keeps unknown text neutral around every APPLY and SYS sigil", () => {

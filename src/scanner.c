@@ -43,6 +43,8 @@ enum TokenType {
   IGNORED_TEXT,
   PREPROCESSOR_RECOVERY_VALUE,
   UNTERMINATED_INPUT_BLOCK,
+  DEFINE_KEYWORD,
+  ENDDEF_KEYWORD,
   ERROR_SENTINEL,
 };
 
@@ -61,6 +63,7 @@ typedef struct {
   uint8_t text_state;
   bool after_missing_end;
   bool in_legacy_text;
+  uint32_t template_define_depth;
 } Scanner;
 
 static bool ascii_equal(int32_t character, char expected) {
@@ -248,6 +251,13 @@ static void reset_context(Scanner *scanner) {
   reset_command(scanner);
   scanner->after_missing_end = false;
   scanner->in_legacy_text = false;
+  scanner->template_define_depth = 0;
+}
+
+static bool is_template_define(const Scanner *scanner) {
+  return scanner->template_define_depth > 0 &&
+         scanner->module < SOFISTIK_MODULE_COUNT &&
+         strcmp(SOFISTIK_MODULES[scanner->module].name, "TEMPLATE") == 0;
 }
 
 static bool emit_unterminated_input_block(Scanner *scanner, TSLexer *lexer) {
@@ -306,7 +316,15 @@ static bool scan_hash_variable_candidate(TSLexer *lexer) {
   return true;
 }
 
+static bool scan_define_marker(
+  Scanner *scanner,
+  TSLexer *lexer,
+  const bool *valid_symbols,
+  const char *word
+);
+
 static bool scan_hash_token(
+  Scanner *scanner,
   TSLexer *lexer,
   const bool *valid_symbols,
   bool text_context
@@ -347,6 +365,15 @@ static bool scan_hash_token(
     }
     lexer->result_symbol = LITERAL_HASH;
     return true;
+  }
+
+  if (
+    !text_context &&
+    ((valid_symbols[DEFINE_KEYWORD] && strcmp(word, "DEFINE") == 0) ||
+     (valid_symbols[ENDDEF_KEYWORD] && strcmp(word, "ENDDEF") == 0)) &&
+    is_root_directive_separator(lexer->lookahead)
+  ) {
+    return scan_define_marker(scanner, lexer, valid_symbols, word);
   }
 
   static const char *const preprocessor_words[] = {
@@ -658,6 +685,14 @@ static bool is_command_value(uint32_t command, const char *name) {
   return false;
 }
 
+static bool is_heading_command(uint32_t command) {
+  if (command >= SOFISTIK_COMMAND_COUNT) {
+    return false;
+  }
+  const char *name = SOFISTIK_COMMANDS[command].name;
+  return strcmp(name, "HEAD") == 0 || strcmp(name, "KOPF") == 0;
+}
+
 static bool is_text_value_command(uint32_t command) {
   if (command >= SOFISTIK_COMMAND_COUNT) {
     return false;
@@ -731,7 +766,7 @@ static bool scan_non_word_bare(
   if (
     valid_symbols[BARE_WORD] &&
     (!valid_symbols[IGNORED_TEXT] ||
-     scanner->command != SOFISTIK_UNKNOWN_ID) &&
+     scanner->command != SOFISTIK_UNKNOWN_ID || is_template_define(scanner)) &&
     (is_number_text(prefix) ||
      ((prefix[0] == ':' || prefix[0] == '~' || prefix[0] == '\\') &&
       ((prefix[1] >= 'A' && prefix[1] <= 'Z') || prefix[1] == '_')))
@@ -775,7 +810,7 @@ static bool scan_non_word_bare(
 
   if (
     valid_symbols[IGNORED_TEXT] &&
-    scanner->command == SOFISTIK_UNKNOWN_ID
+    scanner->command == SOFISTIK_UNKNOWN_ID && !is_template_define(scanner)
   ) {
     lexer->mark_end(lexer);
     if (
@@ -895,7 +930,7 @@ static bool scan_word(
   if (
     valid_symbols[BARE_WORD] &&
     (!valid_symbols[IGNORED_TEXT] ||
-     scanner->command != SOFISTIK_UNKNOWN_ID) &&
+     scanner->command != SOFISTIK_UNKNOWN_ID || is_template_define(scanner)) &&
     is_ascii_digit(word[0])
   ) {
     *defer_to_internal_lexer = true;
@@ -913,7 +948,7 @@ static bool scan_word(
     if (valid_symbols[BARE_WORD]) {
       if (
         valid_symbols[IGNORED_TEXT] &&
-        scanner->command == SOFISTIK_UNKNOWN_ID
+        scanner->command == SOFISTIK_UNKNOWN_ID && !is_template_define(scanner)
       ) {
         if (
           scanner->module == SOFISTIK_UNKNOWN_ID &&
@@ -1020,7 +1055,12 @@ static bool scan_word(
     if (valid_symbols[IGNORED_TEXT]) {
       *reserved_root_word = true;
     }
-    return false;
+    if (
+      valid_symbols[COMMAND_NAME] || valid_symbols[INVALID_COMMAND] ||
+      valid_symbols[IGNORED_TEXT]
+    ) {
+      return false;
+    }
   }
 
   uint32_t item = valid_symbols[ITEM_NAME]
@@ -1043,13 +1083,16 @@ static bool scan_word(
       scanner->text_state == OUTSIDE_TEXT &&
       valid_symbols[END_KEYWORD] &&
       scanner->module != SOFISTIK_UNKNOWN_ID &&
+      !is_template_define(scanner) &&
       command == SOFISTIK_UNKNOWN_ID &&
       item == SOFISTIK_UNKNOWN_ID &&
       !is_text_value_command(scanner->command) &&
       !is_command_value(scanner->command, word) &&
       (is_global_command(word) ||
        (scanner->module < SOFISTIK_MODULE_COUNT &&
-        strcmp(SOFISTIK_MODULES[scanner->module].name, "TEMPLATE") == 0))
+        strcmp(SOFISTIK_MODULES[scanner->module].name, "TEMPLATE") == 0 &&
+        (!is_heading_command(scanner->command) ||
+         lexer->get_column(lexer) == skipped_columns + strlen(word))))
     ) {
       reset_command(scanner);
       lexer->result_symbol = INVALID_COMMAND;
@@ -1072,11 +1115,11 @@ static bool scan_word(
     !(valid_symbols[COMMAND_NAME] && is_reserved_statement_word(word)) &&
     (!(scanner->module != SOFISTIK_UNKNOWN_ID &&
        scanner->command == SOFISTIK_UNKNOWN_ID && valid_symbols[COMMAND_NAME]) ||
-     valid_symbols[IGNORED_TEXT])
+     valid_symbols[IGNORED_TEXT] || is_template_define(scanner))
   ) {
     if (
       valid_symbols[IGNORED_TEXT] &&
-      scanner->command == SOFISTIK_UNKNOWN_ID
+      scanner->command == SOFISTIK_UNKNOWN_ID && !is_template_define(scanner)
     ) {
       if (
         scanner->module == SOFISTIK_UNKNOWN_ID &&
@@ -1264,6 +1307,65 @@ static bool scan_generator_separator(TSLexer *lexer) {
   }
   lexer->mark_end(lexer);
   lexer->result_symbol = GENERATOR_SEPARATOR;
+  return true;
+}
+
+static bool scan_define_marker(
+  Scanner *scanner,
+  TSLexer *lexer,
+  const bool *valid_symbols,
+  const char *word
+) {
+  lexer->mark_end(lexer);
+  bool template_module = scanner->module < SOFISTIK_MODULE_COUNT &&
+    strcmp(SOFISTIK_MODULES[scanner->module].name, "TEMPLATE") == 0;
+  if (valid_symbols[ENDDEF_KEYWORD] && strcmp(word, "ENDDEF") == 0) {
+    if (template_module && scanner->template_define_depth > 0) {
+      scanner->template_define_depth--;
+      if (scanner->template_define_depth == 0) {
+        reset_command(scanner);
+        scanner->in_legacy_text = false;
+      }
+    }
+    lexer->result_symbol = ENDDEF_KEYWORD;
+    return true;
+  }
+  if (!valid_symbols[DEFINE_KEYWORD] || strcmp(word, "DEFINE") != 0) {
+    return false;
+  }
+  if (template_module) {
+    while (lexer->lookahead == ' ' || lexer->lookahead == '\t' || lexer->lookahead == '\f') {
+      lexer->advance(lexer, false);
+    }
+    bool has_name = false;
+    if (lexer->lookahead == '#') {
+      lexer->advance(lexer, false);
+    }
+    if (is_schema_character(lexer->lookahead)) {
+      has_name = true;
+      do {
+        lexer->advance(lexer, false);
+      } while (is_schema_character(lexer->lookahead) || lexer->lookahead == '.' || lexer->lookahead == '-');
+    }
+    while (lexer->lookahead == ' ' || lexer->lookahead == '\t' || lexer->lookahead == '\f') {
+      lexer->advance(lexer, false);
+    }
+    // Only a bare-name header starts a deferred body. Assignments and
+    // same-line values define a scalar and leave command validation active.
+    bool block = !lexer->lookahead || lexer->lookahead == '\r' ||
+      lexer->lookahead == '\n' || lexer->lookahead == ';' || lexer->lookahead == '!';
+    if (lexer->lookahead == '$') {
+      lexer->advance(lexer, false);
+      block = lexer->lookahead != '(';
+    } else if (lexer->lookahead == '/') {
+      lexer->advance(lexer, false);
+      block = lexer->lookahead == '/';
+    }
+    if (has_name && block && scanner->template_define_depth < UINT32_MAX) {
+      scanner->template_define_depth++;
+    }
+  }
+  lexer->result_symbol = DEFINE_KEYWORD;
   return true;
 }
 
@@ -1561,7 +1663,7 @@ bool tree_sitter_sofistik_external_scanner_scan(
         lexer->lookahead == '#' &&
         (valid_symbols[HASH_VARIABLE_NAME] || valid_symbols[LITERAL_HASH])
       ) {
-        return scan_hash_token(lexer, valid_symbols, true);
+        return scan_hash_token(scanner, lexer, valid_symbols, true);
       }
       if (
         valid_symbols[TEXT_FRAGMENT] &&
@@ -1621,7 +1723,7 @@ bool tree_sitter_sofistik_external_scanner_scan(
       lexer->lookahead == '#' &&
       (valid_symbols[HASH_VARIABLE_NAME] || valid_symbols[LITERAL_HASH])
     ) {
-      return scan_hash_token(lexer, valid_symbols, true);
+      return scan_hash_token(scanner, lexer, valid_symbols, true);
     }
     if (
       valid_symbols[TEXT_FRAGMENT] &&
@@ -1696,7 +1798,8 @@ bool tree_sitter_sofistik_external_scanner_scan(
   if (
     (lexer->lookahead == '\'' || lexer->lookahead == '"') &&
     valid_symbols[IGNORED_TEXT] &&
-    (!valid_symbols[BARE_WORD] || scanner->command == SOFISTIK_UNKNOWN_ID)
+    (!valid_symbols[BARE_WORD] || scanner->command == SOFISTIK_UNKNOWN_ID) &&
+    !is_template_define(scanner)
   ) {
     consume_line(lexer);
     lexer->mark_end(lexer);
@@ -1710,9 +1813,10 @@ bool tree_sitter_sofistik_external_scanner_scan(
 
   if (
     lexer->lookahead == '#' &&
-    (valid_symbols[HASH_VARIABLE_NAME] || valid_symbols[LITERAL_HASH])
+    (valid_symbols[HASH_VARIABLE_NAME] || valid_symbols[LITERAL_HASH] ||
+     valid_symbols[DEFINE_KEYWORD] || valid_symbols[ENDDEF_KEYWORD])
   ) {
-    return scan_hash_token(lexer, valid_symbols, false);
+    return scan_hash_token(scanner, lexer, valid_symbols, false);
   }
 
   if (lexer->lookahead == '$') {
@@ -1802,7 +1906,8 @@ unsigned tree_sitter_sofistik_external_scanner_serialize(
   buffer[8] = (char)scanner->text_state;
   buffer[9] = scanner->after_missing_end ? 1 : 0;
   buffer[10] = scanner->in_legacy_text ? 1 : 0;
-  return 11;
+  write_u32(buffer + 11, scanner->template_define_depth);
+  return 15;
 }
 
 void tree_sitter_sofistik_external_scanner_deserialize(
@@ -1821,6 +1926,7 @@ void tree_sitter_sofistik_external_scanner_deserialize(
   scanner->text_state = (uint8_t)buffer[8];
   scanner->after_missing_end = length >= 10 && buffer[9] != 0;
   scanner->in_legacy_text = length >= 11 && buffer[10] != 0;
+  scanner->template_define_depth = length >= 15 ? read_u32(buffer + 11) : 0;
   if (scanner->module >= SOFISTIK_MODULE_COUNT) {
     scanner->module = SOFISTIK_UNKNOWN_ID;
   }

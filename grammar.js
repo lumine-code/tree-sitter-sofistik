@@ -38,6 +38,8 @@ module.exports = grammar({
     $.ignored_text,
     $._preprocessor_recovery_value,
     $.unterminated_input_block,
+    $._define_keyword,
+    $._enddef_keyword,
     $._error_sentinel,
   ],
 
@@ -157,12 +159,16 @@ module.exports = grammar({
         seq(
           field("name", $.command_name),
           choice(
-            seq(field("record", $.table_definition), repeat(field("record", $.table_row))),
+            seq(
+              field("record", $.table_definition),
+              repeat(choice(field("record", $.table_row), $._line_end)),
+            ),
             seq(
               field("record", $.record),
               repeat(
                 choice(
                   field("record", $.implicit_record),
+                  $._line_end,
                   field(
                     "auxiliary",
                     choice(
@@ -323,7 +329,7 @@ module.exports = grammar({
       prec.right(
         5,
         seq(
-          field("keyword", alias(ci("#DEFINE"), $.preprocessor_keyword)),
+          field("keyword", alias($._define_keyword, $.preprocessor_keyword)),
           field("name", $.preprocessor_name),
           field("value", $.preprocessor_value),
           $._statement_end,
@@ -359,7 +365,7 @@ module.exports = grammar({
 
     preprocessor_define_header: ($) =>
       seq(
-        field("keyword", alias(ci("#DEFINE"), $.preprocessor_keyword)),
+        field("keyword", alias($._define_keyword, $.preprocessor_keyword)),
         field("name", $.preprocessor_name),
         repeat(field("value", $._separated_value)),
         $._record_end,
@@ -368,7 +374,7 @@ module.exports = grammar({
     preprocessor_enddef_record: ($) =>
       prec.right(
         seq(
-          field("keyword", alias(ci("#ENDDEF"), $.preprocessor_keyword)),
+          field("keyword", alias($._enddef_keyword, $.preprocessor_keyword)),
           optional($._record_end),
         ),
       ),

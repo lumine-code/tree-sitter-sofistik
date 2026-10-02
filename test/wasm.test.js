@@ -43,6 +43,155 @@ before(async () => {
   language = await TreeSitter.Language.load(wasmPath);
 });
 
+test("keeps control words inside command prose as bare values", () => {
+  const parser = new TreeSitter.Parser();
+  parser.setLanguage(language);
+  try {
+    for (const command of ["HEAD", "TXB"]) {
+      for (const word of ["ELSE", "ELSEIF", "ENDIF", "ENDLOOP", "EXIT_ITERATION", "IF", "LOOP"]) {
+        const source = `+PROG TEMPLATE\n${command} example ${word.toLowerCase()} prose\nEND\n`;
+        const context = `${command} ${word}`;
+        const tree = assertHealthyTree(parser.parse(source), context);
+        try {
+          assert.deepStrictEqual(
+            tree.rootNode.descendantsOfType("command_name").map((node) => node.text),
+            [command],
+            context,
+          );
+          assert.deepStrictEqual(
+            tree.rootNode.descendantsOfType("bare_value").map((node) => node.text),
+            ["example", word.toLowerCase(), "prose"],
+            context,
+          );
+          assert.deepStrictEqual(
+            tree.rootNode.descendantsOfType("control_keyword").map((node) => node.text),
+            ["END"],
+            context,
+          );
+        } finally {
+          tree.delete();
+        }
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
+test("preserves heading prose and module rows across record boundaries", () => {
+  const parser = new TreeSitter.Parser();
+  parser.setLanguage(language);
+  try {
+    const tree = assertHealthyTree(
+      parser.parse(
+        "+PROG TEMPLATE\nHEAD @NAME ; selector KWL not necessary\n" +
+          "UNKNOWN new line\nKOPF text ; NODE 1\nEND\n" +
+          "+PROG SIR\nEND\nSECT NO XS XM\n2 0.0 -1.5\n\n3 1.0 -2.5\nEND\n",
+      ),
+      "heading and blank-line records",
+    );
+    try {
+      assert.deepStrictEqual(
+        tree.rootNode.descendantsOfType("invalid_command").map((node) => node.text),
+        ["UNKNOWN", "NODE"],
+      );
+      assert.strictEqual(tree.rootNode.descendantsOfType("cdb_statement").length, 0);
+      assert.strictEqual(tree.rootNode.descendantsOfType("table_row").length, 2);
+      assert.strictEqual(tree.rootNode.descendantsOfType("program").length, 2);
+    } finally {
+      tree.delete();
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
+test("scopes deferred TEMPLATE DEFINE validation across bodies and scalar definitions", () => {
+  const parser = new TreeSitter.Parser();
+  parser.setLanguage(language);
+  const cases = [
+    [
+      "+PROG TEMPLATE\nDSLC 1\n#define outer-block $ deferred\nHEAD macro\nDSLC 2\n" +
+        "#define inner\nDSLC 3\n#enddef\nDSLN 4\n#enddef\nDSLC 5\n" +
+        "#define repeated\nDSLC 6\nTXB description\n#enddef\nDSLC 7\nEND\n",
+      3,
+      ["HEAD", "TXB"],
+    ],
+    ["+PROG TEMPLATE\n#define scalar=1\nDSLC 1\nEND\n", 1, []],
+    ["+PROG TEMPLATE\n#define scalar value\nDSLC 1\nEND\n", 1, []],
+    ["+PROG TEMPLATE\n#define open\nDSLC 1\nEND\n+PROG TEMPLATE\nDSLC 2\nEND\n", 1, []],
+  ];
+  try {
+    for (const [source, invalidCount, commands] of cases) {
+      const tree = assertHealthyTree(parser.parse(source), source);
+      try {
+        assert.strictEqual(tree.rootNode.descendantsOfType("invalid_command").length, invalidCount);
+        assert.deepStrictEqual(
+          tree.rootNode.descendantsOfType("command_name").map((node) => node.text),
+          commands,
+        );
+      } finally {
+        tree.delete();
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
+test("restores Wasm TEMPLATE DEFINE depth after incremental body and boundary edits", () => {
+  const before = "+PROG TEMPLATE\n#define block\nDSLC 1\n#enddef\nDSLC 2\nEND\n";
+  const parser = new TreeSitter.Parser();
+  parser.setLanguage(language);
+  try {
+    for (const [after, invalidCount] of [
+      [before.replace("DSLC 1", "DSLN 1"), 1],
+      [before.replace("#define block", "#define block=1"), 2],
+      [before.replace("#enddef\n", ""), 0],
+      [before.replace("#define block\n", "#define block\n#define inner\n"), 0],
+      [before.replace("#enddef", "+PROG TEMPLATE"), 1],
+    ]) {
+      let startIndex = 0;
+      while (before[startIndex] === after[startIndex] && startIndex < before.length) startIndex++;
+      let suffixLength = 0;
+      while (
+        suffixLength < before.length - startIndex &&
+        suffixLength < after.length - startIndex &&
+        before[before.length - suffixLength - 1] === after[after.length - suffixLength - 1]
+      )
+        suffixLength++;
+      const oldEndIndex = before.length - suffixLength;
+      const newEndIndex = after.length - suffixLength;
+      const tree = assertHealthyTree(parser.parse(before), "DEFINE before edit");
+      let incremental;
+      let fresh;
+      try {
+        tree.edit({
+          startIndex,
+          oldEndIndex,
+          newEndIndex,
+          startPosition: pointAt(before, startIndex),
+          oldEndPosition: pointAt(before, oldEndIndex),
+          newEndPosition: pointAt(after, newEndIndex),
+        });
+        incremental = assertHealthyTree(parser.parse(after, tree), after);
+        fresh = assertHealthyTree(parser.parse(after), "DEFINE fresh parse");
+        assert.strictEqual(incremental.rootNode.toString(), fresh.rootNode.toString());
+        assert.strictEqual(
+          incremental.rootNode.descendantsOfType("invalid_command").length,
+          invalidCount,
+        );
+      } finally {
+        fresh?.delete();
+        incremental?.delete();
+        tree.delete();
+      }
+    }
+  } finally {
+    parser.delete();
+  }
+});
+
 test("loads the root Wasm grammar with the pinned compatible runtime", () => {
   const runtimePackage = JSON.parse(readFileSync(runtimePackagePath, "utf8"));
   const wasm = readFileSync(wasmPath);

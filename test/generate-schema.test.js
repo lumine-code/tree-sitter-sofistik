@@ -241,8 +241,12 @@ test("records the exact data pin and both semantic digests", () => {
   const vocabulary = getGrammarVocabulary();
   const metadata = getMetadata();
   const provenance = buildProvenance(vocabulary, metadata);
+  const recordedProvenance = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "../schema/provenance.json"), "utf8"),
+  );
 
-  assert.strictEqual(dataCommit(), "b37428c7907d17c53df446ba68f114b9fbc6cdac");
+  assert.strictEqual(dataCommit(fixtureManifest), FIXTURE_COMMIT);
+  assert.deepStrictEqual(provenance, recordedProvenance);
   assert.strictEqual(provenance.source.repository, DATA_REPOSITORY);
   assert.strictEqual(provenance.source.commit, dataCommit(packageManifest));
   assert.strictEqual(provenance.schemaDigest, metadata.schemaDigest);
