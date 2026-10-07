@@ -381,7 +381,7 @@ test("reuses large program bodies when typing after END", () => {
   }
 });
 
-test("keeps Wasm record and parenthesis scaling linear", { timeout: 30000 }, () => {
+test("keeps Wasm record and parenthesis scaling linear", { timeout: 30000 }, (t) => {
   const parser = new TreeSitter.Parser();
   parser.setLanguage(language);
   const makeRecords = (count) =>
@@ -392,36 +392,76 @@ test("keeps Wasm record and parenthesis scaling linear", { timeout: 30000 }, () 
   const makeNested = (depth) =>
     `+PROG AQUA\nHEAD ${"(".repeat(depth)}#VALUE${")".repeat(depth)}\nEND`;
 
-  const measureBatch = (source, repetitions, rounds = 5) => {
-    const durations = [];
-    for (let round = 0; round < rounds; round++) {
-      const started = performance.now();
-      for (let iteration = 0; iteration < repetitions; iteration++) {
-        const tree = assertHealthyTree(parser.parse(source), `scaling parse ${round}:${iteration}`);
-        tree.delete();
-      }
-      durations.push(performance.now() - started);
+  const measureBatch = (source, repetitions) => {
+    const started = performance.now();
+    for (let iteration = 0; iteration < repetitions; iteration++) {
+      const tree = assertHealthyTree(parser.parse(source), "scaling parse");
+      tree.delete();
     }
-    return median(durations);
+    return performance.now() - started;
+  };
+  const measurePair = (small, large, smallRepetitions, largeRepetitions) => {
+    // Warm both shapes before calibrating. Separate small/large phases can
+    // compare different Wasm tiers or CPU load instead of the input sizes.
+    for (let round = 0; round < 3; round++) {
+      measureBatch(small, smallRepetitions);
+      measureBatch(large, largeRepetitions);
+    }
+    const smallWarm = measureBatch(small, smallRepetitions);
+    const largeWarm = measureBatch(large, largeRepetitions);
+    // Scale both workloads together so each sample spans at least roughly
+    // 40 ms without changing the ratio of input work or the acceptance bound.
+    const multiplier = Math.max(1, Math.ceil(40 / Math.min(smallWarm, largeWarm)));
+    const pairs = [];
+    for (let round = 0; round < 9; round++) {
+      let smallMs, largeMs;
+      if (round % 2 === 0) {
+        smallMs = measureBatch(small, smallRepetitions * multiplier);
+        largeMs = measureBatch(large, largeRepetitions * multiplier);
+      } else {
+        largeMs = measureBatch(large, largeRepetitions * multiplier);
+        smallMs = measureBatch(small, smallRepetitions * multiplier);
+      }
+      pairs.push({ smallMs, largeMs });
+    }
+    return {
+      ratio: median(pairs.map(({ smallMs, largeMs }) => largeMs / smallMs)),
+      smallMs: median(pairs.map(({ smallMs }) => smallMs)),
+      largeMs: median(pairs.map(({ largeMs }) => largeMs)),
+    };
   };
 
   try {
     const smallRecords = makeRecords(128);
     const largeRecords = makeRecords(2048);
-    measureBatch(smallRecords, 1, 2);
-    measureBatch(largeRecords, 1, 2);
-    const smallBatch = measureBatch(smallRecords, 16);
-    const largeParse = measureBatch(largeRecords, 1);
+    const records = measurePair(smallRecords, largeRecords, 16, 1);
+    t.diagnostic(`Wasm equal-volume record batches: ${records.ratio.toFixed(2)}x paired median`);
     assert.ok(
-      largeParse < smallBatch * 6,
-      `Wasm record parse scaled superlinearly: ${smallBatch.toFixed(2)}ms vs ${largeParse.toFixed(2)}ms`,
+      records.ratio < 6,
+      `Wasm record parse scaled superlinearly: ${records.smallMs.toFixed(2)}ms vs ${records.largeMs.toFixed(2)}ms (${records.ratio.toFixed(2)}x paired median)`,
     );
 
-    const nested800 = measureBatch(makeNested(800), 8, 7);
-    const nested1600 = measureBatch(makeNested(1600), 8, 7);
+    const smallNested = makeNested(800);
+    const largeNested = makeNested(1600);
+    for (const [nested, depth] of [
+      [smallNested, 800],
+      [largeNested, 1600],
+    ]) {
+      const tree = assertHealthyTree(parser.parse(nested), "nested scaling fixture");
+      try {
+        assert.strictEqual(
+          tree.rootNode.descendantsOfType("parenthesized_expression").length,
+          depth,
+        );
+      } finally {
+        tree.delete();
+      }
+    }
+    const nested = measurePair(smallNested, largeNested, 32, 32);
+    t.diagnostic(`Wasm doubled parenthesis depth: ${nested.ratio.toFixed(2)}x paired median`);
     assert.ok(
-      nested1600 < nested800 * 3,
-      `Wasm parenthesis parse scaled superlinearly: ${nested800.toFixed(2)}ms vs ${nested1600.toFixed(2)}ms`,
+      nested.ratio < 3,
+      `Wasm parenthesis parse scaled superlinearly: ${nested.smallMs.toFixed(2)}ms vs ${nested.largeMs.toFixed(2)}ms (${nested.ratio.toFixed(2)}x paired median)`,
     );
   } finally {
     parser.delete();
