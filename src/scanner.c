@@ -46,6 +46,7 @@ enum TokenType {
   DEFINE_KEYWORD,
   ENDDEF_KEYWORD,
   TABLE_START,
+  COMMAND_END,
   MOJIBAKE_BOM,
   ERROR_SENTINEL,
 };
@@ -340,7 +341,9 @@ static bool scan_hash_token(
     return false;
   }
   lexer->advance(lexer, false);
-  lexer->mark_end(lexer);
+  if (!valid_symbols[COMMAND_END]) {
+    lexer->mark_end(lexer);
+  }
   if (lexer->lookahead == '(') {
     return false;
   }
@@ -370,7 +373,19 @@ static bool scan_hash_token(
     if (!valid_symbols[LITERAL_HASH]) {
       return false;
     }
+    lexer->mark_end(lexer);
     lexer->result_symbol = LITERAL_HASH;
+    return true;
+  }
+
+  if (
+    valid_symbols[COMMAND_END] &&
+    (strcmp(word, "IF") == 0 || strcmp(word, "ELSEIF") == 0 ||
+     strcmp(word, "ELSE") == 0 || strcmp(word, "ENDIF") == 0 ||
+     strcmp(word, "ENDDEF") == 0) &&
+    is_root_directive_separator(lexer->lookahead)
+  ) {
+    lexer->result_symbol = COMMAND_END;
     return true;
   }
 
@@ -398,7 +413,8 @@ static bool scan_hash_token(
       return true;
     }
     if (
-      valid_symbols[COMMAND_NAME] || valid_symbols[INVALID_COMMAND]
+      valid_symbols[COMMAND_NAME] || valid_symbols[INVALID_COMMAND] ||
+      valid_symbols[COMMAND_END]
     ) {
       return false;
     }
@@ -809,6 +825,10 @@ static bool scan_non_word_bare(
      strcmp(prefix, "+SYS") == 0 || strcmp(prefix, "-SYS") == 0) &&
     is_root_directive_separator(lexer->lookahead)
   ) {
+    if (valid_symbols[COMMAND_END]) {
+      lexer->result_symbol = COMMAND_END;
+      return true;
+    }
     if (can_terminate_input) {
       return emit_unterminated_input_block(scanner, lexer);
     }
@@ -984,6 +1004,37 @@ static bool scan_table_start(const Scanner *scanner, TSLexer *lexer) {
   return true;
 }
 
+static bool scan_structured_command_end(TSLexer *lexer) {
+  int32_t marker = lexer->lookahead;
+  lexer->advance(lexer, false);
+  if (marker == '<' && (lexer->lookahead == '/' || lexer->lookahead == '\\')) {
+    lexer->advance(lexer, false);
+  }
+  if (marker == '@' && (lexer->lookahead == ' ' || lexer->lookahead == '\t')) {
+    return true;
+  }
+  char word[16] = {0};
+  size_t length = 0;
+  while (is_schema_character(lexer->lookahead)) {
+    if (length + 1 >= sizeof(word)) {
+      return false;
+    }
+    int32_t character = lexer->lookahead;
+    if (character >= 'a' && character <= 'z') {
+      character -= 'a' - 'A';
+    }
+    word[length++] = (char)character;
+    lexer->advance(lexer, false);
+  }
+  if (marker == '@') {
+    return strcmp(word, "KEY") == 0 || strcmp(word, "CDB") == 0;
+  }
+  return (strcmp(word, "PICT") == 0 && lexer->lookahead == '>') ||
+    (strcmp(word, "TEXT") == 0 &&
+     (lexer->lookahead == '>' || lexer->lookahead == ',' ||
+      lexer->lookahead == ' ' || lexer->lookahead == '\t'));
+}
+
 static bool scan_word(
   Scanner *scanner,
   TSLexer *lexer,
@@ -998,19 +1049,55 @@ static bool scan_word(
   bool contextual = false;
   bool followed_by_hash = false;
   bool can_terminate_input = valid_symbols[UNTERMINATED_INPUT_BLOCK];
+  bool can_end_command = valid_symbols[COMMAND_END];
   if (!read_word(
         lexer,
         word,
         sizeof(word),
         &contextual,
         &followed_by_hash,
-        !can_terminate_input
+        !can_terminate_input && !can_end_command
       )) {
     return false;
   }
   bool reserved_root_statement =
     strcmp(word, "PROG") == 0 || strcmp(word, "APPLY") == 0 ||
     strcmp(word, "SYS") == 0;
+
+  if (
+    can_end_command && contextual &&
+    (!scanner->in_legacy_text || strcmp(word, "TXEN") == 0 ||
+     strcmp(word, "END") == 0 || strcmp(word, "ENDE") == 0 || reserved_root_statement)
+  ) {
+    uint32_t command = find_command(scanner->module, word);
+    bool foreign_command =
+      command == SOFISTIK_UNKNOWN_ID &&
+      find_item(scanner->command, word) == SOFISTIK_UNKNOWN_ID &&
+      !is_command_value(scanner->command, word) &&
+      !is_text_value_command(scanner->command) &&
+      !is_template_define(scanner) &&
+      (is_global_command(word) ||
+       (scanner->module < SOFISTIK_MODULE_COUNT &&
+        strcmp(SOFISTIK_MODULES[scanner->module].name, "TEMPLATE") == 0 &&
+        (!is_heading_command(scanner->command) ||
+         lexer->get_column(lexer) == skipped_columns + strlen(word))));
+    if (
+      command != SOFISTIK_UNKNOWN_ID || foreign_command ||
+      reserved_root_statement || is_reserved_statement_word(word) ||
+      strcmp(word, "END") == 0 || strcmp(word, "ENDE") == 0
+    ) {
+      if (foreign_command && !is_variable_keyword(word)) {
+        reset_command(scanner);
+      }
+      if (!is_variable_keyword(word)) {
+        lexer->result_symbol = COMMAND_END;
+        return true;
+      }
+    }
+  }
+  if (can_end_command) {
+    lexer->mark_end(lexer);
+  }
   if (
     valid_symbols[BARE_WORD] &&
     (!valid_symbols[IGNORED_TEXT] ||
@@ -1275,6 +1362,10 @@ static bool scan_dollar(
     index++;
 
     if (could_be_prog && !prog[index] && is_root_directive_separator(lexer->lookahead)) {
+      if (valid_symbols[COMMAND_END]) {
+        lexer->result_symbol = COMMAND_END;
+        return true;
+      }
       if (can_terminate_input) {
         return emit_unterminated_input_block(scanner, lexer);
       }
@@ -1287,6 +1378,10 @@ static bool scan_dollar(
       could_be_prog = false;
     }
     if (could_be_apply && !apply[index] && is_root_directive_separator(lexer->lookahead)) {
+      if (valid_symbols[COMMAND_END]) {
+        lexer->result_symbol = COMMAND_END;
+        return true;
+      }
       if (can_terminate_input) {
         return emit_unterminated_input_block(scanner, lexer);
       }
@@ -1843,6 +1938,11 @@ bool tree_sitter_sofistik_external_scanner_scan(
     return true;
   }
 
+  if (valid_symbols[COMMAND_END] && !lexer->lookahead) {
+    lexer->result_symbol = COMMAND_END;
+    return true;
+  }
+
   if (valid_symbols[UNTERMINATED_INPUT_BLOCK] && !lexer->lookahead) {
     return emit_unterminated_input_block(scanner, lexer);
   }
@@ -1858,7 +1958,7 @@ bool tree_sitter_sofistik_external_scanner_scan(
   bool needs_line_start = valid_symbols[BARE_WORD] && valid_symbols[IGNORED_TEXT];
   bool at_line_start = needs_line_start && lexer->get_column(lexer) == 0;
 
-  if (valid_symbols[UNTERMINATED_INPUT_BLOCK]) {
+  if (valid_symbols[UNTERMINATED_INPUT_BLOCK] || valid_symbols[COMMAND_END]) {
     lexer->mark_end(lexer);
   }
 
@@ -1871,8 +1971,24 @@ bool tree_sitter_sofistik_external_scanner_scan(
     skipped_columns++;
   }
 
+  if (valid_symbols[COMMAND_END]) {
+    lexer->mark_end(lexer);
+    if (lexer->lookahead == '<' || lexer->lookahead == '@') {
+      if (scan_structured_command_end(lexer)) {
+        lexer->result_symbol = COMMAND_END;
+        return true;
+      }
+      return false;
+    }
+  }
+
   if (valid_symbols[END_OF_FILE] && !lexer->lookahead) {
     lexer->result_symbol = END_OF_FILE;
+    return true;
+  }
+
+  if (valid_symbols[COMMAND_END] && !lexer->lookahead) {
+    lexer->result_symbol = COMMAND_END;
     return true;
   }
 

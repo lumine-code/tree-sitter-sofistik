@@ -41,6 +41,7 @@ module.exports = grammar({
     $._define_keyword,
     $._enddef_keyword,
     $._table_start,
+    $._command_end,
     $._mojibake_bom,
     $._error_sentinel,
   ],
@@ -70,7 +71,7 @@ module.exports = grammar({
         seq(
           field("header", $.program_header),
           field("body", $.input_block),
-          repeat(field("tail", $._module_tail_statement)),
+          repeat($._module_tail_group),
         ),
       ),
 
@@ -93,12 +94,13 @@ module.exports = grammar({
       ),
 
     commented_program_scope: ($) =>
-      prec.right(
-        seq(
-          field("header", $.commented_program_header),
-          repeat(field("tail", $._module_tail_statement)),
-        ),
-      ),
+      prec.right(seq(field("header", $.commented_program_header), repeat($._module_tail_group))),
+
+    _module_tail_group: ($) => boundedChunk($._module_tail_chunk),
+
+    _module_tail_chunk: ($) => boundedChunk($._module_tail_element),
+
+    _module_tail_element: ($) => field("tail", $._module_tail_statement),
 
     commented_program_sigil: ($) => $._dollar_prog,
 
@@ -159,6 +161,9 @@ module.exports = grammar({
             seq(field("record", $.table_definition), repeat($._table_body_group)),
             seq(field("record", $.record), repeat($._command_body_group)),
           ),
+          // Commit the command before lexing its successor in the outer scope.
+          // This keeps reused tail groups in the same external lexer context.
+          $._command_end,
         ),
       ),
 

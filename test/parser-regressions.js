@@ -175,6 +175,97 @@ function registerParserRegressions(test, createParser) {
     }
   });
 
+  test("keeps command boundaries transparent to prose, legacy text, and auxiliary statements", () => {
+    const parser = createParser();
+    const cases = [
+      [
+        "+PROG TEMPLATE\nHEAD @NAME ; selector KWL not necessary\nUNKNOWN next line\nEND\n",
+        ["HEAD"],
+        ["UNKNOWN"],
+      ],
+      [
+        "+PROG SOFIMSHA\nTXAB title\nNODE IF LOOP HEAD unknown\nTXEN\nPAGE UNII 0\nEND\n",
+        ["TXAB", "TXEN", "PAGE"],
+        [],
+      ],
+      [
+        "+PROG SOFIMSHA\nEND\nNODE 1 X 0\nLET#A 1\n#include file.inc\n#define a = 1\nX 2\nIF #A\nNODE 2 X 3\nENDIF\nEND\n",
+        ["NODE", "NODE"],
+        [],
+      ],
+      [
+        "+PROG AQUA\nHEAD 'text'\n  <TEXT,FILE=+#outfile,TITLE='title'>\n#body $(value)\n<\\TEXT>\nEND\n",
+        ["HEAD"],
+        [],
+      ],
+    ];
+    try {
+      for (const [source, commands, invalid] of cases) {
+        const tree = parser.parse(source);
+        try {
+          assert.equal(tree.rootNode.hasError, false, source);
+          assert.deepEqual(texts(tree, "command_name"), commands, source);
+          assert.deepEqual(texts(tree, "invalid_command"), invalid, source);
+          if (source.includes("<TEXT,")) {
+            assert.equal(texts(tree, "text_block").length, 1);
+            assert.deepEqual(texts(tree, "hash_variable_name"), ["#outfile", "#body"]);
+          }
+          if (source.includes("#include")) {
+            const command = tree.rootNode.descendantsOfType("command")[0];
+            assert.deepEqual(
+              command.childrenForFieldName("auxiliary").map((node) => node.type),
+              ["variable_statement", "preprocessor_directive", "preprocessor_define_statement"],
+            );
+            assert.equal(command.childrenForFieldName("record").length, 2);
+          }
+        } finally {
+          release(tree);
+        }
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
+  test("matches fresh command boundaries after inserting and deleting following statements", () => {
+    const parser = createParser();
+    const before = "+PROG SOFIMSHA\nEND\nNODE 1 X 0\nNODE 2 X 1\nEND\n";
+    const alternatives = [
+      before.replace("NODE 2 X 1", "X 1"),
+      before.replace("NODE 2 X 1", "IF #A\nNODE 2 X 1\nENDIF"),
+      before.replace("NODE 2 X 1", "<PICT>\nNODE 2 X 1\n</PICT>"),
+      before.replace("NODE 2 X 1", "<TEXT,TITLE='note'>\n#A $(B)\n</TEXT>"),
+      before.replace("NODE 2 X 1", "@KEY 1 2"),
+      before.replace("NODE 2 X 1", "@ note"),
+      before.replace("NODE 2 X 1", "#IF $(A)\nNODE 2 X 1\n#ENDIF"),
+      before.replace("NODE 2 X 1", "+PROG SOFIMSHA\nNODE 2 X 1"),
+      before.replace("NODE 2 X 1", "$PROG SOFIMSHA\nNODE 2 X 1"),
+      before.replace("NODE 2 X 1", "+APPLY file.inc"),
+    ];
+    try {
+      for (const alternative of alternatives) {
+        for (const [original, updated] of [
+          [before, alternative],
+          [alternative, before],
+        ]) {
+          const tree = parser.parse(original);
+          let incremental, fresh;
+          try {
+            editTree(tree, original, updated);
+            incremental = parser.parse(updated, tree);
+            fresh = parser.parse(updated);
+            assert.equal(fresh.rootNode.hasError, false, updated);
+            assert.deepEqual(snapshot(incremental.rootNode), snapshot(fresh.rootNode), updated);
+          } finally {
+            release(tree, incremental, fresh);
+          }
+        }
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
   test("recognizes table headers once while preserving row fields and ordinary records", () => {
     const parser = createParser();
     try {
@@ -226,6 +317,7 @@ function registerParserRegressions(test, createParser) {
 
   const shapes = {
     program: ["", ""],
+    "module tail": ["END\n", ""],
     LOOP: ["LOOP #I 10\n", "ENDLOOP\n"],
     IF: ["IF #I\n", "ENDIF\n"],
     ELSEIF: ["IF #I\nHEAD first\nELSEIF 1\n", "ENDIF\n"],
@@ -262,6 +354,12 @@ function registerParserRegressions(test, createParser) {
         fresh = parser.parse(after);
         assert.equal(incremental.rootNode.toString(), fresh.rootNode.toString());
         assert.equal(incremental.rootNode.namedChildren.length, 1);
+        if (shape === "module tail") {
+          assert.equal(
+            incremental.rootNode.namedChildren[0].childrenForFieldName("tail").length,
+            count + 1,
+          );
+        }
         if (table || implicit) {
           assert.equal(
             incremental.rootNode.descendantsOfType("command")[0].childrenForFieldName("record")
