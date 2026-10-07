@@ -3,8 +3,8 @@
   "source": {
     "package": "@lumine-code/sofistik-data",
     "repository": "https://github.com/lumine-code/sofistik-data",
-    "commit": "09b38cb1b5e3e07f9c2c054edb3ba33d9ee3b007"
+    "commit": "01e49c8962c22b4bf096a72da9b49d9ad87bc46d"
   },
-  "schemaDigest": "50e75b78f14d3a17bf52786fac977ea9610d61d54acb06c3fac10fbf86fa879e",
+  "schemaDigest": "7a92b6ed0808214ffd7530b2766f1ab498b999119698fcc982834358da922df3",
   "grammarVocabularyDigest": "d77106a81beb9718078898bdae9802921670b05a5b26ef8629342c93af90650c"
 }
