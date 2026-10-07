@@ -44,6 +44,183 @@ function isLog(message, event) {
 }
 
 function registerParserRegressions(test, createParser) {
+  test("keeps incomplete substitutions within physical quoted string boundaries", () => {
+    const parser = createParser();
+    try {
+      for (const quote of ["'", '"']) {
+        for (const literal of ["$(", "$(missing", "$()", `$(name${quote}${quote}tail`]) {
+          const value = `${quote}cost ${literal}${quote}`;
+          const after = `${quote}after${quote}`;
+          for (const ending of ["\nEND\n", "\nEND", ""]) {
+            const source = `+PROG AQUA\nHEAD ${value} outside 7 (1) ${after}${ending}`;
+            const tree = parser.parse(source);
+            try {
+              assert.equal(tree.rootNode.hasError, false, source);
+              assert.deepEqual(texts(tree, "string"), [value, after], source);
+              assert.deepEqual(texts(tree, "dollar_variable"), [], source);
+              assert.deepEqual(texts(tree, "bare_value"), ["outside"], source);
+              assert.deepEqual(texts(tree, "number"), ["7"], source);
+              assert.deepEqual(texts(tree, "parenthesized_expression"), ["(1)"], source);
+              const string = tree.rootNode.descendantsOfType("string")[0];
+              assert.deepEqual(string.startPosition, { row: 1, column: 5 });
+              assert.deepEqual(string.endPosition, { row: 1, column: 5 + value.length });
+              assert.equal(texts(tree, "unterminated_string").length, 0, source);
+            } finally {
+              release(tree);
+            }
+          }
+        }
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
+  test("preserves quoted substitutions and doubled escapes in both quote styles", () => {
+    const parser = createParser();
+    try {
+      for (const quote of ["'", '"']) {
+        const other = quote === "'" ? '"' : "'";
+        for (const substitution of [
+          "$(NAME)",
+          `$(name${quote}${quote}tail)`,
+          `$(name${other}tail)`,
+        ]) {
+          const value = `${quote}prefix ${quote}${quote}quoted${quote}${quote} ${substitution}${quote}`;
+          const tree = parser.parse(`+PROG AQUA\nHEAD ${value} outside\nEND\n`);
+          try {
+            assert.equal(tree.rootNode.hasError, false, value);
+            assert.deepEqual(texts(tree, "string"), [value], value);
+            assert.deepEqual(texts(tree, "dollar_variable"), [substitution], value);
+            assert.deepEqual(texts(tree, "bare_value"), ["outside"], value);
+          } finally {
+            release(tree);
+          }
+        }
+        const incomplete = `${quote}prefix ${quote}${quote}quoted${quote}${quote} $(missing${quote}`;
+        const tree = parser.parse(`+PROG AQUA\nHEAD ${incomplete} outside\nEND\n`);
+        try {
+          assert.equal(tree.rootNode.hasError, false);
+          assert.deepEqual(texts(tree, "string"), [incomplete]);
+          assert.deepEqual(texts(tree, "bare_value"), ["outside"]);
+        } finally {
+          release(tree);
+        }
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
+  test("preserves incomplete quoted substitutions inside other record surfaces", () => {
+    const parser = createParser();
+    try {
+      for (const quote of ["'", '"']) {
+        const value = `${quote}cost $(missing${quote}`;
+        for (const source of [
+          `+PROG AQUA\nHEAD (1 ${value}) outside\nEND\n`,
+          `+PROG AQUA\n<TEXT,TITLE=${value}>\nbody\n</TEXT>\nEND\n`,
+          `#define message = ${value} outside\n`,
+        ]) {
+          const tree = parser.parse(source);
+          try {
+            assert.equal(tree.rootNode.hasError, false, source);
+            assert.deepEqual(texts(tree, "string"), [value], source);
+            assert.deepEqual(texts(tree, "dollar_variable"), [], source);
+          } finally {
+            release(tree);
+          }
+        }
+        const unterminated = parser.parse(`+PROG AQUA\nHEAD ${quote}cost $(missing\nEND\n`);
+        try {
+          assert.equal(unterminated.rootNode.hasError, false);
+          assert.equal(texts(unterminated, "unterminated_string").length, 1);
+        } finally {
+          release(unterminated);
+        }
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
+  test("matches quoted substitution boundaries after incremental delimiter and argument edits", () => {
+    const parser = createParser();
+    try {
+      for (const quote of ["'", '"']) {
+        const before = `+PROG AQUA\nHEAD ${quote}prefix $(NAME)${quote} outside (1)\nEND\n`;
+        const alternatives = [
+          before.replace("$(NAME)", "$(NAME"),
+          before.replace("$(NAME)", "$("),
+          before.replace("$(NAME)", `$(NAME${quote}${quote}tail)`),
+          before.replace("$(NAME)", `$(NAME${quote}${quote}tail`),
+          before.replace("$(NAME)", "$(NAME").replace("(1)", "(2)"),
+          before.replace("outside (1)", `${quote}next $(PARTIAL${quote} (2)`),
+        ];
+        for (const changed of alternatives) {
+          for (const [original, updated] of [
+            [before, changed],
+            [changed, before],
+          ]) {
+            const old = parser.parse(original);
+            let incremental, fresh;
+            try {
+              editTree(old, original, updated);
+              incremental = parser.parse(updated, old);
+              fresh = parser.parse(updated);
+              assert.equal(fresh.rootNode.hasError, false, updated);
+              assert.deepEqual(snapshot(incremental.rootNode), snapshot(fresh.rootNode), updated);
+            } finally {
+              release(old, incremental, fresh);
+            }
+          }
+        }
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
+  test("bounds lexical work for repeated incomplete substitutions inside quoted strings", (t) => {
+    const parser = createParser();
+    try {
+      for (const quote of ["'", '"']) {
+        for (const count of [128, 512]) {
+          const value = `${quote}${"$( ".repeat(count)}${quote}`;
+          const source = `+PROG AQUA\nHEAD ${value} outside (1)\nEND\n`;
+          let consumed = 0;
+          parser.setLogger((message) => {
+            if (isLog(message, "consume")) consumed++;
+          });
+          let tree;
+          try {
+            tree = parser.parse(source);
+            assert.equal(tree.rootNode.hasError, false);
+          } finally {
+            parser.setLogger(null);
+          }
+          try {
+            assert.deepEqual(texts(tree, "string"), [value]);
+            assert.deepEqual(texts(tree, "dollar_variable"), []);
+            assert.deepEqual(texts(tree, "bare_value"), ["outside"]);
+            assert.ok(
+              consumed < source.length * 8,
+              `${consumed} lexer advances for ${source.length} characters`,
+            );
+            t.diagnostic(
+              `${quote} ${count} incomplete substitutions: ${consumed} lexer advances/${source.length} characters`,
+            );
+          } finally {
+            release(tree);
+          }
+        }
+      }
+    } finally {
+      parser.setLogger(null);
+      release(parser);
+    }
+  });
+
   test("separates schema DEL commands from attached variable deletions", () => {
     const parser = createParser();
     try {

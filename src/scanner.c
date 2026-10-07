@@ -428,13 +428,22 @@ static bool scan_hash_token(
   return true;
 }
 
-static bool scan_dollar_variable_candidate(TSLexer *lexer) {
+enum DollarCandidate {
+  DOLLAR_LITERAL,
+  DOLLAR_VARIABLE,
+  DOLLAR_QUOTE_BOUNDARY,
+};
+
+static enum DollarCandidate scan_dollar_variable_candidate(
+  TSLexer *lexer,
+  int32_t quote
+) {
   if (lexer->lookahead != '$') {
-    return false;
+    return DOLLAR_LITERAL;
   }
   lexer->advance(lexer, false);
   if (lexer->lookahead != '(') {
-    return false;
+    return DOLLAR_LITERAL;
   }
   lexer->advance(lexer, false);
 
@@ -443,14 +452,26 @@ static bool scan_dollar_variable_candidate(TSLexer *lexer) {
     lexer->lookahead && lexer->lookahead != ')' &&
     lexer->lookahead != '\r' && lexer->lookahead != '\n'
   ) {
+    if (quote && lexer->lookahead == quote) {
+      // Only a doubled quote belongs to this candidate. Keep a single
+      // closing quote outside literal content when the substitution is open.
+      lexer->mark_end(lexer);
+      lexer->advance(lexer, false);
+      if (lexer->lookahead != quote) {
+        return DOLLAR_QUOTE_BOUNDARY;
+      }
+      lexer->advance(lexer, false);
+      has_content = true;
+      continue;
+    }
     lexer->advance(lexer, false);
     has_content = true;
   }
   if (!has_content || lexer->lookahead != ')') {
-    return false;
+    return DOLLAR_LITERAL;
   }
   lexer->advance(lexer, false);
-  return true;
+  return DOLLAR_VARIABLE;
 }
 
 static bool remaining_line_has_variable(TSLexer *lexer) {
@@ -469,7 +490,8 @@ static bool remaining_line_has_variable(TSLexer *lexer) {
       continue;
     }
     if (
-      (lexer->lookahead == '$' && scan_dollar_variable_candidate(lexer)) ||
+      (lexer->lookahead == '$' &&
+       scan_dollar_variable_candidate(lexer, 0) == DOLLAR_VARIABLE) ||
       (lexer->lookahead == '#' && scan_hash_variable_candidate(lexer))
     ) {
       return true;
@@ -566,12 +588,23 @@ static bool scan_interpolated_string_content(
 
     if (lexer->lookahead == '$') {
       lexer->mark_end(lexer);
-      if (scan_dollar_variable_candidate(lexer)) {
-        if (!has_content) {
-          return false;
+      if (has_content) {
+        lexer->advance(lexer, false);
+        if (lexer->lookahead == '(') {
+          // Probe each candidate from its own token boundary. That permits
+          // quote checkpoints without moving the end of preceding content.
+          lexer->result_symbol = result_symbol;
+          return true;
         }
+        continue;
+      }
+      enum DollarCandidate candidate = scan_dollar_variable_candidate(lexer, quote);
+      if (candidate == DOLLAR_QUOTE_BOUNDARY) {
         lexer->result_symbol = result_symbol;
         return true;
+      }
+      if (candidate == DOLLAR_VARIABLE) {
+        return false;
       }
       has_content = true;
       continue;
@@ -1461,7 +1494,7 @@ static bool scan_sequence_generator_start(
       continue;
     }
     if (lexer->lookahead == '$') {
-      if (!scan_dollar_variable_candidate(lexer)) {
+      if (scan_dollar_variable_candidate(lexer, 0) != DOLLAR_VARIABLE) {
         return false;
       }
       in_component = true;

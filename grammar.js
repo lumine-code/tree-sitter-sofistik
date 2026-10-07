@@ -711,13 +711,13 @@ module.exports = grammar({
 });
 
 function quotedString($, quote, contentToken) {
+  // Substitutions can include escaped quotes, but cannot consume the string's
+  // physical closing quote or look for ')' among the following arguments.
+  const dollarPattern = new RegExp(`\\$\\((?:[^\\r\\n)${quote}]|${quote}${quote})+\\)`);
   return seq(
     token(prec(10, quote)),
     repeat(
-      choice(
-        alias(token.immediate(prec(20, DOLLAR_VARIABLE_PATTERN)), $.dollar_variable),
-        contentToken,
-      ),
+      choice(alias(token.immediate(prec(20, dollarPattern)), $.dollar_variable), contentToken),
     ),
     token.immediate(prec(10, quote)),
   );
