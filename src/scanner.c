@@ -382,7 +382,8 @@ static bool scan_hash_token(
     valid_symbols[COMMAND_END] &&
     (strcmp(word, "IF") == 0 || strcmp(word, "ELSEIF") == 0 ||
      strcmp(word, "ELSE") == 0 || strcmp(word, "ENDIF") == 0 ||
-     strcmp(word, "ENDDEF") == 0) &&
+     strcmp(word, "ENDDEF") == 0 ||
+     (strcmp(word, "DEFINE") == 0 && !valid_symbols[DEFINE_KEYWORD])) &&
     is_root_directive_separator(lexer->lookahead)
   ) {
     lexer->result_symbol = COMMAND_END;
@@ -1086,10 +1087,14 @@ static bool scan_word(
       reserved_root_statement || is_reserved_statement_word(word) ||
       strcmp(word, "END") == 0 || strcmp(word, "ENDE") == 0
     ) {
-      if (foreign_command && !is_variable_keyword(word)) {
+      // A schema command such as DEL QUAD must end its predecessor. Only an
+      // attached hash, or a name without a module command, remains auxiliary.
+      bool auxiliary_variable = is_variable_keyword(word) &&
+        (followed_by_hash || command == SOFISTIK_UNKNOWN_ID);
+      if (foreign_command && !auxiliary_variable) {
         reset_command(scanner);
       }
-      if (!is_variable_keyword(word)) {
+      if (!auxiliary_variable) {
         lexer->result_symbol = COMMAND_END;
         return true;
       }

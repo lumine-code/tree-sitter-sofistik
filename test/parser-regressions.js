@@ -44,6 +44,87 @@ function isLog(message, event) {
 }
 
 function registerParserRegressions(test, createParser) {
+  test("separates schema DEL commands from attached variable deletions", () => {
+    const parser = createParser();
+    try {
+      for (const command of ["QUAD", "NODE"]) {
+        for (const prefix of ["", "END\n"]) {
+          const source = `+PROG SOFIMSHA\n${prefix}${command} NO 1\nDEL QUAD 1 2 GRP\nDEL#temporary\n${command} NO 2\nEND\n`;
+          const tree = parser.parse(source);
+          try {
+            assert.equal(tree.rootNode.hasError, false, source);
+            assert.deepEqual(texts(tree, "command_name"), [command, "DEL", command]);
+            assert.deepEqual(texts(tree, "variable_keyword"), ["DEL"]);
+            assert.deepEqual(texts(tree, "hash_variable_name"), ["#temporary"]);
+          } finally {
+            release(tree);
+          }
+          const updated = source.replace("DEL QUAD 1 2 GRP", "DEL BRIC 11 13 GRP");
+          for (const [before, after] of [
+            [source, updated],
+            [updated, source],
+          ]) {
+            const original = parser.parse(before);
+            let incremental, fresh;
+            try {
+              editTree(original, before, after);
+              incremental = parser.parse(after, original);
+              fresh = parser.parse(after);
+              assert.equal(fresh.rootNode.hasError, false, after);
+              assert.deepEqual(snapshot(incremental.rootNode), snapshot(fresh.rootNode));
+            } finally {
+              release(original, incremental, fresh);
+            }
+          }
+        }
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
+  test("ends tables before scalar and block DEFINE headers without losing their module", () => {
+    const parser = createParser();
+    try {
+      for (const prefix of ["", "END\n"]) {
+        const before = `+PROG SOFIMSHA\n${prefix}NODE NO X Y Z\n1 0 0 0\n#define scale=1\n#define nodes\nNODE 2 X $(scale)\n#enddef\nEND\n`;
+        const updated = before.replace("#define scale=1", "#define scale=2 ! changed");
+        for (const source of [before, updated]) {
+          const tree = parser.parse(source);
+          try {
+            assert.equal(tree.rootNode.hasError, false, source);
+            assert.deepEqual(texts(tree, "command_name"), ["NODE", "NODE"]);
+            assert.equal(texts(tree, "table_definition").length, 1);
+            assert.equal(texts(tree, "table_row").length, 1);
+            assert.equal(texts(tree, "preprocessor_define_statement").length, 1);
+            assert.equal(texts(tree, "preprocessor_define_header").length, 1);
+            assert.deepEqual(texts(tree, "preprocessor_name"), ["scale", "nodes"]);
+            assert.deepEqual(texts(tree, "ignored_text"), []);
+          } finally {
+            release(tree);
+          }
+        }
+        for (const [original, after] of [
+          [before, updated],
+          [updated, before],
+        ]) {
+          const tree = parser.parse(original);
+          let incremental, fresh;
+          try {
+            editTree(tree, original, after);
+            incremental = parser.parse(after, tree);
+            fresh = parser.parse(after);
+            assert.deepEqual(snapshot(incremental.rootNode), snapshot(fresh.rootNode));
+          } finally {
+            release(tree, incremental, fresh);
+          }
+        }
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
   test("preserves ordinary Unicode characters instead of stripping partial BOMs", () => {
     const parser = createParser();
     const words = ["ïABC", "»ABC", "¿ABC", "ï»,", "ïPROG", "»PROG", "¿PROG", "µ+PROG"];
