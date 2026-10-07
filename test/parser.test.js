@@ -1763,7 +1763,7 @@ test("incremental edits match fresh parses across lexical and structural boundar
   }
 });
 
-const structureCorpus = require("@lumine-code/sofistik-data/fixtures/cadinp-structure.json");
+const structureCorpus = require("@lumine-code/sofistik-schema/fixtures/cadinp-structure.json");
 
 for (const fixture of structureCorpus.cases) {
   test(`shared CADINP structure: ${fixture.name}`, () => {

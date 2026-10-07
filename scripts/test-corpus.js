@@ -4,7 +4,7 @@ const { performance } = require("node:perf_hooks");
 const Parser = require("tree-sitter");
 const SOFiSTiK = require("..");
 const {
-  source: data,
+  source: schemaSource,
   schemaDigest,
   grammarVocabularyDigest,
 } = require("../schema/provenance.json");
@@ -183,7 +183,7 @@ function run(root, { fallbackEncodings = [], output = true, structure = false } 
   parser.setLanguage(SOFiSTiK);
   const summary = {
     root: absoluteRoot,
-    data,
+    source: schemaSource,
     schemaDigest,
     grammarVocabularyDigest,
     discovered: files.length,

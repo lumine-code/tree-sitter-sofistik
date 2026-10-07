@@ -3,24 +3,24 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { test } = require("node:test");
-const { getGrammarVocabulary, getMetadata } = require("@lumine-code/sofistik-data");
+const { getGrammarVocabulary, getMetadata } = require("@lumine-code/sofistik-schema");
 const packageManifest = require("../package.json");
 const {
-  DATA_PACKAGE,
-  DATA_REPOSITORY,
+  SCHEMA_PACKAGE,
+  SCHEMA_REPOSITORY,
   COMMAND_OVERRIDES,
   UNIVERSAL_COMMANDS,
   buildProvenance,
   buildResolverVocabulary,
   buildTables,
-  dataCommit,
+  schemaCommit,
   generateSchema,
 } = require("../scripts/generate-schema");
 
 const FIXTURE_COMMIT = "a".repeat(40);
 const fixtureManifest = {
   devDependencies: {
-    [DATA_PACKAGE]: `github:lumine-code/sofistik-data#${FIXTURE_COMMIT}`,
+    [SCHEMA_PACKAGE]: `github:lumine-code/sofistik-schema#${FIXTURE_COMMIT}`,
   },
 };
 const fixtureVocabulary = {
@@ -103,7 +103,7 @@ test("collects resolver values from every pinned schema", () => {
 });
 
 test("collects resolver values from every alternative command form", () => {
-  const dataProvider = {
+  const schemaProvider = {
     getMetadata() {
       return { versions: ["2026"], languages: ["en"] };
     },
@@ -123,12 +123,12 @@ test("collects resolver values from every alternative command form", () => {
     },
   };
 
-  assert.deepStrictEqual(buildResolverVocabulary(dataProvider), {
+  assert.deepStrictEqual(buildResolverVocabulary(schemaProvider), {
     TEST: { ITEM: ["FIRST", "SECOND"] },
   });
 });
 
-test("writes deterministic C tables and data provenance", (context) => {
+test("writes deterministic C tables and schema provenance", (context) => {
   const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "tree-sitter-sofistik-"));
   const output = path.join(temporaryDirectory, "schema.h");
   const provenanceOutput = path.join(temporaryDirectory, "provenance.json");
@@ -163,8 +163,8 @@ test("writes deterministic C tables and data provenance", (context) => {
   assert.deepStrictEqual(JSON.parse(firstProvenance), {
     formatVersion: 1,
     source: {
-      package: DATA_PACKAGE,
-      repository: DATA_REPOSITORY,
+      package: SCHEMA_PACKAGE,
+      repository: SCHEMA_REPOSITORY,
       commit: FIXTURE_COMMIT,
     },
     schemaDigest: fixtureMetadata.schemaDigest,
@@ -204,7 +204,7 @@ test("preserves every command and item from the pinned grammar vocabulary", () =
   }
 });
 
-test("maps executable module names to their data ranges", () => {
+test("maps executable module names to their schema ranges", () => {
   const vocabulary = getGrammarVocabulary();
   const tables = buildTables(vocabulary);
   const modules = new Map(tables.modules.map((module) => [module.name, module]));
@@ -237,7 +237,7 @@ test("adds parser-specific universal command vocabulary", () => {
   assert.deepStrictEqual(basic.get("UNIT"), []);
 });
 
-test("records the exact data pin and both semantic digests", () => {
+test("records the exact schema pin and both semantic digests", () => {
   const vocabulary = getGrammarVocabulary();
   const metadata = getMetadata();
   const provenance = buildProvenance(vocabulary, metadata);
@@ -245,18 +245,18 @@ test("records the exact data pin and both semantic digests", () => {
     fs.readFileSync(path.join(__dirname, "../schema/provenance.json"), "utf8"),
   );
 
-  assert.strictEqual(dataCommit(fixtureManifest), FIXTURE_COMMIT);
+  assert.strictEqual(schemaCommit(fixtureManifest), FIXTURE_COMMIT);
   assert.deepStrictEqual(provenance, recordedProvenance);
-  assert.strictEqual(provenance.source.repository, DATA_REPOSITORY);
-  assert.strictEqual(provenance.source.commit, dataCommit(packageManifest));
+  assert.strictEqual(provenance.source.repository, SCHEMA_REPOSITORY);
+  assert.strictEqual(provenance.source.commit, schemaCommit(packageManifest));
   assert.strictEqual(provenance.schemaDigest, metadata.schemaDigest);
   assert.strictEqual(provenance.grammarVocabularyDigest, vocabulary.digest);
   assert.strictEqual(vocabulary.digest, metadata.grammarVocabularyDigest);
 });
 
-test("rejects mutable data references and mismatched vocabulary", () => {
+test("rejects mutable schema references and mismatched vocabulary", () => {
   assert.throws(
-    () => dataCommit({ devDependencies: { [DATA_PACKAGE]: "^1.0.0" } }),
+    () => schemaCommit({ devDependencies: { [SCHEMA_PACKAGE]: "^1.0.0" } }),
     /must be pinned to a full commit/,
   );
   assert.throws(

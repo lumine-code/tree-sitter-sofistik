@@ -1,4 +1,4 @@
-/* Generated from @lumine-code/sofistik-data by scripts/generate-schema.js. */
+/* Generated from @lumine-code/sofistik-schema by scripts/generate-schema.js. */
 #ifndef TREE_SITTER_SOFISTIK_SCHEMA_H_
 #define TREE_SITTER_SOFISTIK_SCHEMA_H_
 

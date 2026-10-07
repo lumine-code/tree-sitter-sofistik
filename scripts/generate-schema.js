@@ -3,16 +3,16 @@ const path = require("node:path");
 const {
   getGrammarVocabulary,
   getMetadata,
-  provider: getDataProvider,
-} = require("@lumine-code/sofistik-data");
+  provider: getSchemaProvider,
+} = require("@lumine-code/sofistik-schema");
 const packageManifest = require("../package.json");
 
 const root = path.join(__dirname, "..");
 const outputPath = path.join(root, "src", "schema.h");
 const provenancePath = path.join(root, "schema", "provenance.json");
-const DATA_PACKAGE = "@lumine-code/sofistik-data";
-const DATA_REPOSITORY = "https://github.com/lumine-code/sofistik-data";
-const DATA_PIN_PATTERN = /^github:lumine-code\/sofistik-data#([a-f0-9]{40})$/;
+const SCHEMA_PACKAGE = "@lumine-code/sofistik-schema";
+const SCHEMA_REPOSITORY = "https://github.com/lumine-code/sofistik-schema";
+const SCHEMA_PIN_PATTERN = /^github:lumine-code\/sofistik-schema#([a-f0-9]{40})$/;
 const RESERVED_COMMANDS = new Set(["END", "ENDE"]);
 const UNIVERSAL_COMMANDS = Object.freeze({
   HEAD: Object.freeze([]),
@@ -35,12 +35,12 @@ function cString(value) {
   return JSON.stringify(value);
 }
 
-function dataCommit(manifest = packageManifest) {
-  const dependency = manifest.devDependencies?.[DATA_PACKAGE];
-  const match = DATA_PIN_PATTERN.exec(dependency || "");
+function schemaCommit(manifest = packageManifest) {
+  const dependency = manifest.devDependencies?.[SCHEMA_PACKAGE];
+  const match = SCHEMA_PIN_PATTERN.exec(dependency || "");
   if (!match) {
     throw new Error(
-      `${DATA_PACKAGE} must be pinned to a full commit as github:lumine-code/sofistik-data#<sha>`,
+      `${SCHEMA_PACKAGE} must be pinned to a full commit as github:lumine-code/sofistik-schema#<sha>`,
     );
   }
   return match[1];
@@ -56,22 +56,22 @@ function buildProvenance(vocabulary, metadata, manifest = packageManifest) {
   return {
     formatVersion: 1,
     source: {
-      package: DATA_PACKAGE,
-      repository: DATA_REPOSITORY,
-      commit: dataCommit(manifest),
+      package: SCHEMA_PACKAGE,
+      repository: SCHEMA_REPOSITORY,
+      commit: schemaCommit(manifest),
     },
     schemaDigest: metadata.schemaDigest,
     grammarVocabularyDigest: vocabulary.digest,
   };
 }
 
-function buildResolverVocabulary(dataProvider = getDataProvider()) {
-  const metadata = dataProvider.getMetadata();
+function buildResolverVocabulary(schemaProvider = getSchemaProvider()) {
+  const metadata = schemaProvider.getMetadata();
   const modules = new Map();
 
   for (const version of metadata.versions) {
     for (const language of metadata.languages) {
-      const schema = dataProvider.loadSchemas(version, language);
+      const schema = schemaProvider.loadSchemas(version, language);
       for (const [moduleName, commands] of Object.entries(schema)) {
         if (!modules.has(moduleName)) modules.set(moduleName, new Map());
         const module = modules.get(moduleName);
@@ -197,7 +197,7 @@ function rows(values, render) {
 }
 
 function renderHeader(provenance, tables) {
-  return `/* Generated from ${DATA_PACKAGE} by scripts/generate-schema.js. */
+  return `/* Generated from ${SCHEMA_PACKAGE} by scripts/generate-schema.js. */
 #ifndef TREE_SITTER_SOFISTIK_SCHEMA_H_
 #define TREE_SITTER_SOFISTIK_SCHEMA_H_
 
@@ -284,15 +284,15 @@ if (require.main === module) {
 }
 
 module.exports = {
-  DATA_PACKAGE,
-  DATA_REPOSITORY,
+  SCHEMA_PACKAGE,
+  SCHEMA_REPOSITORY,
   COMMAND_OVERRIDES,
   COMMAND_VALUE_OVERRIDES,
   UNIVERSAL_COMMANDS,
   buildProvenance,
   buildResolverVocabulary,
   buildTables,
-  dataCommit,
+  schemaCommit,
   generateSchema,
   renderHeader,
 };

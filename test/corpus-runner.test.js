@@ -157,9 +157,9 @@ test("distinguishes complete documents from include fragments", () => {
   assert.strictEqual(hasProgramHeader("NODE 1 X 0\nNODE 2 X 1"), false);
 });
 
-test("ties the recorded official corpus result to the generated data provenance", () => {
-  assert.strictEqual(officialCorpusSummary.formatVersion, 3);
-  assert.deepStrictEqual(officialCorpusSummary.data, provenance.source);
+test("ties the recorded official corpus result to the generated schema provenance", () => {
+  assert.strictEqual(officialCorpusSummary.formatVersion, 4);
+  assert.deepStrictEqual(officialCorpusSummary.source, provenance.source);
   assert.strictEqual(officialCorpusSummary.schemaDigest, provenance.schemaDigest);
   assert.strictEqual(
     officialCorpusSummary.grammarVocabularyDigest,
