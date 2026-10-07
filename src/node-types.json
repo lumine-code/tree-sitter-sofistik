@@ -1360,10 +1360,6 @@
           "named": true
         },
         {
-          "type": "orphan_picture_end",
-          "named": true
-        },
-        {
           "type": "orphan_text_end",
           "named": true
         },

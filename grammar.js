@@ -40,17 +40,14 @@ module.exports = grammar({
     $.unterminated_input_block,
     $._define_keyword,
     $._enddef_keyword,
+    $._table_start,
+    $._mojibake_bom,
     $._error_sentinel,
   ],
 
-  extras: ($) => [/[ \t\f\uFEFF]+/, /\u00ef\u00bb\u00bf/, $.comment],
+  extras: ($) => [/[ \t\f\uFEFF]+/, $._mojibake_bom, $.comment],
 
   supertypes: ($) => [$._value],
-
-  conflicts: ($) => [
-    [$.item_sequence, $.table_definition],
-    [$.picture_end, $.orphan_picture_end],
-  ],
 
   rules: {
     source_file: ($) =>
@@ -159,28 +156,33 @@ module.exports = grammar({
         seq(
           field("name", $.command_name),
           choice(
-            seq(
-              field("record", $.table_definition),
-              repeat(choice(field("record", $.table_row), $._line_end)),
-            ),
-            seq(
-              field("record", $.record),
-              repeat(
-                choice(
-                  field("record", $.implicit_record),
-                  $._line_end,
-                  field(
-                    "auxiliary",
-                    choice(
-                      $.variable_statement,
-                      $.preprocessor_directive,
-                      $.preprocessor_define_header,
-                      $.preprocessor_define_statement,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            seq(field("record", $.table_definition), repeat($._table_body_group)),
+            seq(field("record", $.record), repeat($._command_body_group)),
+          ),
+        ),
+      ),
+
+    _table_body_group: ($) => boundedChunk($._table_body_chunk),
+
+    _table_body_chunk: ($) => boundedChunk($._table_body),
+
+    _table_body: ($) => choice(field("record", $.table_row), $._line_end),
+
+    _command_body_group: ($) => boundedChunk($._command_body_chunk),
+
+    _command_body_chunk: ($) => boundedChunk($._command_body),
+
+    _command_body: ($) =>
+      choice(
+        field("record", $.implicit_record),
+        $._line_end,
+        field(
+          "auxiliary",
+          choice(
+            $.variable_statement,
+            $.preprocessor_directive,
+            $.preprocessor_define_header,
+            $.preprocessor_define_statement,
           ),
         ),
       ),
@@ -210,8 +212,14 @@ module.exports = grammar({
     item_sequence: ($) =>
       prec.right(seq(field("item", $.item_name), repeat(field("value", $._separated_value)))),
 
+    // The scanner recognizes an all-item header once, so subsequent rows do
+    // not keep an alternative implicit-record parse alive for the whole table.
     table_definition: ($) =>
-      prec.dynamic(2, seq(repeat1(field("item", $.item_name)), $._record_end)),
+      seq(
+        field("item", alias($._table_start, $.item_name)),
+        repeat(field("item", $.item_name)),
+        $._record_end,
+      ),
 
     table_row: ($) =>
       seq(
@@ -247,7 +255,12 @@ module.exports = grammar({
     end_record: ($) =>
       prec.right(seq(field("keyword", alias($._end_keyword, $.control_keyword)), $._record_end)),
 
-    loop_block: ($) => seq($.loop_header, repeat($._control_body), $.endloop_record),
+    loop_block: ($) =>
+      prec.right(seq($.loop_header, repeat($._control_body_group), $.endloop_record)),
+
+    _control_body_group: ($) => boundedChunk($._control_body_chunk),
+
+    _control_body_chunk: ($) => boundedChunk($._control_body),
 
     _control_body: ($) =>
       choice(
@@ -281,12 +294,14 @@ module.exports = grammar({
       ),
 
     if_block: ($) =>
-      seq(
-        $.if_header,
-        repeat($._control_body),
-        repeat(seq($.elseif_header, repeat($._control_body))),
-        optional(seq($.else_header, repeat($._control_body))),
-        $.endif_record,
+      prec.right(
+        seq(
+          $.if_header,
+          repeat($._control_body_group),
+          repeat(seq($.elseif_header, repeat($._control_body_group))),
+          optional(seq($.else_header, repeat($._control_body_group))),
+          $.endif_record,
+        ),
       ),
 
     if_header: ($) =>
@@ -479,7 +494,28 @@ module.exports = grammar({
 
     picture_block: ($) =>
       prec.right(
-        seq(field("start", $.picture_start), repeat($._program_body), field("end", $.picture_end)),
+        seq(
+          field("start", $.picture_start),
+          repeat($._picture_body_group),
+          field("end", $.picture_end),
+        ),
+      ),
+
+    _picture_body_group: ($) => boundedChunk($._picture_body_chunk),
+
+    _picture_body_chunk: ($) => boundedChunk($._picture_body),
+
+    _picture_body: ($) =>
+      choice(
+        $._structured_program_body_start,
+        $.invalid_command_record,
+        $.orphan_elseif_record,
+        $.orphan_else_record,
+        $.orphan_endif_record,
+        $.orphan_endloop_record,
+        $.orphan_text_end,
+        $.implicit_record,
+        $._line_end,
       ),
 
     picture_start: ($) =>

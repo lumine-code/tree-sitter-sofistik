@@ -45,6 +45,8 @@ enum TokenType {
   UNTERMINATED_INPUT_BLOCK,
   DEFINE_KEYWORD,
   ENDDEF_KEYWORD,
+  TABLE_START,
+  MOJIBAKE_BOM,
   ERROR_SENTINEL,
 };
 
@@ -64,6 +66,10 @@ typedef struct {
   bool after_missing_end;
   bool in_legacy_text;
   uint32_t template_define_depth;
+  // A failed dollar candidate has already looked ahead to this line's end.
+  // Keep that dependency on its first token, without rescanning the suffix
+  // at each subsequent '$('. Clear only when a committed token crosses '\n'.
+  bool text_dollar_close_missing;
 } Scanner;
 
 static bool ascii_equal(int32_t character, char expected) {
@@ -252,6 +258,7 @@ static void reset_context(Scanner *scanner) {
   scanner->after_missing_end = false;
   scanner->in_legacy_text = false;
   scanner->template_define_depth = 0;
+  scanner->text_dollar_close_missing = false;
 }
 
 static bool is_template_define(const Scanner *scanner) {
@@ -730,6 +737,22 @@ static bool scan_non_word_bare(
   bool can_terminate_input = valid_symbols[UNTERMINATED_INPUT_BLOCK];
   char prefix[16] = {0};
   size_t length = 0;
+  bool complete_prefix = true;
+  if (lexer->lookahead == 0x00ef && valid_symbols[MOJIBAKE_BOM]) {
+    lexer->advance(lexer, false);
+    if (lexer->lookahead == 0x00bb) {
+      lexer->advance(lexer, false);
+      if (lexer->lookahead == 0x00bf) {
+        lexer->advance(lexer, false);
+        lexer->mark_end(lexer);
+        lexer->result_symbol = MOJIBAKE_BOM;
+        return true;
+      }
+    }
+    // An incomplete candidate is ordinary text, including the prefix that
+    // was consumed above. It must not resolve to an ASCII root directive.
+    complete_prefix = false;
+  }
   while (!is_bare_value_delimiter(lexer->lookahead)) {
     int32_t character = lexer->lookahead;
     if (length + 1 < sizeof(prefix) && character < 128) {
@@ -737,10 +760,15 @@ static bool scan_non_word_bare(
         character -= 'a' - 'A';
       }
       prefix[length++] = (char)character;
+    } else {
+      complete_prefix = false;
     }
     lexer->advance(lexer, false);
   }
   prefix[length] = '\0';
+  if (!complete_prefix) {
+    prefix[0] = '\0';
+  }
 
   if (!(valid_symbols[BARE_WORD] && !valid_symbols[IGNORED_TEXT])) {
     if (
@@ -900,6 +928,62 @@ static bool read_word(
   return true;
 }
 
+static bool scan_table_start(const Scanner *scanner, TSLexer *lexer) {
+  while (true) {
+    while (
+      lexer->lookahead == ' ' || lexer->lookahead == '\t' ||
+      lexer->lookahead == '\f' || lexer->lookahead == 0xfeff
+    ) {
+      lexer->advance(lexer, false);
+    }
+    if (
+      !lexer->lookahead || lexer->lookahead == '\r' ||
+      lexer->lookahead == '\n' || lexer->lookahead == ';' ||
+      lexer->lookahead == '!'
+    ) {
+      break;
+    }
+    if (lexer->lookahead == 0x00ef) {
+      lexer->advance(lexer, false);
+      if (lexer->lookahead != 0x00bb) {
+        return false;
+      }
+      lexer->advance(lexer, false);
+      if (lexer->lookahead != 0x00bf) {
+        return false;
+      }
+      lexer->advance(lexer, false);
+      continue;
+    }
+    if (lexer->lookahead == '$') {
+      lexer->advance(lexer, false);
+      if (lexer->lookahead == '(') {
+        return false;
+      }
+      break;
+    }
+    if (lexer->lookahead == '/') {
+      lexer->advance(lexer, false);
+      if (lexer->lookahead != '/') {
+        return false;
+      }
+      break;
+    }
+    char word[128] = {0};
+    bool contextual = false;
+    bool followed_by_hash = false;
+    if (
+      !read_word(
+        lexer, word, sizeof(word), &contextual, &followed_by_hash, false
+      ) ||
+      find_item(scanner->command, word) == SOFISTIK_UNKNOWN_ID
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 static bool scan_word(
   Scanner *scanner,
   TSLexer *lexer,
@@ -942,7 +1026,8 @@ static bool scan_word(
       find_item(scanner->command, word) != SOFISTIK_UNKNOWN_ID
     ) {
       lexer->mark_end(lexer);
-      lexer->result_symbol = ITEM_NAME;
+      lexer->result_symbol = valid_symbols[TABLE_START] && scan_table_start(scanner, lexer)
+        ? TABLE_START : ITEM_NAME;
       return true;
     }
     if (valid_symbols[BARE_WORD]) {
@@ -1066,6 +1151,13 @@ static bool scan_word(
   uint32_t item = valid_symbols[ITEM_NAME]
     ? find_item(scanner->command, word)
     : SOFISTIK_UNKNOWN_ID;
+
+  if (valid_symbols[TABLE_START] && item != SOFISTIK_UNKNOWN_ID) {
+    // The first item's end stays marked while looking ahead over the header.
+    // Choose the table only when the entire record consists of schema items.
+    lexer->result_symbol = scan_table_start(scanner, lexer) ? TABLE_START : ITEM_NAME;
+    return true;
+  }
 
   if (
     (valid_symbols[COMMAND_NAME] || valid_symbols[INVALID_COMMAND]) &&
@@ -1450,6 +1542,7 @@ static bool scan_text_start_open(Scanner *scanner, TSLexer *lexer) {
 
   lexer->mark_end(lexer);
   scanner->text_state = IN_TEXT_HEADER;
+  scanner->text_dollar_close_missing = false;
   lexer->result_symbol = TEXT_START_OPEN;
   return true;
 }
@@ -1490,11 +1583,12 @@ static bool scan_text_end(Scanner *scanner, TSLexer *lexer) {
   lexer->advance(lexer, false);
   lexer->mark_end(lexer);
   scanner->text_state = OUTSIDE_TEXT;
+  scanner->text_dollar_close_missing = false;
   lexer->result_symbol = TEXT_END;
   return true;
 }
 
-static bool scan_text_fragment(TSLexer *lexer) {
+static bool scan_text_fragment(Scanner *scanner, TSLexer *lexer) {
   int32_t marker = lexer->lookahead;
   if (marker != '#' && marker != '$' && marker != '\'' && marker != '"') {
     return false;
@@ -1515,7 +1609,7 @@ static bool scan_text_fragment(TSLexer *lexer) {
       is_embedded_value = true;
     }
   } else if (marker == '$') {
-    if (lexer->lookahead == '(') {
+    if (lexer->lookahead == '(' && !scanner->text_dollar_close_missing) {
       lexer->advance(lexer, false);
       bool has_content = false;
       while (
@@ -1526,6 +1620,9 @@ static bool scan_text_fragment(TSLexer *lexer) {
         has_content = true;
       }
       is_embedded_value = has_content && lexer->lookahead == ')';
+      if (lexer->lookahead != ')') {
+        scanner->text_dollar_close_missing = true;
+      }
     }
   } else {
     while (
@@ -1553,7 +1650,7 @@ static bool scan_text_fragment(TSLexer *lexer) {
   return true;
 }
 
-static bool scan_text_content(TSLexer *lexer) {
+static bool scan_text_content(Scanner *scanner, TSLexer *lexer) {
   bool has_content = false;
   bool previous_is_word = false;
 
@@ -1596,6 +1693,9 @@ static bool scan_text_content(TSLexer *lexer) {
     }
 
     previous_is_word = is_schema_character(lexer->lookahead);
+    if (lexer->lookahead == '\n' || lexer->lookahead == '\r') {
+      scanner->text_dollar_close_missing = false;
+    }
     lexer->advance(lexer, false);
     has_content = true;
   }
@@ -1670,10 +1770,10 @@ bool tree_sitter_sofistik_external_scanner_scan(
         (lexer->lookahead == '#' || lexer->lookahead == '$' ||
          lexer->lookahead == '\'' || lexer->lookahead == '"')
       ) {
-        return scan_text_fragment(lexer);
+        return scan_text_fragment(scanner, lexer);
       }
       if (valid_symbols[TEXT_CONTENT]) {
-        return scan_text_content(lexer);
+        return scan_text_content(scanner, lexer);
       }
     }
     if (
@@ -1700,6 +1800,7 @@ bool tree_sitter_sofistik_external_scanner_scan(
       DOUBLE_STRING_CONTENT
     );
   }
+
 
   if (
     scanner->text_state == OUTSIDE_TEXT && lexer->lookahead == '<' &&
@@ -1730,10 +1831,10 @@ bool tree_sitter_sofistik_external_scanner_scan(
       (lexer->lookahead == '#' || lexer->lookahead == '$' ||
        lexer->lookahead == '\'' || lexer->lookahead == '"')
     ) {
-      return scan_text_fragment(lexer);
+      return scan_text_fragment(scanner, lexer);
     }
     if (valid_symbols[TEXT_CONTENT]) {
-      return scan_text_content(lexer);
+      return scan_text_content(scanner, lexer);
     }
   }
 
@@ -1764,9 +1865,7 @@ bool tree_sitter_sofistik_external_scanner_scan(
   uint32_t skipped_columns = 0;
   while (
     lexer->lookahead == ' ' || lexer->lookahead == '\t' ||
-    lexer->lookahead == '\f' || lexer->lookahead == 0xfeff ||
-    lexer->lookahead == 0x00ef ||
-    lexer->lookahead == 0x00bb || lexer->lookahead == 0x00bf
+    lexer->lookahead == '\f' || lexer->lookahead == 0xfeff
   ) {
     lexer->advance(lexer, true);
     skipped_columns++;
@@ -1907,7 +2006,8 @@ unsigned tree_sitter_sofistik_external_scanner_serialize(
   buffer[9] = scanner->after_missing_end ? 1 : 0;
   buffer[10] = scanner->in_legacy_text ? 1 : 0;
   write_u32(buffer + 11, scanner->template_define_depth);
-  return 15;
+  buffer[15] = scanner->text_dollar_close_missing ? 1 : 0;
+  return 16;
 }
 
 void tree_sitter_sofistik_external_scanner_deserialize(
@@ -1927,6 +2027,7 @@ void tree_sitter_sofistik_external_scanner_deserialize(
   scanner->after_missing_end = length >= 10 && buffer[9] != 0;
   scanner->in_legacy_text = length >= 11 && buffer[10] != 0;
   scanner->template_define_depth = length >= 15 ? read_u32(buffer + 11) : 0;
+  scanner->text_dollar_close_missing = length >= 16 && buffer[15] != 0;
   if (scanner->module >= SOFISTIK_MODULE_COUNT) {
     scanner->module = SOFISTIK_UNKNOWN_ID;
   }
