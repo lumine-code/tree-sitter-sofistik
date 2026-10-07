@@ -54,6 +54,8 @@ npm run check:generated
 
 The compact `src/schema.h` scanner tables derive commands and items from `getGrammarVocabulary()` and retain only enum values that collide with command names for resolver disambiguation. `schema/provenance.json` records the exact data commit together with the complete schema and grammar-vocabulary digests; the full versioned schema remains owned by `@lumine-code/sofistik-data` and is not copied into this repository.
 
+The Node tests check fresh and incremental program and command selections against the shared `cadinp-structure.json` corpus distributed by `sofistik-data`. The language server checks the same sources and expectations without depending on the parser at runtime.
+
 An installed SOFiSTiK example tree can be checked without vendoring it by running `npm run test:corpus -- <directory>` or setting `SOFISTIK_CORPUS`. Add repeatable `--fallback-encoding <encoding>` options for legacy files and `--structure` when refreshing the recorded structural coverage snapshot.
 
 ## Contributing

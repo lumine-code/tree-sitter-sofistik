@@ -1762,3 +1762,53 @@ test("incremental edits match fresh parses across lexical and structural boundar
     );
   }
 });
+
+const structureCorpus = require("@lumine-code/sofistik-data/fixtures/cadinp-structure.json");
+
+for (const fixture of structureCorpus.cases) {
+  test(`shared CADINP structure: ${fixture.name}`, () => {
+    const parser = new Parser();
+    parser.setLanguage(SOFiSTiK);
+    const tree = parser.parse(fixture.source);
+    const selections = (nodes) =>
+      nodes.map((node) => ({
+        name: node.text.toUpperCase(),
+        line: node.startPosition.row,
+        character: node.startPosition.column,
+      }));
+    const inspect = (result) => ({
+      programs: selections(
+        result.rootNode
+          .descendantsOfType("program_header")
+          .map((node) => node.childForFieldName("module"))
+          .filter(Boolean),
+      ),
+      commands: selections(result.rootNode.descendantsOfType("command_name")),
+    });
+    const expected = { programs: fixture.programs, commands: fixture.commands };
+    assert.strictEqual(tree.rootNode.hasError, false);
+    assert.deepStrictEqual(inspect(tree), expected);
+    const first = tree.rootNode.descendantsOfType("command_name")[0];
+    if (first) {
+      const source =
+        fixture.source.slice(0, first.startIndex) +
+        first.text.toLowerCase() +
+        fixture.source.slice(first.endIndex);
+      tree.edit({
+        startIndex: first.startIndex,
+        oldEndIndex: first.endIndex,
+        newEndIndex: first.endIndex,
+        startPosition: first.startPosition,
+        oldEndPosition: first.endPosition,
+        newEndPosition: first.endPosition,
+      });
+      const updated = parser.parse(source, tree);
+      assert.strictEqual(updated.rootNode.hasError, false);
+      assert.deepStrictEqual(
+        inspect(updated),
+        expected,
+        "incremental command casing preserves structure",
+      );
+    }
+  });
+}
