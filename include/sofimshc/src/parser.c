@@ -1,0 +1,8 @@
+// Include fragments share the CADINP parser and select their scanner context.
+#define tree_sitter_sofistik tree_sitter_sofistik_sofimshc
+#define tree_sitter_sofistik_external_scanner_create tree_sitter_sofistik_sofimshc_external_scanner_create
+#define tree_sitter_sofistik_external_scanner_destroy tree_sitter_sofistik_sofimshc_external_scanner_destroy
+#define tree_sitter_sofistik_external_scanner_scan tree_sitter_sofistik_sofimshc_external_scanner_scan
+#define tree_sitter_sofistik_external_scanner_serialize tree_sitter_sofistik_sofimshc_external_scanner_serialize
+#define tree_sitter_sofistik_external_scanner_deserialize tree_sitter_sofistik_sofimshc_external_scanner_deserialize
+#include "../../../src/parser.c"

@@ -9,6 +9,7 @@ Parses SOFiSTiK CADINP input with Tree-sitter.
 - **Grammar**: provides a Tree-sitter grammar for CADINP input.
 - **Context**: restricts commands and items to the program that owns them.
 - **Scope directives**: treats `$PROG` as a module context marker for include fragments rather than an executable program.
+- **Include fragments**: provides AQUA, SOFIMSHC, SOFILOAD, DECREATOR and TENDON variants for records without a PROG header.
 - **Module lifetime**: keeps module context across repeated `END` records until the next root directive.
 - **Transparent preprocessing**: preserves the active module across definition and conditional markers.
 - **Structure**: exposes programs, commands, records, control flow, CDB statements, TEXT, and PICT blocks.
@@ -55,6 +56,10 @@ npm run check:generated
 The compact `src/schema.h` scanner tables derive commands and items from `getGrammarVocabulary()` and retain only enum values that collide with command names for resolver disambiguation. `schema/provenance.json` records the exact schema commit together with the complete schema and grammar-vocabulary digests; the full versioned schema remains owned by `@lumine-code/sofistik-schema` and is not copied into this repository.
 
 The native and WebAssembly regression suites share fixtures for Unicode content, table and command boundaries, and incremental edits. Complexity checks count lexer advances and parser steps so failed TEXT substitutions and edits in large record groups are tested independently of machine speed.
+
+`npm run build:wasm` builds the base parser and all five include variants. It uses the ecosystem manager's pinned CLI when present and the same exact repository pin elsewhere. Include variants live under `include/<module>` and reuse the root generated parser and scanner through small C wrappers. Their `src/grammar.json` files supply build names; syntax is inherited from the root `grammar.js`, so no separate generated parser tables need maintaining.
+
+An include variant begins in its module's context: `aqa.include` uses AQUA, `msh.include` uses SOFIMSHC, `lfd.include` uses SOFILOAD, `dsn.include` uses DECREATOR, and `spt.include` or `tnd.include` uses TENDON. Explicit `PROG` and `$PROG` directives override that initial context, while `APPLY`, `SYS` and unknown modules clear it. Repeated `END` records preserve the selected module as they do in ordinary CADINP input. The shared syntax retains the Tree-sitter language name `sofistik` in every variant.
 
 The Node tests check fresh and incremental program and command selections against the shared `cadinp-structure.json` corpus distributed by `sofistik-schema`. The language server checks the same sources and expectations without depending on the parser at runtime.
 

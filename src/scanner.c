@@ -1858,6 +1858,9 @@ static uint32_t read_u32(const char *buffer) {
 void *tree_sitter_sofistik_external_scanner_create(void) {
   Scanner *scanner = calloc(1, sizeof(Scanner));
   reset_context(scanner);
+#ifdef SOFISTIK_INITIAL_MODULE
+  scanner->module = find_module(SOFISTIK_INITIAL_MODULE);
+#endif
   return scanner;
 }
 
@@ -2172,6 +2175,11 @@ void tree_sitter_sofistik_external_scanner_deserialize(
   Scanner *scanner = payload;
   reset_context(scanner);
   scanner->text_state = OUTSIDE_TEXT;
+#ifdef SOFISTIK_INITIAL_MODULE
+  if (length == 0) {
+    scanner->module = find_module(SOFISTIK_INITIAL_MODULE);
+  }
+#endif
   if (length < 9) {
     return;
   }

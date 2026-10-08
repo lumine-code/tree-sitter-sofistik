@@ -27,6 +27,7 @@
   "files": [
     "bindings/node",
     "grammar.js",
+    "include",
     "schema/provenance.json",
     "src",
     "tree-sitter.json",
@@ -58,7 +59,7 @@
   "scripts": {
     "build": "npm run build:native",
     "build:native": "node-gyp rebuild",
-    "build:wasm": "tree-sitter build --wasm",
+    "build:wasm": "node scripts/build-wasm.js",
     "check:format": "prettier --check .",
     "check:generated": "node scripts/check-generated.js",
     "generate": "npm run generate:schema --silent && tree-sitter generate",
@@ -69,6 +70,6 @@
     "test:corpus": "node scripts/test-corpus.js",
     "test:fuzz": "tree-sitter fuzz --iterations 100 --edits 5",
     "test:node": "node --test --test-concurrency=1 bindings/node/binding_test.js test/corpus-runner.test.js test/external-contract.test.js test/generate-schema.test.js test/parser.test.js test/regressions.test.js",
-    "test:wasm": "node --test test/wasm.test.js test/wasm-regressions.test.js"
+    "test:wasm": "node --test test/wasm.test.js test/wasm-regressions.test.js test/wasm-includes.test.js"
   }
 }

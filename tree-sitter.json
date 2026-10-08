@@ -5,7 +5,37 @@
       "camelcase": "SOFiSTiK",
       "scope": "source.sofistik",
       "path": ".",
-      "file-types": ["dat", "gra", "grb", "results"]
+      "file-types": ["dat", "gra", "grb", "results", "include"]
+    },
+    {
+      "name": "sofistik_aqua",
+      "scope": "source.sofistik.include.aqua",
+      "path": "include/aqua",
+      "file-types": ["aqa.include"]
+    },
+    {
+      "name": "sofistik_sofimshc",
+      "scope": "source.sofistik.include.sofimshc",
+      "path": "include/sofimshc",
+      "file-types": ["msh.include"]
+    },
+    {
+      "name": "sofistik_sofiload",
+      "scope": "source.sofistik.include.sofiload",
+      "path": "include/sofiload",
+      "file-types": ["lfd.include"]
+    },
+    {
+      "name": "sofistik_decreator",
+      "scope": "source.sofistik.include.decreator",
+      "path": "include/decreator",
+      "file-types": ["dsn.include"]
+    },
+    {
+      "name": "sofistik_tendon",
+      "scope": "source.sofistik.include.tendon",
+      "path": "include/tendon",
+      "file-types": ["spt.include", "tnd.include"]
     }
   ],
   "metadata": {

@@ -20,7 +20,7 @@ module.exports = defineConfig([
     },
   },
   {
-    files: ["grammar.js"],
+    files: ["grammar.js", "include/*/grammar.js"],
     languageOptions: {
       globals: {
         alias: "readonly",
