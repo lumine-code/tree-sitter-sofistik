@@ -171,7 +171,12 @@ module.exports = grammar({
 
     _table_body_chunk: ($) => boundedChunk($._table_body),
 
-    _table_body: ($) => choice(field("record", $.table_row), $._line_end),
+    _table_body: ($) =>
+      choice(
+        field("record", $.table_row),
+        $._line_end,
+        field("auxiliary", choice($.variable_statement, $.preprocessor_directive)),
+      ),
 
     _command_body_group: ($) => boundedChunk($._command_body_chunk),
 

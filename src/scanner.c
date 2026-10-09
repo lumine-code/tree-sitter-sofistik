@@ -1323,6 +1323,20 @@ static bool scan_word(
   }
 
   if (valid_symbols[VARIABLE_KEYWORD] && is_variable_keyword(word)) {
+    if (valid_symbols[BARE_WORD] && !valid_symbols[COMMAND_NAME]) {
+      // Tables and implicit records also allow variable statements. A bare
+      // cell named STO or LET stays a value unless a hash argument follows.
+      while (
+        lexer->lookahead == ' ' || lexer->lookahead == '\t' ||
+        lexer->lookahead == '\f'
+      ) {
+        lexer->advance(lexer, false);
+      }
+      if (lexer->lookahead != '#') {
+        lexer->result_symbol = BARE_WORD;
+        return true;
+      }
+    }
     lexer->result_symbol = VARIABLE_KEYWORD;
     return true;
   }

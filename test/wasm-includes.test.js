@@ -73,6 +73,23 @@ function replaceTreeSource(tree, before, after) {
   });
 }
 
+test("SOFILOAD include preserves table context around variable setup without a PROG header", () => {
+  withParser(languages.get("sofiload"), (parser) => {
+    const source =
+      "ACT TYPE PART SUP\nlp_u q_1 cond\nsto#D_f 0.21\nLet #B_1 -1.175\nlp_x q_1 unsi\nLC 1\nEND\n";
+    const tree = healthyParse(parser, source);
+    try {
+      assert.deepEqual(texts(tree, "module_name"), []);
+      assert.deepEqual(texts(tree, "command_name"), ["ACT", "LC"]);
+      assert.deepEqual(texts(tree, "variable_keyword"), ["sto", "Let"]);
+      assert.equal(texts(tree, "table_row").length, 2);
+      assert.equal(texts(tree, "table_definition").length, 1);
+    } finally {
+      tree.delete();
+    }
+  });
+});
+
 for (const [module, fixture] of Object.entries(fixtures)) {
   test(`${module} include starts with module commands and items at real source positions`, () => {
     withParser(languages.get(module), (parser) => {

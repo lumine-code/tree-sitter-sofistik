@@ -1082,6 +1082,23 @@
         {
           "type": "SYMBOL",
           "name": "_line_end"
+        },
+        {
+          "type": "FIELD",
+          "name": "auxiliary",
+          "content": {
+            "type": "CHOICE",
+            "members": [
+              {
+                "type": "SYMBOL",
+                "name": "variable_statement"
+              },
+              {
+                "type": "SYMBOL",
+                "name": "preprocessor_directive"
+              }
+            ]
+          }
         }
       ]
     },

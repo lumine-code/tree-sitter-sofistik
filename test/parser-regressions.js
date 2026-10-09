@@ -302,6 +302,97 @@ function registerParserRegressions(test, createParser) {
     }
   });
 
+  test("keeps variable statements between table rows as transparent auxiliaries", () => {
+    const parser = createParser();
+    try {
+      for (const keyword of ["STO", "LET", "RCL", "DEL", "DBG", "PRT"]) {
+        for (const spelling of [
+          keyword,
+          keyword.toLowerCase(),
+          keyword[0] + keyword.slice(1).toLowerCase(),
+        ]) {
+          for (const spacing of ["", " ", "\t"]) {
+            const statement = `${spelling}${spacing}#value 0.21 ! setup`;
+            const before = `+PROG SOFILOAD\nACT TYPE PART SUP GAMU\nlp_u q_1 cond 1.35\n${statement}\nlp_x q_1 unsi 1.35\nLC 1\nEND\n`;
+            const after = before.replace("#value 0.21", "#other -1.175");
+            for (const source of [before, after]) {
+              const tree = parser.parse(source);
+              try {
+                assert.equal(tree.rootNode.hasError, false, source);
+                assert.deepEqual(texts(tree, "variable_keyword"), [spelling], source);
+                assert.equal(texts(tree, "variable_statement").length, 1, source);
+                assert.equal(texts(tree, "table_row").length, 2, source);
+                assert.deepEqual(texts(tree, "command_name"), ["ACT", "LC"], source);
+                const variable = tree.rootNode.descendantsOfType("variable_statement")[0];
+                assert.equal(variable.parent.type, "command", source);
+                assert.equal(variable.parent.childForFieldName("name").text, "ACT", source);
+              } finally {
+                release(tree);
+              }
+            }
+            const original = parser.parse(before);
+            let incremental, fresh;
+            try {
+              editTree(original, before, after);
+              incremental = parser.parse(after, original);
+              fresh = parser.parse(after);
+              assert.deepEqual(snapshot(incremental.rootNode), snapshot(fresh.rootNode), statement);
+            } finally {
+              release(original, incremental, fresh);
+            }
+          }
+        }
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
+  test("keeps variable-like table cells as data and closes tables at structured statements", () => {
+    const parser = createParser();
+    try {
+      for (const boundary of [
+        "LOOP#i 2\nENDLOOP",
+        "IF 1\nENDIF",
+        "#DEFINE value=1",
+        "#INCLUDE model",
+        "#UNDEF model",
+        "@KEY 1",
+        "LC 1",
+      ]) {
+        const source = `+PROG SOFILOAD\nACT TYPE PART SUP GAMU\nSTO q_1 cond 1.35\nLET q_1 unsi 1.35\nsto 'title' cond 1.35\n${boundary}\nEND\n`;
+        const tree = parser.parse(source);
+        try {
+          assert.equal(tree.rootNode.hasError, false, source);
+          assert.equal(texts(tree, "table_row").length, 3, source);
+          assert.deepEqual(texts(tree, "variable_statement"), [], source);
+          assert.ok(texts(tree, "bare_value").includes("STO"), source);
+          assert.ok(texts(tree, "bare_value").includes("LET"), source);
+          assert.ok(texts(tree, "bare_value").includes("sto"), source);
+        } finally {
+          release(tree);
+        }
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
+  test("keeps INCLUDE and UNDEF transparent between table rows", () => {
+    const parser = createParser();
+    const source =
+      "+PROG SOFILOAD\nACT TYPE PART SUP\nlp_u q_1 cond\n#INCLUDE extra\n#UNDEF extra\nlp_x q_1 unsi\nEND\n";
+    const tree = parser.parse(source);
+    try {
+      assert.equal(tree.rootNode.hasError, false);
+      assert.equal(texts(tree, "table_row").length, 2);
+      assert.deepEqual(texts(tree, "preprocessor_keyword"), ["#INCLUDE", "#UNDEF"]);
+      assert.deepEqual(texts(tree, "command_name"), ["ACT"]);
+    } finally {
+      release(tree, parser);
+    }
+  });
+
   test("preserves ordinary Unicode characters instead of stripping partial BOMs", () => {
     const parser = createParser();
     const words = ["ïABC", "»ABC", "¿ABC", "ï»,", "ïPROG", "»PROG", "¿PROG", "µ+PROG"];
