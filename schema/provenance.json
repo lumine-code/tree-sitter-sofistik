@@ -3,7 +3,7 @@
   "source": {
     "package": "@lumine-code/sofistik-schema",
     "repository": "https://github.com/lumine-code/sofistik-schema",
-    "commit": "51580a8c7eec1c54ca1916576432a0f99a7f6ed6"
+    "commit": "851e5882e5f2dec8538edc1e5c649fff33b523cc"
   },
   "schemaDigest": "7a92b6ed0808214ffd7530b2766f1ab498b999119698fcc982834358da922df3",
   "grammarVocabularyDigest": "d77106a81beb9718078898bdae9802921670b05a5b26ef8629342c93af90650c"
