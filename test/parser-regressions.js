@@ -89,7 +89,14 @@ function registerParserRegressions(test, createParser) {
       } finally {
         release(tree);
       }
-      for (const source of ["plain $(missing", "plain $()", "plain $("]) {
+      for (const source of [
+        "plain $(missing",
+        "plain $()",
+        "plain $(",
+        "plain $() $ outside",
+        "plain $() // outside",
+        "plain $() $$",
+      ]) {
         const tree = parser.parse(source);
         try {
           assert.equal(tree.rootNode.hasError, false);

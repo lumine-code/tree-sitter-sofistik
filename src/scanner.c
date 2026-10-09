@@ -504,7 +504,9 @@ static bool remaining_line_needs_record(TSLexer *lexer) {
       if (candidate == DOLLAR_VARIABLE || candidate == DOLLAR_TEXT) {
         return true;
       }
-      continue;
+      // Malformed substitutions remain neutral outside any module. A later
+      // comment must not promote the invalid prefix into a parsed record.
+      return false;
     }
     if (lexer->lookahead == '/') {
       lexer->advance(lexer, false);
