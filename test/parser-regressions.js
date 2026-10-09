@@ -302,7 +302,7 @@ function registerParserRegressions(test, createParser) {
     }
   });
 
-  test("keeps variable statements between table rows as transparent auxiliaries", () => {
+  test("ends tables before attached and separated variable statements", () => {
     const parser = createParser();
     try {
       for (const keyword of ["STO", "LET", "RCL", "DEL", "DBG", "PRT"]) {
@@ -313,7 +313,7 @@ function registerParserRegressions(test, createParser) {
         ]) {
           for (const spacing of ["", " ", "\t"]) {
             const statement = `${spelling}${spacing}#value 0.21 ! setup`;
-            const before = `+PROG SOFILOAD\nACT TYPE PART SUP GAMU\nlp_u q_1 cond 1.35\n${statement}\nlp_x q_1 unsi 1.35\nLC 1\nEND\n`;
+            const before = `+PROG SOFILOAD\nACT TYPE PART SUP GAMU\nlp_u q_1 cond 1.35\n${statement}\nACT TYPE PART SUP GAMU\nlp_x q_1 unsi 1.35\nLC 1\nEND\n`;
             const after = before.replace("#value 0.21", "#other -1.175");
             for (const source of [before, after]) {
               const tree = parser.parse(source);
@@ -322,10 +322,10 @@ function registerParserRegressions(test, createParser) {
                 assert.deepEqual(texts(tree, "variable_keyword"), [spelling], source);
                 assert.equal(texts(tree, "variable_statement").length, 1, source);
                 assert.equal(texts(tree, "table_row").length, 2, source);
-                assert.deepEqual(texts(tree, "command_name"), ["ACT", "LC"], source);
+                assert.deepEqual(texts(tree, "command_name"), ["ACT", "ACT", "LC"], source);
+                assert.equal(texts(tree, "table_definition").length, 2, source);
                 const variable = tree.rootNode.descendantsOfType("variable_statement")[0];
-                assert.equal(variable.parent.type, "command", source);
-                assert.equal(variable.parent.childForFieldName("name").text, "ACT", source);
+                assert.equal(variable.parent.type, "input_block", source);
               } finally {
                 release(tree);
               }
@@ -348,7 +348,38 @@ function registerParserRegressions(test, createParser) {
     }
   });
 
-  test("keeps variable-like table cells as data and closes tables at structured statements", () => {
+  test("inserting and removing a variable statement invalidates the following table rows", () => {
+    const parser = createParser();
+    const before = "+PROG SOFILOAD\nACT TYPE PART SUP\nlp_u q_1 cond\nlp_x q_1 unsi\nLC 1\nEND\n";
+    const after = before.replace("lp_x", "STO #value 1\nlp_x");
+    try {
+      for (const [original, updated, rows] of [
+        [before, after, 1],
+        [after, before, 2],
+      ]) {
+        const tree = parser.parse(original);
+        let incremental, fresh;
+        try {
+          editTree(tree, original, updated);
+          incremental = parser.parse(updated, tree);
+          fresh = parser.parse(updated);
+          assert.deepEqual(snapshot(incremental.rootNode), snapshot(fresh.rootNode));
+          assert.equal(texts(fresh, "table_row").length, rows);
+          assert.deepEqual(texts(fresh, "ERROR"), rows === 1 ? ["lp_x q_1 unsi"] : []);
+          assert.deepEqual(texts(fresh, "command_name"), ["ACT", "LC"]);
+          for (const variable of fresh.rootNode.descendantsOfType("variable_statement")) {
+            assert.equal(variable.parent.type, "input_block");
+          }
+        } finally {
+          release(tree, incremental, fresh);
+        }
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
+  test("keeps variable-like table cells as data around structured statements", () => {
     const parser = createParser();
     try {
       for (const boundary of [
@@ -388,6 +419,21 @@ function registerParserRegressions(test, createParser) {
       assert.equal(texts(tree, "table_row").length, 2);
       assert.deepEqual(texts(tree, "preprocessor_keyword"), ["#INCLUDE", "#UNDEF"]);
       assert.deepEqual(texts(tree, "command_name"), ["ACT"]);
+    } finally {
+      release(tree, parser);
+    }
+  });
+
+  test("only a standalone variable statement ends a table", () => {
+    const parser = createParser();
+    const source =
+      "+PROG SOFILOAD\nACT TYPE PART SUP\nlp_u STO #value\nLET #! no variable argument\nlp_x q_1 unsi\nEND\n";
+    const tree = parser.parse(source);
+    try {
+      assert.equal(tree.rootNode.hasError, false);
+      assert.equal(texts(tree, "table_row").length, 3);
+      assert.deepEqual(texts(tree, "variable_keyword"), []);
+      assert.deepEqual(texts(tree, "hash_variable_name"), ["#value"]);
     } finally {
       release(tree, parser);
     }

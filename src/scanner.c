@@ -46,6 +46,7 @@ enum TokenType {
   DEFINE_KEYWORD,
   ENDDEF_KEYWORD,
   TABLE_START,
+  TABLE_ROW_START,
   COMMAND_END,
   MOJIBAKE_BOM,
   ERROR_SENTINEL,
@@ -66,6 +67,9 @@ typedef struct {
   uint8_t text_state;
   bool after_missing_end;
   bool in_legacy_text;
+  // The non-consuming table boundary already verified this statement's hash
+  // argument, so its keyword wins over a schema command such as spaced DEL.
+  bool table_variable_pending;
   uint32_t template_define_depth;
   // A failed dollar candidate has already looked ahead to this line's end.
   // Keep that dependency on its first token, without rescanning the suffix
@@ -251,6 +255,7 @@ static bool is_reserved_statement_word(const char *word) {
 
 static void reset_command(Scanner *scanner) {
   scanner->command = SOFISTIK_UNKNOWN_ID;
+  scanner->table_variable_pending = false;
 }
 
 static void reset_context(Scanner *scanner) {
@@ -371,6 +376,10 @@ static bool scan_hash_token(
     }
   } else {
     if (!valid_symbols[LITERAL_HASH]) {
+      if (valid_symbols[TABLE_ROW_START]) {
+        lexer->result_symbol = TABLE_ROW_START;
+        return true;
+      }
       return false;
     }
     lexer->mark_end(lexer);
@@ -421,6 +430,10 @@ static bool scan_hash_token(
     }
   }
   if (!valid_symbols[HASH_VARIABLE_NAME]) {
+    if (valid_symbols[TABLE_ROW_START]) {
+      lexer->result_symbol = TABLE_ROW_START;
+      return true;
+    }
     return false;
   }
   lexer->mark_end(lexer);
@@ -625,6 +638,10 @@ static bool scan_interpolated_string_content(
 static bool scan_slash_comment(TSLexer *lexer, const bool *valid_symbols) {
   lexer->advance(lexer, false);
   if (lexer->lookahead != '/') {
+    if (valid_symbols[TABLE_ROW_START]) {
+      lexer->result_symbol = TABLE_ROW_START;
+      return true;
+    }
     if (valid_symbols[BARE_WORD]) {
       while (!is_bare_value_delimiter(lexer->lookahead)) {
         lexer->advance(lexer, false);
@@ -1099,6 +1116,36 @@ static bool scan_word(
     strcmp(word, "SYS") == 0;
 
   if (
+    scanner->table_variable_pending && valid_symbols[VARIABLE_KEYWORD] &&
+    is_variable_keyword(word)
+  ) {
+    scanner->table_variable_pending = false;
+    lexer->mark_end(lexer);
+    lexer->result_symbol = VARIABLE_KEYWORD;
+    return true;
+  }
+
+  if (valid_symbols[TABLE_ROW_START] && contextual && is_variable_keyword(word)) {
+    while (
+      lexer->lookahead == ' ' || lexer->lookahead == '\t' ||
+      lexer->lookahead == '\f'
+    ) {
+      lexer->advance(lexer, false);
+    }
+    if (scan_hash_variable_candidate(lexer)) {
+      reset_command(scanner);
+      scanner->table_variable_pending = true;
+      lexer->result_symbol = COMMAND_END;
+      return true;
+    }
+    // A schema command such as DEL QUAD still closes the table. Without a
+    // hash argument, other variable-looking names remain ordinary cells.
+    lexer->result_symbol = find_command(scanner->module, word) != SOFISTIK_UNKNOWN_ID
+      ? COMMAND_END : TABLE_ROW_START;
+    return true;
+  }
+
+  if (
     can_end_command && contextual &&
     (!scanner->in_legacy_text || strcmp(word, "TXEN") == 0 ||
      strcmp(word, "END") == 0 || strcmp(word, "ENDE") == 0 || reserved_root_statement)
@@ -1132,6 +1179,10 @@ static bool scan_word(
         return true;
       }
     }
+  }
+  if (valid_symbols[TABLE_ROW_START]) {
+    lexer->result_symbol = TABLE_ROW_START;
+    return true;
   }
   if (can_end_command) {
     lexer->mark_end(lexer);
@@ -1291,6 +1342,7 @@ static bool scan_word(
     uint32_t command = find_command(scanner->module, word);
     if (command != SOFISTIK_UNKNOWN_ID && valid_symbols[COMMAND_NAME]) {
       scanner->command = command;
+      scanner->table_variable_pending = false;
       scanner->in_legacy_text = is_legacy_text_start(command);
       lexer->result_symbol = COMMAND_NAME;
       return true;
@@ -1324,8 +1376,8 @@ static bool scan_word(
 
   if (valid_symbols[VARIABLE_KEYWORD] && is_variable_keyword(word)) {
     if (valid_symbols[BARE_WORD] && !valid_symbols[COMMAND_NAME]) {
-      // Tables and implicit records also allow variable statements. A bare
-      // cell named STO or LET stays a value unless a hash argument follows.
+      // An implicit record may begin with a variable-looking value. Only a
+      // following hash argument identifies a variable statement.
       while (
         lexer->lookahead == ' ' || lexer->lookahead == '\t' ||
         lexer->lookahead == '\f'
@@ -1377,6 +1429,10 @@ static bool scan_dollar(
   lexer->advance(lexer, false);
 
   if (lexer->lookahead == '(') {
+    if (valid_symbols[TABLE_ROW_START]) {
+      lexer->result_symbol = TABLE_ROW_START;
+      return true;
+    }
     return false;
   }
 
@@ -2013,7 +2069,10 @@ bool tree_sitter_sofistik_external_scanner_scan(
   bool needs_line_start = valid_symbols[BARE_WORD] && valid_symbols[IGNORED_TEXT];
   bool at_line_start = needs_line_start && lexer->get_column(lexer) == 0;
 
-  if (valid_symbols[UNTERMINATED_INPUT_BLOCK] || valid_symbols[COMMAND_END]) {
+  if (
+    valid_symbols[UNTERMINATED_INPUT_BLOCK] || valid_symbols[COMMAND_END] ||
+    valid_symbols[TABLE_ROW_START]
+  ) {
     lexer->mark_end(lexer);
   }
 
@@ -2026,11 +2085,18 @@ bool tree_sitter_sofistik_external_scanner_scan(
     skipped_columns++;
   }
 
+  if (valid_symbols[TABLE_ROW_START]) {
+    lexer->mark_end(lexer);
+  }
   if (valid_symbols[COMMAND_END]) {
     lexer->mark_end(lexer);
     if (lexer->lookahead == '<' || lexer->lookahead == '@') {
       if (scan_structured_command_end(lexer)) {
         lexer->result_symbol = COMMAND_END;
+        return true;
+      }
+      if (valid_symbols[TABLE_ROW_START]) {
+        lexer->result_symbol = TABLE_ROW_START;
         return true;
       }
       return false;
@@ -2049,6 +2115,19 @@ bool tree_sitter_sofistik_external_scanner_scan(
 
   if (valid_symbols[UNTERMINATED_INPUT_BLOCK] && !lexer->lookahead) {
     return emit_unterminated_input_block(scanner, lexer);
+  }
+
+  if (
+    valid_symbols[TABLE_ROW_START] && lexer->lookahead &&
+    lexer->lookahead != '\r' && lexer->lookahead != '\n' &&
+    !is_schema_character(lexer->lookahead) &&
+    lexer->lookahead != '#' && lexer->lookahead != '$' &&
+    lexer->lookahead != '<' && lexer->lookahead != '@' &&
+    lexer->lookahead != '!' && lexer->lookahead != '/' &&
+    lexer->lookahead != '+' && lexer->lookahead != '-'
+  ) {
+    lexer->result_symbol = TABLE_ROW_START;
+    return true;
   }
 
   if (
@@ -2084,7 +2163,8 @@ bool tree_sitter_sofistik_external_scanner_scan(
   if (
     lexer->lookahead == '#' &&
     (valid_symbols[HASH_VARIABLE_NAME] || valid_symbols[LITERAL_HASH] ||
-     valid_symbols[DEFINE_KEYWORD] || valid_symbols[ENDDEF_KEYWORD])
+     valid_symbols[DEFINE_KEYWORD] || valid_symbols[ENDDEF_KEYWORD] ||
+     valid_symbols[TABLE_ROW_START])
   ) {
     return scan_hash_token(scanner, lexer, valid_symbols, false);
   }
@@ -2152,6 +2232,10 @@ bool tree_sitter_sofistik_external_scanner_scan(
       )) {
     return true;
   }
+  if (valid_symbols[TABLE_ROW_START] && has_ignored_text_start && !reserved_root_word) {
+    lexer->result_symbol = TABLE_ROW_START;
+    return true;
+  }
   if (
     valid_symbols[IGNORED_TEXT] && has_ignored_text_start &&
     !reserved_root_word && !defer_to_internal_lexer &&
@@ -2178,7 +2262,8 @@ unsigned tree_sitter_sofistik_external_scanner_serialize(
   buffer[10] = scanner->in_legacy_text ? 1 : 0;
   write_u32(buffer + 11, scanner->template_define_depth);
   buffer[15] = scanner->text_dollar_close_missing ? 1 : 0;
-  return 16;
+  buffer[16] = scanner->table_variable_pending ? 1 : 0;
+  return 17;
 }
 
 void tree_sitter_sofistik_external_scanner_deserialize(
@@ -2204,6 +2289,7 @@ void tree_sitter_sofistik_external_scanner_deserialize(
   scanner->in_legacy_text = length >= 11 && buffer[10] != 0;
   scanner->template_define_depth = length >= 15 ? read_u32(buffer + 11) : 0;
   scanner->text_dollar_close_missing = length >= 16 && buffer[15] != 0;
+  scanner->table_variable_pending = length >= 17 && buffer[16] != 0;
   if (scanner->module >= SOFISTIK_MODULE_COUNT) {
     scanner->module = SOFISTIK_UNKNOWN_ID;
   }

@@ -73,17 +73,20 @@ function replaceTreeSource(tree, before, after) {
   });
 }
 
-test("SOFILOAD include preserves table context around variable setup without a PROG header", () => {
+test("SOFILOAD include ends tables before variable setup without losing its module", () => {
   withParser(languages.get("sofiload"), (parser) => {
     const source =
-      "ACT TYPE PART SUP\nlp_u q_1 cond\nsto#D_f 0.21\nLet #B_1 -1.175\nlp_x q_1 unsi\nLC 1\nEND\n";
+      "ACT TYPE PART SUP\nlp_u q_1 cond\nsto#D_f 0.21\nLet #B_1 -1.175\nACT TYPE PART SUP\nlp_x q_1 unsi\nLC 1\nEND\n";
     const tree = healthyParse(parser, source);
     try {
       assert.deepEqual(texts(tree, "module_name"), []);
-      assert.deepEqual(texts(tree, "command_name"), ["ACT", "LC"]);
+      assert.deepEqual(texts(tree, "command_name"), ["ACT", "ACT", "LC"]);
       assert.deepEqual(texts(tree, "variable_keyword"), ["sto", "Let"]);
       assert.equal(texts(tree, "table_row").length, 2);
-      assert.equal(texts(tree, "table_definition").length, 1);
+      assert.equal(texts(tree, "table_definition").length, 2);
+      for (const variable of tree.rootNode.descendantsOfType("variable_statement")) {
+        assert.equal(variable.parent.type, "source_file");
+      }
     } finally {
       tree.delete();
     }

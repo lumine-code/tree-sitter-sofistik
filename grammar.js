@@ -41,6 +41,7 @@ module.exports = grammar({
     $._define_keyword,
     $._enddef_keyword,
     $._table_start,
+    $._table_row_start,
     $._command_end,
     $._mojibake_bom,
     $._error_sentinel,
@@ -175,7 +176,7 @@ module.exports = grammar({
       choice(
         field("record", $.table_row),
         $._line_end,
-        field("auxiliary", choice($.variable_statement, $.preprocessor_directive)),
+        field("auxiliary", $.preprocessor_directive),
       ),
 
     _command_body_group: ($) => boundedChunk($._command_body_chunk),
@@ -231,8 +232,11 @@ module.exports = grammar({
         $._record_end,
       ),
 
+    // Commit a row only after distinguishing its first value from a variable
+    // statement, without consuming the word while closing the prior command.
     table_row: ($) =>
       seq(
+        $._table_row_start,
         field("value", $._value),
         repeat(choice($._value_separator, field("value", $._value))),
         $._record_end,

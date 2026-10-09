@@ -1,0 +1,56 @@
+=======================
+Variable statements end tables
+=======================
++PROG SOFILOAD
+ACT TYPE PART SUP
+STO q_1 COND
+DEL #value 1
+ACT TYPE PART SUP
+lp_u q_1 COND
+STO#next 2
+LC 1
+END
+---
+
+(source_file
+  (program
+    header: (program_header
+      sigil: (program_sigil)
+      module: (module_name))
+    body: (input_block
+      (command
+        name: (command_name)
+        record: (table_definition
+          item: (item_name)
+          item: (item_name)
+          item: (item_name))
+        record: (table_row
+          value: (bare_value)
+          value: (bare_value)
+          value: (bare_value)))
+      (variable_statement
+        keyword: (variable_keyword)
+        variable: (hash_variable
+          name: (hash_variable_name))
+        value: (number))
+      (command
+        name: (command_name)
+        record: (table_definition
+          item: (item_name)
+          item: (item_name)
+          item: (item_name))
+        record: (table_row
+          value: (bare_value)
+          value: (bare_value)
+          value: (bare_value)))
+      (variable_statement
+        keyword: (variable_keyword)
+        variable: (hash_variable
+          name: (hash_variable_name))
+        value: (number))
+      (command
+        name: (command_name)
+        record: (record
+          (number)))
+      (end_record
+        keyword: (control_keyword)))))
