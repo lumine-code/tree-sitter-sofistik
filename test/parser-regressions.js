@@ -44,6 +44,98 @@ function isLog(message, event) {
 }
 
 function registerParserRegressions(test, createParser) {
+  test("keeps include-fragment comments visible without an initial module", () => {
+    const parser = createParser();
+    try {
+      for (const newline of ["\n", "\r\n"]) {
+        for (const finalNewline of ["", newline]) {
+          const source =
+            ["del#n2s ; sto#n2s 0 $$", "0 $$", "0 $$", "0 $$"].join(newline) + finalNewline;
+          const tree = parser.parse(source);
+          try {
+            assert.equal(tree.rootNode.hasError, false, source);
+            assert.deepEqual(texts(tree, "module_name"), []);
+            assert.deepEqual(texts(tree, "command_name"), []);
+            assert.deepEqual(texts(tree, "variable_keyword"), ["del", "sto"]);
+            assert.deepEqual(texts(tree, "ignored_text"), []);
+            const markers = tree.rootNode.descendantsOfType(["comment", "continuation"]);
+            assert.deepEqual(
+              markers.map((node) => node.text),
+              ["$$", "$$", "$$", "$$"],
+            );
+            assert.deepEqual(
+              markers.map((node) => node.startPosition.row),
+              [0, 1, 2, 3],
+            );
+          } finally {
+            release(tree);
+          }
+        }
+      }
+      const source =
+        "plain $ comment\nplain ! comment\nplain // comment\n" +
+        "plain '$$ ! // literal' $ outside\n";
+      const tree = parser.parse(source);
+      try {
+        assert.equal(tree.rootNode.hasError, false);
+        assert.deepEqual(texts(tree, "comment"), [
+          "$ comment",
+          "! comment",
+          "// comment",
+          "$ outside",
+        ]);
+        assert.deepEqual(texts(tree, "continuation"), []);
+        assert.deepEqual(texts(tree, "string"), ["'$$ ! // literal'"]);
+      } finally {
+        release(tree);
+      }
+      for (const source of ["plain $(missing", "plain $()", "plain $("]) {
+        const tree = parser.parse(source);
+        try {
+          assert.equal(tree.rootNode.hasError, false);
+          assert.deepEqual(texts(tree, "ignored_text"), [source]);
+          assert.deepEqual(texts(tree, "comment"), []);
+        } finally {
+          release(tree);
+        }
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
+  test("updates unscoped continuation markers incrementally", () => {
+    const parser = createParser();
+    let source = "del#n2s ; sto#n2s 0 $$\n0 $$\n0 $$\n0 $$\n";
+    let tree = parser.parse(source);
+    try {
+      for (const nextSource of [
+        source.replace("0 $$\n0 $$", "0\n0 $$"),
+        source.replaceAll("$$", "$ comment"),
+        source,
+        source.slice(0, -1),
+        source,
+      ]) {
+        editTree(tree, source, nextSource);
+        const incremental = parser.parse(nextSource, tree);
+        const fresh = parser.parse(nextSource);
+        try {
+          assert.equal(incremental.rootNode.hasError, false);
+          assert.deepEqual(snapshot(incremental.rootNode), snapshot(fresh.rootNode));
+          assert.deepEqual(texts(incremental, "comment"), texts(fresh, "comment"));
+          assert.deepEqual(texts(incremental, "continuation"), texts(fresh, "continuation"));
+        } finally {
+          release(fresh);
+        }
+        release(tree);
+        tree = incremental;
+        source = nextSource;
+      }
+    } finally {
+      release(tree, parser);
+    }
+  });
+
   test("keeps incomplete substitutions within physical quoted string boundaries", () => {
     const parser = createParser();
     try {

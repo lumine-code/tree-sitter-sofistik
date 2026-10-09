@@ -445,6 +445,7 @@ enum DollarCandidate {
   DOLLAR_LITERAL,
   DOLLAR_VARIABLE,
   DOLLAR_QUOTE_BOUNDARY,
+  DOLLAR_TEXT,
 };
 
 static enum DollarCandidate scan_dollar_variable_candidate(
@@ -456,7 +457,7 @@ static enum DollarCandidate scan_dollar_variable_candidate(
   }
   lexer->advance(lexer, false);
   if (lexer->lookahead != '(') {
-    return DOLLAR_LITERAL;
+    return DOLLAR_TEXT;
   }
   lexer->advance(lexer, false);
 
@@ -487,26 +488,32 @@ static enum DollarCandidate scan_dollar_variable_candidate(
   return DOLLAR_VARIABLE;
 }
 
-static bool remaining_line_has_variable(TSLexer *lexer) {
+static bool remaining_line_needs_record(TSLexer *lexer) {
   while (
     lexer->lookahead && lexer->lookahead != '\r' &&
     lexer->lookahead != '\n'
   ) {
+    // Unknown-module include fragments still contain comments and continued
+    // records. Keep those markers visible instead of swallowing the line in
+    // IGNORED_TEXT; the regular value scanner protects markers in strings.
     if (lexer->lookahead == '!') {
-      return false;
+      return true;
+    }
+    if (lexer->lookahead == '$') {
+      enum DollarCandidate candidate = scan_dollar_variable_candidate(lexer, 0);
+      if (candidate == DOLLAR_VARIABLE || candidate == DOLLAR_TEXT) {
+        return true;
+      }
+      continue;
     }
     if (lexer->lookahead == '/') {
       lexer->advance(lexer, false);
       if (lexer->lookahead == '/') {
-        return false;
+        return true;
       }
       continue;
     }
-    if (
-      (lexer->lookahead == '$' &&
-       scan_dollar_variable_candidate(lexer, 0) == DOLLAR_VARIABLE) ||
-      (lexer->lookahead == '#' && scan_hash_variable_candidate(lexer))
-    ) {
+    if (lexer->lookahead == '#' && scan_hash_variable_candidate(lexer)) {
       return true;
     }
     lexer->advance(lexer, false);
@@ -914,7 +921,7 @@ static bool scan_non_word_bare(
     lexer->mark_end(lexer);
     if (
       scanner->module == SOFISTIK_UNKNOWN_ID &&
-      remaining_line_has_variable(lexer)
+      remaining_line_needs_record(lexer)
     ) {
       lexer->result_symbol = BARE_WORD;
       return true;
@@ -1213,7 +1220,7 @@ static bool scan_word(
       ) {
         if (
           scanner->module == SOFISTIK_UNKNOWN_ID &&
-          remaining_line_has_variable(lexer)
+          remaining_line_needs_record(lexer)
         ) {
           lexer->result_symbol = BARE_WORD;
           return true;
@@ -1406,7 +1413,7 @@ static bool scan_word(
     ) {
       if (
         scanner->module == SOFISTIK_UNKNOWN_ID &&
-        remaining_line_has_variable(lexer)
+        remaining_line_needs_record(lexer)
       ) {
         lexer->result_symbol = BARE_WORD;
         return true;
@@ -1441,7 +1448,8 @@ static bool scan_dollar(
     if (valid_symbols[CONTINUATION]) {
       consume_line(lexer);
       lexer->mark_end(lexer);
-      lexer->result_symbol = CONTINUATION;
+      // A marker on the final physical line has no following record to join.
+      lexer->result_symbol = lexer->lookahead ? CONTINUATION : COMMENT;
       return true;
     }
     consume_line(lexer);
