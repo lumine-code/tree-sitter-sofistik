@@ -44,6 +44,52 @@ function isLog(message, event) {
 }
 
 function registerParserRegressions(test, createParser) {
+  test("keeps SOFIMSHC ECHO EXTR values in explicit and continued records", () => {
+    const parser = createParser();
+    try {
+      for (const newline of ["\n", "\r\n"]) {
+        const document = (value) =>
+          [
+            "+PROG SOFIMSHC",
+            `ECHO GEOM ${value}`,
+            `     ${value}`,
+            `ECHO OPT GEOM VAL ${value}`,
+            "END",
+          ].join(newline);
+        let source = document("NO");
+        let tree = parser.parse(source);
+        try {
+          for (const value of ["EXTR", "extr", "NO", "EXTR"]) {
+            const nextSource = document(value);
+            editTree(tree, source, nextSource);
+            const incremental = parser.parse(nextSource, tree);
+            const fresh = parser.parse(nextSource);
+            try {
+              assert.equal(fresh.rootNode.hasError, false, nextSource);
+              assert.deepEqual(texts(fresh, "invalid_command"), [], nextSource);
+              assert.deepEqual(texts(fresh, "command_name"), ["ECHO", "ECHO"]);
+              assert.deepEqual(texts(fresh, "item_name"), ["OPT", "VAL"]);
+              assert.deepEqual(texts(fresh, "bare_value"), ["GEOM", value, value, "GEOM", value]);
+              assert.deepEqual(snapshot(incremental.rootNode), snapshot(fresh.rootNode));
+            } catch (error) {
+              release(incremental);
+              throw error;
+            } finally {
+              release(fresh);
+            }
+            release(tree);
+            tree = incremental;
+            source = nextSource;
+          }
+        } finally {
+          release(tree);
+        }
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
   test("keeps include-fragment comments visible without an initial module", () => {
     const parser = createParser();
     try {
