@@ -975,8 +975,8 @@ SYS echo hi
       (preprocessor_keyword)))
   (sys_statement
     (sys_sigil)
-    (bare_value)
-    (bare_value))
+    (system_command
+      (root_command_fragment)))
   (preprocessor_endif_record
     (preprocessor_keyword)))
 
@@ -1062,11 +1062,12 @@ SYS command args
 (source_file
   (apply_statement
     (apply_sigil)
-    (bare_value))
+    (apply_argument
+      (root_command_fragment)))
   (sys_statement
     (sys_sigil)
-    (bare_value)
-    (bare_value)))
+    (system_command
+      (root_command_fragment))))
 
 ==================================
 Implicit record starts like command

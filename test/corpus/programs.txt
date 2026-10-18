@@ -188,7 +188,8 @@ CUSTOM after sys
     (ignored_text))
   (apply_statement
     (apply_sigil)
-    (bare_value))
+    (apply_argument
+      (root_command_fragment)))
   (ignored_text)
   (program
     (program_header
@@ -200,8 +201,8 @@ CUSTOM after sys
     (ignored_text))
   (sys_statement
     (sys_sigil)
-    (bare_value)
-    (bare_value))
+    (system_command
+      (root_command_fragment)))
   (ignored_text))
 
 ========================================

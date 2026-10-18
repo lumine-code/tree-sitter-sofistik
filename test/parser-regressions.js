@@ -44,6 +44,146 @@ function isLog(message, event) {
 }
 
 function registerParserRegressions(test, createParser) {
+  test("keeps complete SYS shell commands as text with preprocessor substitutions", () => {
+    const parser = createParser();
+    try {
+      for (const newline of ["\n", "\r\n"]) {
+        const commands = [
+          ["+sys", "del $(project).$d?"],
+          ["SYS", "echo #VALUE ! not a comment // neither ; $$ still this line"],
+          ["-SYS", 'copy "$(PROJECT).cdb" "archive #1.$d?"'],
+          ["*SYS", "echo don't lose $(project).$d?"],
+          ["+SYS", 'echo "unclosed $(project).$d?'],
+          ["+SYS", "echo $(open"],
+        ];
+        const source = [
+          "+PROG AQUA",
+          "END",
+          ...commands.map(([sigil, command]) => `${sigil} ${command}`),
+          "+PROG TEMPLATE",
+          "HEAD complete",
+          "END",
+        ].join(newline);
+        const tree = parser.parse(source);
+        try {
+          assert.equal(tree.rootNode.hasError, false, source);
+          assert.deepEqual(
+            texts(tree, "system_command"),
+            commands.map(([, command]) => command),
+          );
+          assert.deepEqual(
+            texts(tree, "sys_sigil"),
+            commands.map(([sigil]) => sigil),
+          );
+          assert.deepEqual(texts(tree, "dollar_variable"), [
+            "$(project)",
+            "$(PROJECT)",
+            "$(project)",
+            "$(project)",
+          ]);
+          assert.deepEqual(texts(tree, "double_quoted_string"), [
+            '"$(PROJECT).cdb"',
+            '"archive #1.$d?"',
+          ]);
+          assert.deepEqual(texts(tree, "comment"), []);
+          assert.deepEqual(texts(tree, "continuation"), []);
+          assert.deepEqual(texts(tree, "hash_variable"), []);
+          assert.deepEqual(texts(tree, "unterminated_string"), []);
+          assert.deepEqual(texts(tree, "command_name"), ["HEAD"]);
+        } finally {
+          release(tree);
+        }
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
+  test("keeps APPLY filenames as text while retaining CADINP comments and separators", () => {
+    const parser = createParser();
+    try {
+      for (const newline of ["\n", "\r\n"]) {
+        const source = [
+          "+APPLY path#tag/$(PROJECT)_csm.dat $ contains at least one +PROG",
+          'APPLY "$(NAME)_csm.dat" ! a comment',
+          "-APPLY ../folder/result.dat // a comment",
+          "$APPLY old.dat $$ a comment",
+          "APPLY first.dat; +SYS echo done",
+        ].join(newline);
+        const tree = parser.parse(source);
+        try {
+          assert.equal(tree.rootNode.hasError, false, source);
+          assert.deepEqual(
+            texts(tree, "apply_argument").map((text) => text.trim()),
+            [
+              "path#tag/$(PROJECT)_csm.dat",
+              '"$(NAME)_csm.dat"',
+              "../folder/result.dat",
+              "old.dat",
+              "first.dat",
+            ],
+          );
+          assert.deepEqual(texts(tree, "dollar_variable"), ["$(PROJECT)", "$(NAME)"]);
+          assert.deepEqual(texts(tree, "hash_variable"), []);
+          assert.deepEqual(texts(tree, "comment"), [
+            "$ contains at least one +PROG",
+            "! a comment",
+            "// a comment",
+            "$$ a comment",
+          ]);
+          assert.deepEqual(texts(tree, "continuation"), []);
+          assert.deepEqual(texts(tree, "system_command"), ["echo done"]);
+        } finally {
+          release(tree);
+        }
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
+  test("updates SYS and APPLY text boundaries incrementally", () => {
+    const parser = createParser();
+    try {
+      const document = (directive) =>
+        `+PROG AQUA\nEND\n${directive}\n+PROG TEMPLATE\nHEAD next module\nEND`;
+      let source = document("+sys del $(project).$d?");
+      let tree = parser.parse(source);
+      try {
+        for (const directive of [
+          '+SYS echo "$(project)" #VALUE ! // ; $$ literal',
+          '+APPLY "$(project)_csm.dat" $ a comment',
+          "*SYS echo don't lose the tail $d?",
+          "+SYS echo $(open",
+          "+SYS echo $(closed).$d?",
+          "APPLY $(project)_csm.dat // a comment",
+          "+sys del $(project).$d?",
+        ]) {
+          const nextSource = document(directive);
+          editTree(tree, source, nextSource);
+          const incremental = parser.parse(nextSource, tree);
+          const fresh = parser.parse(nextSource);
+          try {
+            assert.equal(fresh.rootNode.hasError, false, directive);
+            assert.deepEqual(snapshot(incremental.rootNode), snapshot(fresh.rootNode), directive);
+          } catch (error) {
+            release(incremental);
+            throw error;
+          } finally {
+            release(fresh);
+          }
+          release(tree);
+          tree = incremental;
+          source = nextSource;
+        }
+      } finally {
+        release(tree);
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
   test("keeps SOFIMSHC ECHO EXTR values in explicit and continued records", () => {
     const parser = createParser();
     try {

@@ -19,6 +19,8 @@ module.exports = grammar({
     $._dollar_apply,
     $._apply_sigil,
     $._sys_sigil,
+    $._sys_command_fragment,
+    $._apply_argument_fragment,
     $._sequence_generator_start,
     $._generator_separator,
     $.literal_opening_parenthesis,
@@ -248,23 +250,41 @@ module.exports = grammar({
       prec.right(
         seq(
           field("sigil", $.apply_sigil),
-          repeat(field("argument", $._separated_value)),
+          optional(field("argument", $.apply_argument)),
           $._statement_end,
         ),
       ),
 
     apply_sigil: ($) => choice($._dollar_apply, $._apply_sigil),
 
+    apply_argument: ($) =>
+      repeat1(
+        choice(
+          alias($._apply_argument_fragment, $.root_command_fragment),
+          $.dollar_variable,
+          $.string,
+        ),
+      ),
+
     sys_statement: ($) =>
       prec.right(
         seq(
           field("sigil", $.sys_sigil),
-          repeat(field("argument", $._separated_value)),
-          $._statement_end,
+          optional(field("argument", $.system_command)),
+          choice($._line_end, $._end_of_file),
         ),
       ),
 
     sys_sigil: ($) => $._sys_sigil,
+
+    system_command: ($) =>
+      repeat1(
+        choice(
+          alias($._sys_command_fragment, $.root_command_fragment),
+          $.dollar_variable,
+          $.string,
+        ),
+      ),
 
     end_record: ($) =>
       prec.right(seq(field("keyword", alias($._end_keyword, $.control_keyword)), $._record_end)),

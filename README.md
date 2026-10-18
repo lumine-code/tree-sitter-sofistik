@@ -61,6 +61,8 @@ The native and WebAssembly regression suites share fixtures for Unicode content,
 
 An include variant begins in its module's context: `aqa.include` uses AQUA, `msh.include` uses SOFIMSHC, `lfd.include` uses SOFILOAD, `dsn.include` uses DECREATOR, and `spt.include` or `tnd.include` uses TENDON. Explicit `PROG` and `$PROG` directives override that initial context, while `APPLY`, `SYS` and unknown modules clear it. Repeated `END` records preserve the selected module as they do in ordinary CADINP input. The shared syntax retains the Tree-sitter language name `sofistik` in every variant.
 
+`SYS` command lines, including `+SYS`, `-SYS` and `*SYS`, remain shell text through the physical line ending: dollar filename patterns, comment markers, semicolons and `$$` are literal text. `APPLY` filenames also remain text, while retaining ordinary CADINP comments and semicolon separators. Both preserve quoted strings and `$(...)` substitutions as child nodes.
+
 The Node tests check fresh and incremental program and command selections against the shared `cadinp-structure.json` corpus distributed by `sofistik-schema`. The language server checks the same sources and expectations without depending on the parser at runtime.
 
 An installed SOFiSTiK example tree can be checked without vendoring it by running `npm run test:corpus -- <directory>` or setting `SOFISTIK_CORPUS`. Add repeatable `--fallback-encoding <encoding>` options for legacy files and `--structure` when refreshing the recorded structural coverage snapshot.

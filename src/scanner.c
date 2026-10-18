@@ -24,6 +24,8 @@ enum TokenType {
   DOLLAR_APPLY,
   APPLY_SIGIL,
   SYS_SIGIL,
+  SYS_COMMAND_FRAGMENT,
+  APPLY_ARGUMENT_FRAGMENT,
   SEQUENCE_GENERATOR_START,
   GENERATOR_SEPARATOR,
   LITERAL_OPENING_PARENTHESIS,
@@ -546,6 +548,121 @@ static bool scan_string_candidate(TSLexer *lexer, int32_t quote) {
   return false;
 }
 
+static bool scan_root_command_fragment(
+  TSLexer *lexer,
+  const bool *valid_symbols,
+  bool system_command
+) {
+  enum TokenType fragment = system_command
+    ? SYS_COMMAND_FRAGMENT : APPLY_ARGUMENT_FRAGMENT;
+  bool has_content = false;
+
+  while (
+    lexer->lookahead == ' ' || lexer->lookahead == '\t' ||
+    lexer->lookahead == '\f'
+  ) {
+    lexer->advance(lexer, true);
+  }
+
+  if (!lexer->lookahead && valid_symbols[END_OF_FILE]) {
+    lexer->result_symbol = END_OF_FILE;
+    return true;
+  }
+
+  if (lexer->lookahead == '\'' || lexer->lookahead == '"') {
+    // Keep complete quoted strings and their substitutions visible. An open
+    // shell quote is literal command text. Commit only that quote so later
+    // substitutions still get their own tokens, including in Windows It's.
+    int32_t quote = lexer->lookahead;
+    lexer->advance(lexer, false);
+    lexer->mark_end(lexer);
+    while (
+      lexer->lookahead && lexer->lookahead != '\r' &&
+      lexer->lookahead != '\n'
+    ) {
+      if (lexer->lookahead != quote) {
+        lexer->advance(lexer, false);
+        continue;
+      }
+      lexer->advance(lexer, false);
+      if (lexer->lookahead == quote) {
+        lexer->advance(lexer, false);
+        continue;
+      }
+      return false;
+    }
+    lexer->result_symbol = fragment;
+    return true;
+  }
+
+  while (
+    lexer->lookahead && lexer->lookahead != '\r' &&
+    lexer->lookahead != '\n'
+  ) {
+    if (lexer->lookahead == '\'' || lexer->lookahead == '"') {
+      break;
+    }
+    if (!system_command && lexer->lookahead == ';') {
+      break;
+    }
+    if (!system_command && lexer->lookahead == '!') {
+      if (has_content) {
+        break;
+      }
+      consume_line(lexer);
+      lexer->mark_end(lexer);
+      lexer->result_symbol = COMMENT;
+      return true;
+    }
+    if (!system_command && lexer->lookahead == '/') {
+      lexer->advance(lexer, false);
+      if (lexer->lookahead == '/') {
+        if (has_content) {
+          break;
+        }
+        consume_line(lexer);
+        lexer->mark_end(lexer);
+        lexer->result_symbol = COMMENT;
+        return true;
+      }
+      has_content = true;
+      lexer->mark_end(lexer);
+      continue;
+    }
+    if (lexer->lookahead == '$') {
+      if (has_content) {
+        lexer->advance(lexer, false);
+        if (lexer->lookahead == '(' || !system_command) {
+          break;
+        }
+      } else {
+        enum DollarCandidate candidate = scan_dollar_variable_candidate(lexer, 0);
+        if (candidate == DOLLAR_VARIABLE) {
+          return false;
+        }
+        if (!system_command && candidate == DOLLAR_TEXT) {
+          consume_line(lexer);
+          lexer->mark_end(lexer);
+          lexer->result_symbol = COMMENT;
+          return true;
+        }
+      }
+      has_content = true;
+      lexer->mark_end(lexer);
+      continue;
+    }
+    lexer->advance(lexer, false);
+    has_content = true;
+    lexer->mark_end(lexer);
+  }
+
+  if (!has_content) {
+    return false;
+  }
+  lexer->result_symbol = fragment;
+  return true;
+}
+
 static bool scan_unterminated_string(TSLexer *lexer, const bool *valid_symbols) {
   int32_t quote = lexer->lookahead;
   enum TokenType unterminated = quote == '\''
@@ -858,7 +975,8 @@ static bool scan_non_word_bare(
     }
     if (
       valid_symbols[SYS_SIGIL] &&
-      (strcmp(prefix, "+SYS") == 0 || strcmp(prefix, "-SYS") == 0)
+      (strcmp(prefix, "+SYS") == 0 || strcmp(prefix, "-SYS") == 0 ||
+       strcmp(prefix, "*SYS") == 0)
     ) {
       lexer->mark_end(lexer);
       reset_context(scanner);
@@ -882,7 +1000,8 @@ static bool scan_non_word_bare(
   if (
     (strcmp(prefix, "+PROG") == 0 || strcmp(prefix, "-PROG") == 0 ||
      strcmp(prefix, "+APPLY") == 0 || strcmp(prefix, "-APPLY") == 0 ||
-     strcmp(prefix, "+SYS") == 0 || strcmp(prefix, "-SYS") == 0) &&
+     strcmp(prefix, "+SYS") == 0 || strcmp(prefix, "-SYS") == 0 ||
+     strcmp(prefix, "*SYS") == 0) &&
     is_root_directive_separator(lexer->lookahead)
   ) {
     if (valid_symbols[COMMAND_END]) {
@@ -904,7 +1023,8 @@ static bool scan_non_word_bare(
     }
     if (
       strcmp(prefix, "+APPLY") == 0 || strcmp(prefix, "-APPLY") == 0 ||
-      strcmp(prefix, "+SYS") == 0 || strcmp(prefix, "-SYS") == 0
+      strcmp(prefix, "+SYS") == 0 || strcmp(prefix, "-SYS") == 0 ||
+      strcmp(prefix, "*SYS") == 0
     ) {
       reset_context(scanner);
     }
@@ -2015,6 +2135,16 @@ bool tree_sitter_sofistik_external_scanner_scan(
       '"',
       DOUBLE_STRING_CONTENT
     );
+  }
+
+  // SYS passes its entire physical command line to the shell: no CADINP
+  // comments, separators, values or runtime #variables are interpreted here.
+  // APPLY is also text with $() substitutions, but keeps CADINP comments.
+  if (valid_symbols[SYS_COMMAND_FRAGMENT]) {
+    return scan_root_command_fragment(lexer, valid_symbols, true);
+  }
+  if (valid_symbols[APPLY_ARGUMENT_FRAGMENT]) {
+    return scan_root_command_fragment(lexer, valid_symbols, false);
   }
 
 

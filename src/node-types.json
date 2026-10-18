@@ -86,6 +86,29 @@
     ]
   },
   {
+    "type": "apply_argument",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "dollar_variable",
+          "named": true
+        },
+        {
+          "type": "root_command_fragment",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        }
+      ]
+    }
+  },
+  {
     "type": "apply_sigil",
     "named": true,
     "fields": {}
@@ -95,11 +118,11 @@
     "named": true,
     "fields": {
       "argument": {
-        "multiple": true,
+        "multiple": false,
         "required": false,
         "types": [
           {
-            "type": "_value",
+            "type": "apply_argument",
             "named": true
           }
         ]
@@ -2131,11 +2154,11 @@
     "named": true,
     "fields": {
       "argument": {
-        "multiple": true,
+        "multiple": false,
         "required": false,
         "types": [
           {
-            "type": "_value",
+            "type": "system_command",
             "named": true
           }
         ]
@@ -2150,6 +2173,29 @@
           }
         ]
       }
+    }
+  },
+  {
+    "type": "system_command",
+    "named": true,
+    "fields": {},
+    "children": {
+      "multiple": true,
+      "required": true,
+      "types": [
+        {
+          "type": "dollar_variable",
+          "named": true
+        },
+        {
+          "type": "root_command_fragment",
+          "named": true
+        },
+        {
+          "type": "string",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -2522,6 +2568,10 @@
   },
   {
     "type": "punctuated_value",
+    "named": true
+  },
+  {
+    "type": "root_command_fragment",
     "named": true
   },
   {

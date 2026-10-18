@@ -785,10 +785,7 @@ test("keeps SYS and APPLY arguments ahead of the flat-text fallback", () => {
     tree.rootNode
       .descendantsOfType("sys_statement")
       .map((node) => node.childrenForFieldName("argument").map((argument) => argument.text)),
-    [
-      ["command", "args"],
-      ["wait", "copy", '"a.cdb"', '"b.cdb"'],
-    ],
+    [["command args"], ['wait copy "a.cdb" "b.cdb"']],
   );
   assert.deepStrictEqual(
     tree.rootNode
@@ -1628,6 +1625,7 @@ test("keeps unknown text neutral around every APPLY and SYS sigil", () => {
     ["SYS echo done", "sys_statement"],
     ["+SYS echo done", "sys_statement"],
     ["-SYS echo done", "sys_statement"],
+    ["*SYS echo done", "sys_statement"],
   ];
 
   for (const [directive, statementType] of directives) {
