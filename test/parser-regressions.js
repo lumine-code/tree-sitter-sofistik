@@ -44,6 +44,165 @@ function isLog(message, event) {
 }
 
 function registerParserRegressions(test, createParser) {
+  test("recognizes legacy BLOCK directives with the existing preprocessor tree shape", () => {
+    const parser = createParser();
+    try {
+      for (const newline of ["\n", "\r\n"]) {
+        const source = [
+          "$BLOCK BEG1",
+          "\t$block\tEnd001 $ ordinary comment",
+          "  $BlOcK SeT9999 ! another comment",
+          "$BLOCK SET0",
+        ].join(newline);
+        const tree = parser.parse(source);
+        try {
+          assert.equal(tree.rootNode.hasError, false, source);
+          assert.deepEqual(texts(tree, "preprocessor_keyword"), [
+            "$BLOCK",
+            "$block",
+            "$BlOcK",
+            "$BLOCK",
+          ]);
+          assert.deepEqual(texts(tree, "preprocessor_name"), ["BEG1", "End001", "SeT9999", "SET0"]);
+          for (const directive of tree.rootNode.descendantsOfType("preprocessor_directive")) {
+            assert.equal(directive.childForFieldName("keyword").type, "preprocessor_keyword");
+            assert.equal(directive.childForFieldName("argument").type, "preprocessor_name");
+          }
+          assert.deepEqual(texts(tree, "comment"), ["$ ordinary comment", "! another comment"]);
+        } finally {
+          release(tree);
+        }
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
+  test("keeps BLOCK directives transparent to module, command and table contexts", () => {
+    const parser = createParser();
+    const source = [
+      "$BLOCK BEG1",
+      "+PROG SOFIMSHA",
+      "NODE NO X Y Z",
+      "1 0 0 0",
+      "$BLOCK SET2",
+      "2 1 2 3",
+      "NODE 3 X 0 Y 0 Z 0",
+      "$BLOCK SET3",
+      "4 1 2 3",
+      "END",
+      "$BLOCK END1",
+      "+PROG TEMPLATE",
+      "IF 1",
+      "$BLOCK SET1",
+      "ENDIF",
+      "END",
+    ].join("\n");
+    let tree;
+    try {
+      tree = parser.parse(source);
+      assert.equal(tree.rootNode.hasError, false, tree.rootNode.toString());
+      assert.deepEqual(texts(tree, "module_name"), ["SOFIMSHA", "TEMPLATE"]);
+      assert.deepEqual(texts(tree, "command_name"), ["NODE", "NODE"]);
+      assert.deepEqual(texts(tree, "table_row"), ["1 0 0 0\n", "2 1 2 3\n"]);
+      assert.deepEqual(texts(tree, "implicit_record"), ["4 1 2 3\n"]);
+      const commands = tree.rootNode.descendantsOfType("command");
+      assert.equal(commands[0].childrenForFieldName("auxiliary")[0].text, "$BLOCK SET2\n");
+      assert.equal(commands[1].childrenForFieldName("auxiliary")[0].text, "$BLOCK SET3\n");
+      assert.equal(texts(tree, "preprocessor_directive").length, 5);
+      assert.deepEqual(texts(tree, "comment"), []);
+    } finally {
+      release(tree, parser);
+    }
+  });
+
+  test("keeps invalid, inline and literal BLOCK spellings out of directive syntax", () => {
+    const parser = createParser();
+    const invalid = [
+      "$ BLOCK BEG1",
+      "$BLOCK",
+      "$BLOCK B",
+      "$BLOCK BEG",
+      "$BLOCK BEG 1",
+      "$BLOCK BEGIN1",
+      "$BLOCK SET1suffix",
+      "$BLOCK SET1;",
+      "$BLOCK SET1$comment",
+      "$BLOCKER SET1",
+    ];
+    const source = [
+      ...invalid,
+      "$BLOCK SET1",
+      "+SYS echo $BLOCK BEG1",
+      "+PROG TEMPLATE",
+      "HEAD title $BLOCK SET1",
+      "LET#text '$BLOCK BEG1'",
+      "<TEXT>",
+      "$BLOCK SET1",
+      "</TEXT>",
+      "TXAB",
+      "$BLOCK SET1",
+      "HEAD literal legacy prose",
+      "TXEN",
+      "END",
+    ].join("\n");
+    let tree;
+    try {
+      tree = parser.parse(source);
+      assert.equal(tree.rootNode.hasError, false, tree.rootNode.toString());
+      assert.deepEqual(texts(tree, "preprocessor_keyword"), ["$BLOCK", "$BLOCK"]);
+      assert.deepEqual(texts(tree, "preprocessor_name"), ["SET1", "SET1"]);
+      assert.deepEqual(texts(tree, "system_command"), ["echo $BLOCK BEG1"]);
+      assert.deepEqual(texts(tree, "single_quoted_string"), ["'$BLOCK BEG1'"]);
+      assert.deepEqual(texts(tree, "comment"), [...invalid, "$BLOCK SET1"]);
+      assert.deepEqual(texts(tree, "command_name"), ["HEAD", "TXAB", "TXEN"]);
+    } finally {
+      release(tree, parser);
+    }
+  });
+
+  test("updates BLOCK recognition incrementally without changing table context", () => {
+    const parser = createParser();
+    try {
+      const document = (directive) =>
+        `+PROG SOFIMSHA\nNODE NO X Y Z\n1 0 0 0\n${directive}\n2 1 2 3\nEND\n`;
+      let source = document("$BLOCK SET1");
+      let tree = parser.parse(source);
+      try {
+        for (const directive of [
+          "$BLOCK SET",
+          "$BLOCK SET1suffix",
+          "$ BLOCK SET1",
+          "$BLOCK B",
+          "$BLOCK END1",
+          "\t$block\tBEG01 $ comment",
+          "$BLOCK SET1",
+        ]) {
+          const after = document(directive);
+          editTree(tree, source, after);
+          let incremental, fresh;
+          try {
+            incremental = parser.parse(after, tree);
+            fresh = parser.parse(after);
+            assert.equal(fresh.rootNode.hasError, false, after);
+            assert.deepEqual(snapshot(incremental.rootNode), snapshot(fresh.rootNode), after);
+            assert.equal(texts(incremental, "table_row").length, 2);
+            release(tree);
+            tree = incremental;
+            incremental = null;
+            source = after;
+          } finally {
+            release(incremental, fresh);
+          }
+        }
+      } finally {
+        release(tree);
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
   test("keeps complete SYS shell commands as text with preprocessor substitutions", () => {
     const parser = createParser();
     try {

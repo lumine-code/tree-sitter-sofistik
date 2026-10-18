@@ -94,6 +94,23 @@ test("SOFILOAD include ends tables before variable setup without losing its modu
 });
 
 for (const [module, fixture] of Object.entries(fixtures)) {
+  test(`${module} include keeps legacy BLOCK directives inside its command context`, () => {
+    withParser(languages.get(module), (parser) => {
+      const source = `$BLOCK BEG1\n${fixture.source}\n$BLOCK SET1\n1\nEND\n$BLOCK END1`;
+      const tree = healthyParse(parser, source);
+      try {
+        assert.deepEqual(texts(tree, "command_name"), [fixture.command]);
+        assert.deepEqual(texts(tree, "item_name"), fixture.items);
+        assert.deepEqual(texts(tree, "preprocessor_keyword"), ["$BLOCK", "$BLOCK", "$BLOCK"]);
+        assert.deepEqual(texts(tree, "preprocessor_name"), ["BEG1", "SET1", "END1"]);
+        assert.deepEqual(texts(tree, "implicit_record"), ["1\n"]);
+        assert.deepEqual(texts(tree, "comment"), []);
+      } finally {
+        tree.delete();
+      }
+    });
+  });
+
   test(`${module} include starts with module commands and items at real source positions`, () => {
     withParser(languages.get(module), (parser) => {
       const tree = healthyParse(parser, `${fixture.source}\nEND\n${fixture.source}\nEND\n`);

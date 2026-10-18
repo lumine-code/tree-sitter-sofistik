@@ -22,6 +22,7 @@ enum TokenType {
   VARIABLE_KEYWORD,
   DOLLAR_PROG,
   DOLLAR_APPLY,
+  BLOCK_KEYWORD,
   APPLY_SIGIL,
   SYS_SIGIL,
   SYS_COMMAND_FRAGMENT,
@@ -1552,7 +1553,8 @@ static bool scan_word(
 static bool scan_dollar(
   Scanner *scanner,
   TSLexer *lexer,
-  const bool *valid_symbols
+  const bool *valid_symbols,
+  bool at_line_start
 ) {
   bool can_terminate_input = valid_symbols[UNTERMINATED_INPUT_BLOCK];
   lexer->advance(lexer, false);
@@ -1573,6 +1575,59 @@ static bool scan_dollar(
       // A marker on the final physical line has no following record to join.
       lexer->result_symbol = lexer->lookahead ? CONTINUATION : COMMENT;
       return true;
+    }
+    consume_line(lexer);
+    lexer->mark_end(lexer);
+    lexer->result_symbol = COMMENT;
+    return true;
+  }
+
+  if (
+    at_line_start &&
+    valid_symbols[BLOCK_KEYWORD] && ascii_equal(lexer->lookahead, 'B')
+  ) {
+    const char *block = "BLOCK";
+    size_t index = 0;
+    while (block[index] && ascii_equal(lexer->lookahead, block[index])) {
+      lexer->advance(lexer, false);
+      index++;
+    }
+    if (!block[index] && (lexer->lookahead == ' ' || lexer->lookahead == '\t')) {
+      // Keep only $BLOCK in the keyword token. Look ahead over action+ID to
+      // distinguish real legacy directives from ordinary dollar comments.
+      lexer->mark_end(lexer);
+      while (lexer->lookahead == ' ' || lexer->lookahead == '\t') {
+        lexer->advance(lexer, false);
+      }
+      char action[4] = {0};
+      for (size_t action_index = 0; action_index < 3; action_index++) {
+        int32_t character = lexer->lookahead;
+        if (character >= 'a' && character <= 'z') {
+          character -= 'a' - 'A';
+        }
+        if (character < 'A' || character > 'Z') {
+          break;
+        }
+        action[action_index] = (char)character;
+        lexer->advance(lexer, false);
+      }
+      if (
+        (strcmp(action, "BEG") == 0 || strcmp(action, "END") == 0 ||
+         strcmp(action, "SET") == 0) &&
+        lexer->lookahead >= '0' && lexer->lookahead <= '9'
+      ) {
+        do {
+          lexer->advance(lexer, false);
+        } while (lexer->lookahead >= '0' && lexer->lookahead <= '9');
+        if (
+          !lexer->lookahead || lexer->lookahead == '\r' ||
+          lexer->lookahead == '\n' || lexer->lookahead == ' ' ||
+          lexer->lookahead == '\t'
+        ) {
+          lexer->result_symbol = BLOCK_KEYWORD;
+          return true;
+        }
+      }
     }
     consume_line(lexer);
     lexer->mark_end(lexer);
@@ -2310,7 +2365,12 @@ bool tree_sitter_sofistik_external_scanner_scan(
   }
 
   if (lexer->lookahead == '$') {
-    return scan_dollar(scanner, lexer, valid_symbols);
+    return scan_dollar(
+      scanner,
+      lexer,
+      valid_symbols,
+      lexer->get_column(lexer) == skipped_columns
+    );
   }
 
   if (

@@ -17,6 +17,7 @@ module.exports = grammar({
     $.variable_keyword,
     $._dollar_prog,
     $._dollar_apply,
+    $._block_keyword,
     $._apply_sigil,
     $._sys_sigil,
     $._sys_command_fragment,
@@ -462,6 +463,12 @@ module.exports = grammar({
           seq(
             field("keyword", alias(ci("#UNDEF"), $.preprocessor_keyword)),
             repeat(field("argument", $.preprocessor_name)),
+            $._statement_end,
+          ),
+          seq(
+            field("keyword", alias($._block_keyword, $.preprocessor_keyword)),
+            field("argument", $.preprocessor_name),
+            repeat(field("argument", $._separated_value)),
             $._statement_end,
           ),
         ),

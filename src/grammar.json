@@ -2851,6 +2851,47 @@
                 "name": "_statement_end"
               }
             ]
+          },
+          {
+            "type": "SEQ",
+            "members": [
+              {
+                "type": "FIELD",
+                "name": "keyword",
+                "content": {
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_block_keyword"
+                  },
+                  "named": true,
+                  "value": "preprocessor_keyword"
+                }
+              },
+              {
+                "type": "FIELD",
+                "name": "argument",
+                "content": {
+                  "type": "SYMBOL",
+                  "name": "preprocessor_name"
+                }
+              },
+              {
+                "type": "REPEAT",
+                "content": {
+                  "type": "FIELD",
+                  "name": "argument",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_separated_value"
+                  }
+                }
+              },
+              {
+                "type": "SYMBOL",
+                "name": "_statement_end"
+              }
+            ]
           }
         ]
       }
@@ -4423,6 +4464,10 @@
     {
       "type": "SYMBOL",
       "name": "_dollar_apply"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_block_keyword"
     },
     {
       "type": "SYMBOL",
