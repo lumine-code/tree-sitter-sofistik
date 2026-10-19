@@ -111,12 +111,12 @@ module.exports = grammar({
     program_option: ($) => $._value,
 
     input_block: ($) =>
-      seq(repeat($._program_body_group), choice($.end_record, $.unterminated_input_block)),
+      seq(repeat($.program_body_group), choice($.end_record, $.unterminated_input_block)),
 
-    // Hidden groups keep the public tree flat while giving incremental parses
-    // reusable boundaries inside large programs. Tree-sitter's repetition
-    // nodes are fragile, so a single repeat otherwise replays every command.
-    _program_body_group: ($) => boundedChunk($._program_body_chunk),
+    // Keep the outer group visible: changed-range comparison skips unchanged
+    // visible subtrees, but walks every statement in a flattened input block.
+    // The inner chunks still provide reusable incremental parse boundaries.
+    program_body_group: ($) => boundedChunk($._program_body_chunk),
 
     _program_body_chunk: ($) => boundedChunk($._program_body),
 

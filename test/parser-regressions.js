@@ -769,7 +769,7 @@ function registerParserRegressions(test, createParser) {
                 assert.deepEqual(texts(tree, "command_name"), ["ACT", "ACT", "LC"], source);
                 assert.equal(texts(tree, "table_definition").length, 2, source);
                 const variable = tree.rootNode.descendantsOfType("variable_statement")[0];
-                assert.equal(variable.parent.type, "input_block", source);
+                assert.equal(variable.parent.parent.type, "input_block", source);
               } finally {
                 release(tree);
               }
@@ -812,7 +812,7 @@ function registerParserRegressions(test, createParser) {
           assert.deepEqual(texts(fresh, "ERROR"), rows === 1 ? ["lp_x q_1 unsi"] : []);
           assert.deepEqual(texts(fresh, "command_name"), ["ACT", "LC"]);
           for (const variable of fresh.rootNode.descendantsOfType("variable_statement")) {
-            assert.equal(variable.parent.type, "input_block");
+            assert.equal(variable.parent.parent.type, "input_block");
           }
         } finally {
           release(tree, incremental, fresh);

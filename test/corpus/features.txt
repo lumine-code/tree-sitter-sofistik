@@ -87,33 +87,34 @@ end
       (program_sigil)
       (module_name))
     (input_block
-      (command
-        (command_name)
-        (record
-          (parenthesized_expression
-            (hash_variable
-              (hash_variable_name)))
-          (bare_value)
-          (parenthesized_expression
-            (hash_variable
-              (hash_variable_name))
-            (parenthesized_content)
-            (hash_variable
-              (hash_variable_name))
-            (parenthesized_content)
-            (hash_variable
-              (hash_variable_name)))
-          (bare_value)
-          (parenthesized_expression
-            (hash_variable
-              (hash_variable_name))
-            (parenthesized_content)
+      (program_body_group
+        (command
+          (command_name)
+          (record
+            (parenthesized_expression
+              (hash_variable
+                (hash_variable_name)))
+            (bare_value)
             (parenthesized_expression
               (hash_variable
                 (hash_variable_name))
-              (parenthesized_content)))
-          (parenthesized_expression
-            (parenthesized_content))))
+              (parenthesized_content)
+              (hash_variable
+                (hash_variable_name))
+              (parenthesized_content)
+              (hash_variable
+                (hash_variable_name)))
+            (bare_value)
+            (parenthesized_expression
+              (hash_variable
+                (hash_variable_name))
+              (parenthesized_content)
+              (parenthesized_expression
+                (hash_variable
+                  (hash_variable_name))
+                (parenthesized_content)))
+            (parenthesized_expression
+              (parenthesized_content)))))
       (end_record
         (control_keyword)))))
 
@@ -159,30 +160,31 @@ END
       (program_sigil)
       (module_name))
     (input_block
-      (cdb_statement
-        (cdb_keyword)
-        (bare_value))
-      (if_block
-        (if_header
-          (control_keyword)
-          (hash_variable
-            (hash_variable_name))
-          (generic_expression)
+      (program_body_group
+        (cdb_statement
+          (cdb_keyword)
+          (bare_value))
+        (if_block
+          (if_header
+            (control_keyword)
+            (hash_variable
+              (hash_variable_name))
+            (generic_expression)
+            (number))
+          (command
+            (command_name)
+            (record
+              (at_reference)
+              (at_reference)
+              (at_reference)
+              (at_reference)
+              (invalid_at_reference)))
+          (endif_record
+            (control_keyword)))
+        (cdb_statement
+          (cdb_keyword)
           (number))
-        (command
-          (command_name)
-          (record
-            (at_reference)
-            (at_reference)
-            (at_reference)
-            (at_reference)
-            (invalid_at_reference)))
-        (endif_record
-          (control_keyword)))
-      (cdb_statement
-        (cdb_keyword)
-        (number))
-      (metadata)
+        (metadata))
       (end_record
         (control_keyword)))))
 
@@ -200,23 +202,24 @@ END
       (program_sigil)
       (module_name))
     (input_block
-      (command
-        (command_name)
-        (record
-          (hash_variable
-            (hash_variable_name)
-            (hash_arguments
-              (hash_variable
-                (hash_variable_name)
-                (hash_arguments
-                  (hash_argument_content)))))
-          (formatted_value
-            (parenthesized_expression
-              (hash_variable
-                (hash_variable_name))
-              (parenthesized_content)))
-          (literal_hash)
-          (bare_value)))
+      (program_body_group
+        (command
+          (command_name)
+          (record
+            (hash_variable
+              (hash_variable_name)
+              (hash_arguments
+                (hash_variable
+                  (hash_variable_name)
+                  (hash_arguments
+                    (hash_argument_content)))))
+            (formatted_value
+              (parenthesized_expression
+                (hash_variable
+                  (hash_variable_name))
+                (parenthesized_content)))
+            (literal_hash)
+            (bare_value))))
       (end_record
         (control_keyword)))))
 
@@ -237,35 +240,36 @@ END
       (program_sigil)
       (module_name))
     (input_block
-      (command
-        (command_name)
-        (record
-          (string
-            (single_doubled_quoted_string))
-          (string
-            (double_doubled_quoted_string))
-          (string
-            (single_quoted_string
-              (dollar_variable)))
-          (string
-            (double_quoted_string
-              (dollar_variable)))))
-      (command
-        (command_name)
-        (record
-          (bare_value)
-          (bare_value)
-          (bare_value)))
-      (command
-        (command_name)
-        (record
-          (unterminated_string
-            (unterminated_single_quoted_string))))
-      (command
-        (command_name)
-        (record
-          (unterminated_string
-            (unterminated_double_quoted_string))))
+      (program_body_group
+        (command
+          (command_name)
+          (record
+            (string
+              (single_doubled_quoted_string))
+            (string
+              (double_doubled_quoted_string))
+            (string
+              (single_quoted_string
+                (dollar_variable)))
+            (string
+              (double_quoted_string
+                (dollar_variable)))))
+        (command
+          (command_name)
+          (record
+            (bare_value)
+            (bare_value)
+            (bare_value)))
+        (command
+          (command_name)
+          (record
+            (unterminated_string
+              (unterminated_single_quoted_string))))
+        (command
+          (command_name)
+          (record
+            (unterminated_string
+              (unterminated_double_quoted_string)))))
       (end_record
         (control_keyword)))))
 
@@ -284,22 +288,23 @@ END
       (program_sigil)
       (module_name))
     (input_block
-      (variable_statement
-        (variable_keyword)
-        (hash_variable
-          (hash_variable_name))
-        (string
-          (single_quoted_string))
-        (string
-          (single_quoted_string)))
-      (variable_statement
-        (variable_keyword)
-        (hash_variable
-          (hash_variable_name))
-        (string
-          (single_quoted_string))
-        (string
-          (single_quoted_string)))
+      (program_body_group
+        (variable_statement
+          (variable_keyword)
+          (hash_variable
+            (hash_variable_name))
+          (string
+            (single_quoted_string))
+          (string
+            (single_quoted_string)))
+        (variable_statement
+          (variable_keyword)
+          (hash_variable
+            (hash_variable_name))
+          (string
+            (single_quoted_string))
+          (string
+            (single_quoted_string))))
       (end_record
         (control_keyword)))))
 
@@ -322,22 +327,23 @@ END
       (program_sigil)
       (module_name))
     (input_block
-      (orphan_elseif_record
-        (control_keyword)
-        (hash_variable
-          (hash_variable_name)))
-      (orphan_else_record
-        (control_keyword)
-        (bare_value))
-      (orphan_endif_record
-        (control_keyword))
-      (orphan_endloop_record
-        (control_keyword)
-        (number))
-      (orphan_text_end
-        (text_delimiter))
-      (orphan_picture_end
-        (picture_delimiter))
+      (program_body_group
+        (orphan_elseif_record
+          (control_keyword)
+          (hash_variable
+            (hash_variable_name)))
+        (orphan_else_record
+          (control_keyword)
+          (bare_value))
+        (orphan_endif_record
+          (control_keyword))
+        (orphan_endloop_record
+          (control_keyword)
+          (number))
+        (orphan_text_end
+          (text_delimiter))
+        (orphan_picture_end
+          (picture_delimiter)))
       (end_record
         (control_keyword)))))
 
@@ -362,18 +368,19 @@ END
       (program_sigil)
       (module_name))
     (input_block
-      (picture_block
-        (picture_start
-          (picture_delimiter))
-        (command
-          (command_name)
-          (record
-            (hash_variable
-              (hash_variable_name))
-            (string
-              (single_quoted_string))))
-        (picture_end
-          (picture_delimiter)))
+      (program_body_group
+        (picture_block
+          (picture_start
+            (picture_delimiter))
+          (command
+            (command_name)
+            (record
+              (hash_variable
+                (hash_variable_name))
+              (string
+                (single_quoted_string))))
+          (picture_end
+            (picture_delimiter))))
       (end_record
         (control_keyword)))
     (picture_block
@@ -409,16 +416,17 @@ END
       (program_sigil)
       (module_name))
     (input_block
-      (command
-        (command_name)
-        (record
-          (number)
-          (number)
-          (number)
-          (number_list)
-          (punctuated_value)
-          (punctuated_value)
-          (punctuated_value)))
+      (program_body_group
+        (command
+          (command_name)
+          (record
+            (number)
+            (number)
+            (number)
+            (number_list)
+            (punctuated_value)
+            (punctuated_value)
+            (punctuated_value))))
       (end_record
         (control_keyword)))))
 
@@ -464,10 +472,11 @@ ende
       (program_sigil)
       (module_name))
     (input_block
-      (command
-        (command_name)
-        (record
-          (bare_value)))
+      (program_body_group
+        (command
+          (command_name)
+          (record
+            (bare_value))))
       (end_record
         (control_keyword))))
   (program
@@ -475,22 +484,23 @@ ende
       (program_sigil)
       (module_name))
     (input_block
-      (command
-        (command_name)
-        (record
-          (bare_value)
-          (string
-            (single_quoted_string))
-          (item_sequence
-            (item_name)
+      (program_body_group
+        (command
+          (command_name)
+          (record
             (bare_value)
-            (hash_variable
-              (hash_variable_name))
-            (unit))
-          (item_sequence
-            (item_name)
-            (hash_variable
-              (hash_variable_name)))))
+            (string
+              (single_quoted_string))
+            (item_sequence
+              (item_name)
+              (bare_value)
+              (hash_variable
+                (hash_variable_name))
+              (unit))
+            (item_sequence
+              (item_name)
+              (hash_variable
+                (hash_variable_name))))))
       (end_record
         (control_keyword))))
   (program
@@ -498,33 +508,34 @@ ende
       (program_sigil)
       (module_name))
     (input_block
-      (command
-        (command_name)
-        (record
-          (sequence_generator
-            (generator_part
-              (generator_literal))
-            (generator_part
-              (generator_literal))
-            (generator_part
-              (generator_literal)))
-          (bare_value)
-          (number)
-          (item_sequence
-            (item_name)
-            (number))))
-      (command
-        (command_name)
-        (record
-          (sequence_generator
-            (generator_part
-              (generator_literal))
-            (generator_part
-              (generator_literal)
-              (hash_variable
-                (hash_variable_name)))
-            (generator_part
-              (generator_literal)))))
+      (program_body_group
+        (command
+          (command_name)
+          (record
+            (sequence_generator
+              (generator_part
+                (generator_literal))
+              (generator_part
+                (generator_literal))
+              (generator_part
+                (generator_literal)))
+            (bare_value)
+            (number)
+            (item_sequence
+              (item_name)
+              (number))))
+        (command
+          (command_name)
+          (record
+            (sequence_generator
+              (generator_part
+                (generator_literal))
+              (generator_part
+                (generator_literal)
+                (hash_variable
+                  (hash_variable_name)))
+              (generator_part
+                (generator_literal))))))
       (end_record
         (control_keyword)))))
 
@@ -543,14 +554,15 @@ ENDE
       (program_sigil)
       (module_name))
     (input_block
-      (command
-        (command_name)
-        (record
-          (bare_value)
-          (number)
-          (continuation)
-          (bare_value)
-          (number)))
+      (program_body_group
+        (command
+          (command_name)
+          (record
+            (bare_value)
+            (number)
+            (continuation)
+            (bare_value)
+            (number))))
       (end_record
         (control_keyword)))))
 
@@ -571,28 +583,29 @@ END
       (program_sigil)
       (module_name))
     (input_block
-      (command
-        (command_name)
-        (record
-          (number)
-          (item_sequence
-            (item_name)
-            (number)))
-        (preprocessor_directive
-          (preprocessor_keyword)
-          (bare_value))
-        (preprocessor_define_statement
-          (preprocessor_keyword)
-          (preprocessor_name)
-          (preprocessor_value
-            (preprocessor_literal)))
-        (implicit_record
-          (item_sequence
-            (item_name)
-            (number))
-          (item_sequence
-            (item_name)
-            (number))))
+      (program_body_group
+        (command
+          (command_name)
+          (record
+            (number)
+            (item_sequence
+              (item_name)
+              (number)))
+          (preprocessor_directive
+            (preprocessor_keyword)
+            (bare_value))
+          (preprocessor_define_statement
+            (preprocessor_keyword)
+            (preprocessor_name)
+            (preprocessor_value
+              (preprocessor_literal)))
+          (implicit_record
+            (item_sequence
+              (item_name)
+              (number))
+            (item_sequence
+              (item_name)
+              (number)))))
       (end_record
         (control_keyword)))))
 
@@ -631,38 +644,39 @@ ENDE
       (program_sigil)
       (module_name))
     (input_block
-      (command
-        (command_name)
-        (record
-          (bare_value)
-          (number)
-          (number)
-          (item_sequence
-            (item_name)
-            (punctuated_value)))
-        (implicit_record
-          (bare_value)
-          (number)
-          (number)
-          (item_sequence
-            (item_name)
-            (punctuated_value)))
-        (implicit_record
-          (number)
-          (number)
-          (number)
-          (item_sequence
-            (item_name)
+      (program_body_group
+        (command
+          (command_name)
+          (record
             (bare_value)
-            (bare_value)))
-        (implicit_record
-          (number)
-          (number)
-          (number)
-          (item_sequence
-            (item_name)
+            (number)
+            (number)
+            (item_sequence
+              (item_name)
+              (punctuated_value)))
+          (implicit_record
             (bare_value)
-            (punctuated_value))))
+            (number)
+            (number)
+            (item_sequence
+              (item_name)
+              (punctuated_value)))
+          (implicit_record
+            (number)
+            (number)
+            (number)
+            (item_sequence
+              (item_name)
+              (bare_value)
+              (bare_value)))
+          (implicit_record
+            (number)
+            (number)
+            (number)
+            (item_sequence
+              (item_name)
+              (bare_value)
+              (punctuated_value)))))
       (end_record
         (control_keyword)))))
 
@@ -683,10 +697,11 @@ END
       (program_sigil)
       (module_name))
     (input_block
-      (command
-        (command_name)
-        (record
-          (bare_value)))
+      (program_body_group
+        (command
+          (command_name)
+          (record
+            (bare_value))))
       (end_record
         (control_keyword)))
     (command
@@ -712,54 +727,55 @@ END
       (program_sigil)
       (module_name))
     (input_block
-      (command
-        (command_name)
-        (record)
-        (variable_statement
-          (variable_keyword)
-          (hash_variable
-            (hash_variable_name))
-          (number)))
-      (command
-        (command_name)
-        (record
-          (item_sequence
-            (item_name)
-            (bare_value))
-          (item_sequence
-            (item_name)
-            (number))
-          (item_sequence
-            (item_name)
+      (program_body_group
+        (command
+          (command_name)
+          (record)
+          (variable_statement
+            (variable_keyword)
             (hash_variable
               (hash_variable_name))
-            (number))))
-      (command
-        (command_name)
-        (record
-          (number)
-          (bare_value)))
-      (command
-        (command_name)
-        (record
-          (bare_value)
-          (number)
-          (item_sequence
-            (item_name)
-            (number))))
-      (command
-        (command_name)
-        (record
-          (bare_value)
-          (number)))
-      (command
-        (command_name)
-        (record
-          (hash_variable
-            (hash_variable_name))
-          (item_sequence
-            (item_name)
-            (number))))
+            (number)))
+        (command
+          (command_name)
+          (record
+            (item_sequence
+              (item_name)
+              (bare_value))
+            (item_sequence
+              (item_name)
+              (number))
+            (item_sequence
+              (item_name)
+              (hash_variable
+                (hash_variable_name))
+              (number))))
+        (command
+          (command_name)
+          (record
+            (number)
+            (bare_value)))
+        (command
+          (command_name)
+          (record
+            (bare_value)
+            (number)
+            (item_sequence
+              (item_name)
+              (number))))
+        (command
+          (command_name)
+          (record
+            (bare_value)
+            (number)))
+        (command
+          (command_name)
+          (record
+            (hash_variable
+              (hash_variable_name))
+            (item_sequence
+              (item_name)
+              (number)))))
       (end_record
         (control_keyword)))))
 
@@ -779,31 +795,32 @@ END
       (program_sigil)
       (module_name))
     (input_block
-      (command
-        (command_name)
-        (record
-          (number)
-          (item_sequence
-            (item_name)
-            (number))
-          (continuation)
-          (item_sequence
-            (item_name)
-            (number))
-          (item_sequence
-            (item_name)
-            (number)))
-        (implicit_record
-          (number)
-          (item_sequence
-            (item_name)
-            (number))
-          (item_sequence
-            (item_name)
-            (number))
-          (item_sequence
-            (item_name)
-            (number))))
+      (program_body_group
+        (command
+          (command_name)
+          (record
+            (number)
+            (item_sequence
+              (item_name)
+              (number))
+            (continuation)
+            (item_sequence
+              (item_name)
+              (number))
+            (item_sequence
+              (item_name)
+              (number)))
+          (implicit_record
+            (number)
+            (item_sequence
+              (item_name)
+              (number))
+            (item_sequence
+              (item_name)
+              (number))
+            (item_sequence
+              (item_name)
+              (number)))))
       (end_record
         (control_keyword)))))
 
@@ -821,20 +838,21 @@ END
       (program_sigil)
       (module_name))
     (input_block
-      (command
-        (command_name)
-        (record
-          (item_sequence
-            (item_name)
-            (number))
-          (item_sequence
-            (item_name)
+      (program_body_group
+        (command
+          (command_name)
+          (record
+            (item_sequence
+              (item_name)
+              (number))
+            (item_sequence
+              (item_name)
+              (number))))
+        (command
+          (command_name)
+          (record
+            (bare_value)
             (number))))
-      (command
-        (command_name)
-        (record
-          (bare_value)
-          (number)))
       (end_record
         (control_keyword)))))
 
@@ -859,17 +877,31 @@ END
       (program_sigil)
       (module_name))
     (input_block
-      (if_block
-        (if_header
-          (control_keyword)
-          (hash_variable
-            (hash_variable_name))
-          (generic_expression)
-          (number))
-        (loop_block
-          (loop_header
+      (program_body_group
+        (if_block
+          (if_header
             (control_keyword)
+            (hash_variable
+              (hash_variable_name))
+            (generic_expression)
             (number))
+          (loop_block
+            (loop_header
+              (control_keyword)
+              (number))
+            (command
+              (command_name)
+              (record
+                (number)
+                (item_sequence
+                  (item_name)
+                  (number))))
+            (exit_iteration_record
+              (control_keyword))
+            (endloop_record
+              (control_keyword)))
+          (else_header
+            (control_keyword))
           (command
             (command_name)
             (record
@@ -877,21 +909,8 @@ END
               (item_sequence
                 (item_name)
                 (number))))
-          (exit_iteration_record
-            (control_keyword))
-          (endloop_record
-            (control_keyword)))
-        (else_header
-          (control_keyword))
-        (command
-          (command_name)
-          (record
-            (number)
-            (item_sequence
-              (item_name)
-              (number))))
-        (endif_record
-          (control_keyword)))
+          (endif_record
+            (control_keyword))))
       (end_record
         (control_keyword)))))
 
@@ -945,10 +964,11 @@ SYS echo hi
       (program_sigil)
       (module_name))
     (input_block
-      (command
-        (command_name)
-        (record
-          (bare_value)))
+      (program_body_group
+        (command
+          (command_name)
+          (record
+            (bare_value))))
       (end_record
         (control_keyword)))
     (preprocessor_elseif_header
@@ -962,13 +982,14 @@ SYS echo hi
       (program_sigil)
       (module_name))
     (input_block
-      (command
-        (command_name)
-        (record
-          (number)
-          (item_sequence
-            (item_name)
-            (number))))
+      (program_body_group
+        (command
+          (command_name)
+          (record
+            (number)
+            (item_sequence
+              (item_name)
+              (number)))))
       (end_record
         (control_keyword)))
     (preprocessor_else_header
@@ -996,26 +1017,27 @@ END
       (program_sigil)
       (module_name))
     (input_block
-      (command
-        (command_name)
-        (record
-          (number)
-          (item_sequence
-            (item_name)
-            (number)))
-        (variable_statement
-          (variable_keyword)
-          (hash_variable
-            (hash_variable_name))
-          (expression)
-          (number))
-        (implicit_record
-          (item_sequence
-            (item_name)
+      (program_body_group
+        (command
+          (command_name)
+          (record
+            (number)
+            (item_sequence
+              (item_name)
+              (number)))
+          (variable_statement
+            (variable_keyword)
+            (hash_variable
+              (hash_variable_name))
+            (expression)
             (number))
-          (item_sequence
-            (item_name)
-            (number))))
+          (implicit_record
+            (item_sequence
+              (item_name)
+              (number))
+            (item_sequence
+              (item_name)
+              (number)))))
       (end_record
         (control_keyword)))))
 
@@ -1036,19 +1058,20 @@ END
       (program_sigil)
       (module_name))
     (input_block
-      (command
-        (command_name)
-        (record
-          (string
-            (single_quoted_string))))
-      (text_block
-        (text_start
-          (text_delimiter)
-          (text_delimiter))
-        (text_content)
-        (text_fragment)
-        (text_content)
-        (text_end))
+      (program_body_group
+        (command
+          (command_name)
+          (record
+            (string
+              (single_quoted_string))))
+        (text_block
+          (text_start
+            (text_delimiter)
+            (text_delimiter))
+          (text_content)
+          (text_fragment)
+          (text_content)
+          (text_end)))
       (end_record
         (control_keyword)))))
 
@@ -1084,15 +1107,16 @@ ENDE
       (program_sigil)
       (module_name))
     (input_block
-      (command
-        (command_name)
-        (record
-          (bare_value)
-          (number)
-          (number))
-        (implicit_record
-          (bare_value)
-          (number)
-          (number)))
+      (program_body_group
+        (command
+          (command_name)
+          (record
+            (bare_value)
+            (number)
+            (number))
+          (implicit_record
+            (bare_value)
+            (number)
+            (number))))
       (end_record
         (control_keyword)))))

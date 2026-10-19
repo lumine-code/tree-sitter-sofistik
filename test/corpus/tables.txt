@@ -18,39 +18,40 @@ END
       sigil: (program_sigil)
       module: (module_name))
     body: (input_block
-      (command
-        name: (command_name)
-        record: (table_definition
-          item: (item_name)
-          item: (item_name)
-          item: (item_name))
-        record: (table_row
-          value: (bare_value)
-          value: (bare_value)
-          value: (bare_value)))
-      (variable_statement
-        keyword: (variable_keyword)
-        variable: (hash_variable
-          name: (hash_variable_name))
-        value: (number))
-      (command
-        name: (command_name)
-        record: (table_definition
-          item: (item_name)
-          item: (item_name)
-          item: (item_name))
-        record: (table_row
-          value: (bare_value)
-          value: (bare_value)
-          value: (bare_value)))
-      (variable_statement
-        keyword: (variable_keyword)
-        variable: (hash_variable
-          name: (hash_variable_name))
-        value: (number))
-      (command
-        name: (command_name)
-        record: (record
-          (number)))
+      (program_body_group
+        (command
+          name: (command_name)
+          record: (table_definition
+            item: (item_name)
+            item: (item_name)
+            item: (item_name))
+          record: (table_row
+            value: (bare_value)
+            value: (bare_value)
+            value: (bare_value)))
+        (variable_statement
+          keyword: (variable_keyword)
+          variable: (hash_variable
+            name: (hash_variable_name))
+          value: (number))
+        (command
+          name: (command_name)
+          record: (table_definition
+            item: (item_name)
+            item: (item_name)
+            item: (item_name))
+          record: (table_row
+            value: (bare_value)
+            value: (bare_value)
+            value: (bare_value)))
+        (variable_statement
+          keyword: (variable_keyword)
+          variable: (hash_variable
+            name: (hash_variable_name))
+          value: (number))
+        (command
+          name: (command_name)
+          record: (record
+            (number))))
       (end_record
         keyword: (control_keyword)))))

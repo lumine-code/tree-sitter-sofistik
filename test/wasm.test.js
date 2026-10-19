@@ -340,8 +340,10 @@ test("reuses large program bodies when typing after END", () => {
   try {
     tree = assertHealthyTree(parser.parse(originalSource), "large program parse");
     const block = tree.rootNode.namedChildren[0].childForFieldName("body");
-    assert.strictEqual(block.namedChildCount, commandCount + 1);
-    assert.strictEqual(block.namedChildren[0].type, "command");
+    assert.strictEqual(block.namedChildCount, commandCount / 64 + 1);
+    assert.strictEqual(block.namedChildren[0].type, "program_body_group");
+    assert.strictEqual(block.namedChildren[0].namedChildCount, 64);
+    assert.strictEqual(block.descendantsOfType("command").length, commandCount);
     assert.strictEqual(block.namedChildren.at(-1).type, "end_record");
 
     const position = pointAt(originalSource, originalSource.length);
@@ -378,6 +380,57 @@ test("reuses large program bodies when typing after END", () => {
     parser.setLogger(null);
     tree?.delete();
     parser.delete();
+  }
+});
+
+test("grouped body edits preserve semantic trees and localized changed ranges", () => {
+  const parser = new TreeSitter.Parser().setLanguage(language);
+  const freshParser = new TreeSitter.Parser().setLanguage(language);
+  let source = "+PROG SOFIMSHA\n" + "NODE 1 X 0 Y 0 Z 0\n".repeat(4096) + "END\n";
+  let tree = parser.parse(source);
+  const semantic = (node) => {
+    const children = node.children.flatMap(semantic);
+    return node.type === "program_body_group"
+      ? children
+      : [[node.type, node.startIndex, node.endIndex, children]];
+  };
+  try {
+    for (const row of [64, 65, 2048, 4096]) {
+      for (const inserted of ["a", "\n"]) {
+        const index = source.split("\n").slice(0, row).join("\n").length + 1;
+        const startPosition = pointAt(source, index);
+        tree.edit({
+          startIndex: index,
+          oldEndIndex: index,
+          newEndIndex: index + inserted.length,
+          startPosition,
+          oldEndPosition: startPosition,
+          newEndPosition:
+            inserted === "\n"
+              ? { row: startPosition.row + 1, column: 0 }
+              : { row: startPosition.row, column: startPosition.column + 1 },
+        });
+        source = source.slice(0, index) + inserted + source.slice(index);
+        const next = parser.parse(source, tree);
+        const fresh = freshParser.parse(source);
+        try {
+          assert.deepEqual(semantic(next.rootNode), semantic(fresh.rootNode));
+          const ranges = tree.getChangedRanges(next);
+          assert.ok(ranges.every((range) => range.endPosition.row - range.startPosition.row < 128));
+          const groups = next.rootNode.descendantsOfType("program_body_group");
+          assert.ok(groups.length >= 64);
+          assert.ok(groups.every((group) => group.descendantsOfType("command").length <= 64));
+        } finally {
+          fresh.delete();
+          tree.delete();
+          tree = next;
+        }
+      }
+    }
+  } finally {
+    tree.delete();
+    parser.delete();
+    freshParser.delete();
   }
 });
 

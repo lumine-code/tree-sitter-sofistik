@@ -12,19 +12,20 @@ END
       sigil: (program_sigil)
       module: (module_name))
     body: (input_block
-      (command
-        name: (command_name)
-        record: (record
-          (number)
-          (item_sequence
-            item: (item_name)
-            value: (number))
-          (item_sequence
-            item: (item_name)
-            value: (number))
-          (item_sequence
-            item: (item_name)
-            value: (number))))
+      (program_body_group
+        (command
+          name: (command_name)
+          record: (record
+            (number)
+            (item_sequence
+              item: (item_name)
+              value: (number))
+            (item_sequence
+              item: (item_name)
+              value: (number))
+            (item_sequence
+              item: (item_name)
+              value: (number)))))
       (end_record
         keyword: (control_keyword)))))
 
@@ -48,10 +49,11 @@ END
       (program_sigil)
       (module_name))
     (input_block
-      (command
-        (command_name)
-        (record
-          (bare_value)))
+      (program_body_group
+        (command
+          (command_name)
+          (record
+            (bare_value))))
       (end_record
         (control_keyword)))
     (ignored_text)
@@ -84,19 +86,20 @@ END
       (program_sigil)
       (module_name))
     (input_block
-      (command
-        (command_name)
-        (record
-          (bare_value)
-          (bare_value)
-          (bare_value)
-          (bare_value)
-          (bare_value)
-          (bare_value)
-          (bare_value)
-          (bare_value)
-          (bare_value)
-          (bare_value)))
+      (program_body_group
+        (command
+          (command_name)
+          (record
+            (bare_value)
+            (bare_value)
+            (bare_value)
+            (bare_value)
+            (bare_value)
+            (bare_value)
+            (bare_value)
+            (bare_value)
+            (bare_value)
+            (bare_value))))
       (end_record
         (control_keyword)))))
 
@@ -123,42 +126,43 @@ END
       (program_sigil)
       (module_name))
     (input_block
-      (command
-        (command_name)
-        (record
-          (bare_value)
-          (bare_value)))
-      (if_block
-        (if_header
-          (control_keyword)
+      (program_body_group
+        (command
+          (command_name)
+          (record
+            (bare_value)
+            (bare_value)))
+        (if_block
+          (if_header
+            (control_keyword)
+            (hash_variable
+              (hash_variable_name))
+            (generic_expression)
+            (number))
+          (invalid_command_record
+            (invalid_command)
+            (number))
+          (else_header
+            (control_keyword))
+          (invalid_command_record
+            (invalid_command)
+            (number))
+          (endif_record
+            (control_keyword)))
+        (loop_block
+          (loop_header
+            (control_keyword)
+            (number))
+          (invalid_command_record
+            (invalid_command)
+            (number))
+          (endloop_record
+            (control_keyword)))
+        (variable_statement
+          (variable_keyword)
           (hash_variable
             (hash_variable_name))
-          (generic_expression)
-          (number))
-        (invalid_command_record
-          (invalid_command)
-          (number))
-        (else_header
-          (control_keyword))
-        (invalid_command_record
-          (invalid_command)
-          (number))
-        (endif_record
-          (control_keyword)))
-      (loop_block
-        (loop_header
-          (control_keyword)
-          (number))
-        (invalid_command_record
-          (invalid_command)
-          (number))
-        (endloop_record
-          (control_keyword)))
-      (variable_statement
-        (variable_keyword)
-        (hash_variable
-          (hash_variable_name))
-        (number))
+          (number)))
       (end_record
         (control_keyword)))))
 
@@ -311,11 +315,12 @@ END
       sigil: (program_sigil)
       module: (module_name))
     body: (input_block
-      (command
-        name: (command_name)
-        record: (table_definition
-          item: (item_name)
-          item: (item_name)))
+      (program_body_group
+        (command
+          name: (command_name)
+          record: (table_definition
+            item: (item_name)
+            item: (item_name))))
       (end_record
         keyword: (control_keyword)))))
 
@@ -334,19 +339,20 @@ END
       sigil: (program_sigil)
       module: (module_name))
     body: (input_block
-      (command
-        name: (command_name)
-        record: (record
-          (item_sequence
-            item: (item_name)
-            value: (bare_value))))
-      (command
-        name: (command_name)
-        record: (record
-          (item_sequence
-            item: (item_name)
-            value: (number)
-            value: (bare_value))))
+      (program_body_group
+        (command
+          name: (command_name)
+          record: (record
+            (item_sequence
+              item: (item_name)
+              value: (bare_value))))
+        (command
+          name: (command_name)
+          record: (record
+            (item_sequence
+              item: (item_name)
+              value: (number)
+              value: (bare_value)))))
       (end_record
         keyword: (control_keyword)))))
 
@@ -366,23 +372,24 @@ END
       sigil: (program_sigil)
       module: (module_name))
     body: (input_block
-      (command
-        name: (command_name)
-        record: (table_definition
-          item: (item_name)
-          item: (item_name)
-          item: (item_name)
-          item: (item_name))
-        record: (table_row
-          value: (number)
-          value: (number)
-          value: (number)
-          value: (number))
-        record: (table_row
-          value: (number)
-          value: (number)
-          value: (number)
-          value: (number)))
+      (program_body_group
+        (command
+          name: (command_name)
+          record: (table_definition
+            item: (item_name)
+            item: (item_name)
+            item: (item_name)
+            item: (item_name))
+          record: (table_row
+            value: (number)
+            value: (number)
+            value: (number)
+            value: (number))
+          record: (table_row
+            value: (number)
+            value: (number)
+            value: (number)
+            value: (number))))
       (end_record
         keyword: (control_keyword)))))
 
@@ -404,17 +411,18 @@ END
       sigil: (program_sigil)
       module: (module_name))
     body: (input_block
-      (command
-        name: (command_name)
-        record: (record
-          (bare_value)))
-      (invalid_command_record
-        name: (invalid_command)
-        (number))
-      (command
-        name: (command_name)
-        record: (record
-          (bare_value)))
+      (program_body_group
+        (command
+          name: (command_name)
+          record: (record
+            (bare_value)))
+        (invalid_command_record
+          name: (invalid_command)
+          (number))
+        (command
+          name: (command_name)
+          record: (record
+            (bare_value))))
       (end_record
         keyword: (control_keyword))))
   (program
@@ -441,20 +449,22 @@ END
       sigil: (program_sigil)
       module: (module_name))
     body: (input_block
-      (command
-        name: (command_name)
-        record: (record
-          (bare_value)))
+      (program_body_group
+        (command
+          name: (command_name)
+          record: (record
+            (bare_value))))
       (unterminated_input_block)))
   (program
     header: (program_header
       sigil: (program_sigil)
       module: (module_name))
     body: (input_block
-      (command
-        name: (command_name)
-        record: (record
-          (bare_value)))
+      (program_body_group
+        (command
+          name: (command_name)
+          record: (record
+            (bare_value))))
       (end_record
         keyword: (control_keyword)))))
 
@@ -586,16 +596,17 @@ END
       sigil: (program_sigil)
       module: (module_name))
     body: (input_block
-      (invalid_command_record
-        name: (invalid_command)
-        (bare_value)
-        (bare_value)
-        (bare_value))
-      (invalid_command_record
-        name: (invalid_command)
-        (number))
-      (cdb_statement
-        keyword: (cdb_keyword)
-        argument: (bare_value))
+      (program_body_group
+        (invalid_command_record
+          name: (invalid_command)
+          (bare_value)
+          (bare_value)
+          (bare_value))
+        (invalid_command_record
+          name: (invalid_command)
+          (number))
+        (cdb_statement
+          keyword: (cdb_keyword)
+          argument: (bare_value)))
       (end_record
         keyword: (control_keyword)))))

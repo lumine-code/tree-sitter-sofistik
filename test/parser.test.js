@@ -656,15 +656,15 @@ test("preserves command context through flat preprocessor conditionals", () => {
   );
   assert.strictEqual(tree.rootNode.hasError, false);
   assert.strictEqual(
-    tree.rootNode.descendantsOfType("preprocessor_if_header")[0].parent.type,
+    tree.rootNode.descendantsOfType("preprocessor_if_header")[0].parent.parent.type,
     "input_block",
   );
   assert.strictEqual(
-    tree.rootNode.descendantsOfType("preprocessor_else_header")[0].parent.type,
+    tree.rootNode.descendantsOfType("preprocessor_else_header")[0].parent.parent.type,
     "input_block",
   );
   assert.strictEqual(
-    tree.rootNode.descendantsOfType("preprocessor_endif_record")[0].parent.type,
+    tree.rootNode.descendantsOfType("preprocessor_endif_record")[0].parent.parent.type,
     "input_block",
   );
   assert.strictEqual(tree.rootNode.descendantsOfType("implicit_record").length, 3);
@@ -1374,7 +1374,7 @@ test("parses PICT blocks in the input body and the module tail", () => {
   const programs = tree.rootNode.descendantsOfType("program");
   const pictures = tree.rootNode.descendantsOfType("picture_block");
   assert.strictEqual(pictures.length, 2);
-  assert.strictEqual(pictures[0].parent.type, "input_block");
+  assert.strictEqual(pictures[0].parent.parent.type, "input_block");
   assert.strictEqual(pictures[1].parent.id, programs[0].id);
   assert.ok(programs[0].childrenForFieldName("tail").some((node) => node.id === pictures[1].id));
   assert.deepStrictEqual(
