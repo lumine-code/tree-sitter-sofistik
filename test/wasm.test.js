@@ -196,7 +196,7 @@ test("loads the root Wasm grammar with the pinned compatible runtime", () => {
   const runtimePackage = JSON.parse(readFileSync(runtimePackagePath, "utf8"));
   const wasm = readFileSync(wasmPath);
 
-  assert.strictEqual(runtimePackage.version, "0.27.0");
+  assert.strictEqual(runtimePackage.version, "0.27.1");
   assert.ok(WebAssembly.validate(wasm));
   assert.strictEqual(language.name, "sofistik");
   assert.strictEqual(language.abiVersion, TreeSitter.LANGUAGE_VERSION);
