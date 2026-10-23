@@ -4,7 +4,7 @@
   "source": {
     "package": "@lumine-code/sofistik-schema",
     "repository": "https://github.com/lumine-code/sofistik-schema",
-    "commit": "c86b746edb77f3a9e1a3b89f245831d5bbd8ddc4"
+    "commit": "9eff2e2d4ce6a4e96bf42607e097f647a4df2404"
   },
   "schemaDigest": "e6e6ad2fd9bf9da99b17e4e0ea4bea8c4089d52028d244c1584c7a445e18434a",
   "grammarVocabularyDigest": "d77106a81beb9718078898bdae9802921670b05a5b26ef8629342c93af90650c",
@@ -57,7 +57,7 @@
         "picture_block": 9,
         "punctuated_value": 84,
         "string": 24541,
-        "unterminated_double_quoted_string": 3,
+        "unterminated_double_quoted_string": 2,
         "unterminated_input_block": 2,
         "unterminated_single_quoted_string": 1
       },
@@ -120,7 +120,7 @@
         "picture_block": 9,
         "punctuated_value": 84,
         "string": 26652,
-        "unterminated_double_quoted_string": 3,
+        "unterminated_double_quoted_string": 2,
         "unterminated_input_block": 2,
         "unterminated_single_quoted_string": 1
       },
@@ -183,7 +183,7 @@
         "picture_block": 9,
         "punctuated_value": 84,
         "string": 27779,
-        "unterminated_double_quoted_string": 3,
+        "unterminated_double_quoted_string": 2,
         "unterminated_input_block": 2,
         "unterminated_single_quoted_string": 0
       },
@@ -242,7 +242,7 @@
         "picture_block": 9,
         "punctuated_value": 84,
         "string": 28938,
-        "unterminated_double_quoted_string": 3,
+        "unterminated_double_quoted_string": 2,
         "unterminated_input_block": 1,
         "unterminated_single_quoted_string": 1
       },
@@ -301,7 +301,7 @@
         "picture_block": 9,
         "punctuated_value": 84,
         "string": 30556,
-        "unterminated_double_quoted_string": 3,
+        "unterminated_double_quoted_string": 2,
         "unterminated_input_block": 1,
         "unterminated_single_quoted_string": 4
       },
@@ -356,7 +356,7 @@
         "picture_block": 9,
         "punctuated_value": 84,
         "string": 32005,
-        "unterminated_double_quoted_string": 3,
+        "unterminated_double_quoted_string": 2,
         "unterminated_input_block": 1,
         "unterminated_single_quoted_string": 5
       },
@@ -411,7 +411,7 @@
         "picture_block": 9,
         "punctuated_value": 84,
         "string": 31127,
-        "unterminated_double_quoted_string": 3,
+        "unterminated_double_quoted_string": 2,
         "unterminated_input_block": 1,
         "unterminated_single_quoted_string": 5
       },
