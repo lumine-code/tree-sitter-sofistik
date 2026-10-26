@@ -159,7 +159,11 @@ test("distinguishes complete documents from include fragments", () => {
 
 test("ties the recorded official corpus result to the generated schema provenance", () => {
   assert.strictEqual(officialCorpusSummary.formatVersion, 4);
-  assert.deepStrictEqual(officialCorpusSummary.source, provenance.source);
+  // The corpus records the revision actually tested. A metadata-only schema
+  // repin can preserve both content digests without rewriting that history.
+  assert.strictEqual(officialCorpusSummary.source.package, provenance.source.package);
+  assert.strictEqual(officialCorpusSummary.source.repository, provenance.source.repository);
+  assert.match(officialCorpusSummary.source.commit, /^[a-f0-9]{40}$/);
   assert.strictEqual(officialCorpusSummary.schemaDigest, provenance.schemaDigest);
   assert.strictEqual(
     officialCorpusSummary.grammarVocabularyDigest,
