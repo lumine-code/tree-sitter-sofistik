@@ -68,7 +68,11 @@ module.exports = grammar({
       ),
 
     unscoped_record: ($) =>
-      seq(field("value", $.bare_value), repeat(field("value", $._record_element)), $._record_end),
+      seq(
+        field("value", choice($.bare_value, $.string, $.unterminated_string)),
+        repeat(field("value", $._record_element)),
+        $._record_end,
+      ),
 
     program: ($) =>
       prec.right(

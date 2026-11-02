@@ -496,10 +496,13 @@ static bool remaining_line_needs_record(TSLexer *lexer) {
     lexer->lookahead && lexer->lookahead != '\r' &&
     lexer->lookahead != '\n'
   ) {
-    // Unknown-module include fragments still contain comments and continued
-    // records. Keep those markers visible instead of swallowing the line in
-    // IGNORED_TEXT; the regular value scanner protects markers in strings.
-    if (lexer->lookahead == '!') {
+    // Unknown-module include fragments still contain strings, comments and
+    // continued records. Keep those values visible instead of swallowing the
+    // line in IGNORED_TEXT; the regular scanner protects markers in strings.
+    if (
+      lexer->lookahead == '\'' || lexer->lookahead == '"' ||
+      lexer->lookahead == '!'
+    ) {
       return true;
     }
     if (lexer->lookahead == '$') {
@@ -1041,6 +1044,7 @@ static bool scan_non_word_bare(
     valid_symbols[IGNORED_TEXT] &&
     scanner->command == SOFISTIK_UNKNOWN_ID && !is_template_define(scanner)
   ) {
+    extend_bare_with_attached_quote(lexer);
     lexer->mark_end(lexer);
     if (
       scanner->module == SOFISTIK_UNKNOWN_ID &&
@@ -1341,6 +1345,7 @@ static bool scan_word(
         valid_symbols[IGNORED_TEXT] &&
         scanner->command == SOFISTIK_UNKNOWN_ID && !is_template_define(scanner)
       ) {
+        extend_bare_with_attached_quote(lexer);
         if (
           scanner->module == SOFISTIK_UNKNOWN_ID &&
           remaining_line_needs_record(lexer)
@@ -1534,6 +1539,7 @@ static bool scan_word(
       valid_symbols[IGNORED_TEXT] &&
       scanner->command == SOFISTIK_UNKNOWN_ID && !is_template_define(scanner)
     ) {
+      extend_bare_with_attached_quote(lexer);
       if (
         scanner->module == SOFISTIK_UNKNOWN_ID &&
         remaining_line_needs_record(lexer)
@@ -2342,6 +2348,7 @@ bool tree_sitter_sofistik_external_scanner_scan(
   if (
     (lexer->lookahead == '\'' || lexer->lookahead == '"') &&
     valid_symbols[IGNORED_TEXT] &&
+    scanner->module != SOFISTIK_UNKNOWN_ID &&
     (!valid_symbols[BARE_WORD] || scanner->command == SOFISTIK_UNKNOWN_ID) &&
     !is_template_define(scanner)
   ) {

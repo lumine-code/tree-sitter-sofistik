@@ -456,6 +456,118 @@ function registerParserRegressions(test, createParser) {
     }
   });
 
+  test("recognizes quoted values without an initial module or trailing comment", () => {
+    const parser = createParser();
+    try {
+      for (const newline of ["\n", "\r\n"]) {
+        for (const finalNewline of ["", newline]) {
+          const lines = [
+            "LC 1 TYPE \"G_1 \" CST 10 REF 'PART' SUP PERM",
+            "LC 2 TYPE \"P_0 \" CST 20 REF 'PART' SUP PERM $ prestress",
+            "LC 3 TYPE \"C_1 \" CST 30 REF 'PART' SUP PERM",
+            '1 "number prefix"',
+            "-1 'signed prefix'",
+            "'$$ ! // #literal' \"literal\"",
+            "\"$(name)\" '#literal'",
+            "plain ''doubled single''",
+            'plain ""doubled double""',
+            'plain "unfinished',
+          ];
+          const source = lines.join(newline) + finalNewline;
+          const tree = parser.parse(source);
+          try {
+            assert.equal(tree.rootNode.hasError, false, tree.rootNode.toString());
+            for (const type of ["module_name", "command_name", "invalid_command", "ignored_text"])
+              assert.deepEqual(texts(tree, type), [], source);
+            assert.deepEqual(texts(tree, "double_quoted_string"), [
+              '"G_1 "',
+              '"P_0 "',
+              '"C_1 "',
+              '"number prefix"',
+              '"literal"',
+              '"$(name)"',
+            ]);
+            assert.deepEqual(texts(tree, "single_quoted_string"), [
+              "'PART'",
+              "'PART'",
+              "'PART'",
+              "'signed prefix'",
+              "'$$ ! // #literal'",
+              "'#literal'",
+            ]);
+            assert.deepEqual(texts(tree, "single_doubled_quoted_string"), ["''doubled single''"]);
+            assert.deepEqual(texts(tree, "double_doubled_quoted_string"), ['""doubled double""']);
+            assert.deepEqual(texts(tree, "unterminated_double_quoted_string"), ['"unfinished']);
+            assert.deepEqual(texts(tree, "comment"), ["$ prestress"]);
+            assert.deepEqual(texts(tree, "continuation"), []);
+            assert.deepEqual(texts(tree, "hash_variable"), []);
+            assert.deepEqual(texts(tree, "dollar_variable"), ["$(name)"]);
+          } finally {
+            release(tree);
+          }
+        }
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
+  test("keeps attached quotes in module-free bare values", () => {
+    const parser = createParser();
+    try {
+      for (const prefix of ["It's", 'label"suffix', "-label's"]) {
+        const neutral = parser.parse(`${prefix} a description`);
+        const quoted = parser.parse(`${prefix} 'single' "double"`);
+        try {
+          assert.equal(neutral.rootNode.hasError, false);
+          assert.deepEqual(texts(neutral, "ignored_text"), [`${prefix} a description`]);
+          assert.equal(quoted.rootNode.hasError, false);
+          assert.deepEqual(texts(quoted, "string"), ["'single'", '"double"']);
+          assert.deepEqual(texts(quoted, "unterminated_string"), []);
+          assert.equal(texts(quoted, "bare_value")[0], prefix);
+        } finally {
+          release(neutral, quoted);
+        }
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
+  test("updates module-free quoted values incrementally", () => {
+    const parser = createParser();
+    let source = "LC 1 TYPE \"G_1 \" REF 'PART'\nLC 2 TYPE \"C_1 \" REF 'PART'\n";
+    let tree = parser.parse(source);
+    try {
+      for (const nextSource of [
+        source.replace('"G_1 "', '"G_1 " $ comment'),
+        source,
+        source.replaceAll('"', ""),
+        source,
+        source.replace('"G_1 "', '"G_1 '),
+        source,
+        source.slice(0, -1),
+      ]) {
+        editTree(tree, source, nextSource);
+        const incremental = parser.parse(nextSource, tree);
+        const fresh = parser.parse(nextSource);
+        try {
+          assert.equal(incremental.rootNode.hasError, false);
+          assert.deepEqual(snapshot(incremental.rootNode), snapshot(fresh.rootNode));
+          assert.deepEqual(texts(incremental, "ignored_text"), []);
+          assert.deepEqual(texts(incremental, "string"), texts(fresh, "string"));
+        } finally {
+          release(fresh);
+        }
+        release(tree);
+        tree = incremental;
+        source = nextSource;
+      }
+    } finally {
+      release(tree, parser);
+    }
+  });
+
   test("updates unscoped continuation markers incrementally", () => {
     const parser = createParser();
     let source = "del#n2s ; sto#n2s 0 $$\n0 $$\n0 $$\n0 $$\n";
