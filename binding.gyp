@@ -10,6 +10,7 @@
       ],
       "sources": [
         "bindings/node/binding.cc",
+        "def/src/parser.c",
         "src/parser.c",
         "src/scanner.c"
       ],

@@ -8,6 +8,12 @@
       "file-types": ["dat", "gra", "grb", "results", "include"]
     },
     {
+      "name": "sofistik_def",
+      "scope": "source.sofistik.def",
+      "path": "def",
+      "file-types": ["sofistik.def"]
+    },
+    {
       "name": "sofistik_aqua",
       "scope": "source.sofistik.include.aqua",
       "path": "include/aqua",

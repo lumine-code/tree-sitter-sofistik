@@ -6,7 +6,7 @@ Parses SOFiSTiK CADINP input with Tree-sitter.
 
 ## Features
 
-- **Grammar**: provides a Tree-sitter grammar for CADINP input.
+- **Grammars**: provides Tree-sitter grammars for CADINP input and sofistik.def configuration files.
 - **Context**: restricts commands and items to the program that owns them.
 - **Scope directives**: treats `$PROG` as a module context marker for include fragments rather than an executable program.
 - **Include fragments**: provides AQUA, SOFIMSHC, SOFILOAD, DECREATOR and TENDON variants for records without a PROG header.
@@ -36,6 +36,15 @@ parser.setLanguage(SOFiSTiK);
 const tree = parser.parse("+PROG AQUA\nHEAD Example\nEND\n");
 ```
 
+Select `SOFiSTiK.def` to parse `sofistik.def` configuration files:
+
+```js
+parser.setLanguage(SOFiSTiK.def);
+const definitions = parser.parse("[SOFiSTiK]\nSOFISTIK_C=49\n");
+```
+
+Definition files split assignments at the first `=`. Leading indentation is ignored, but whitespace before `=` belongs to the key and the entire remainder is a literal value, including whitespace, `#`, `;`, quotes, and additional `=` signs. Bracketed section headers have their own nodes. Lines without `=` are ignored by SOFiSTiK and represented as `comment` nodes.
+
 ## Building
 
 ```sh
@@ -59,7 +68,7 @@ The native and WebAssembly regression suites share fixtures for Unicode content,
 
 An `input_block` contains `program_body_group` nodes grouping up to 64 body elements, followed by its terminator. These groups are storage boundaries, not CADINP scopes; consumers looking for statements should traverse descendants instead of assuming their immediate parent is `input_block`. Visible groups let Tree-sitter skip unchanged parts during changed-range comparison as well as parsing. Group boundaries may move after edits.
 
-`npm run build:wasm` builds the base parser and all five include variants. It uses the ecosystem manager's pinned CLI when present and the same exact repository pin elsewhere. Include variants live under `include/<module>` and reuse the root generated parser and scanner through small C wrappers. Their `src/grammar.json` files supply build names; syntax is inherited from the root `grammar.js`, so no separate generated parser tables need maintaining.
+`npm run build:wasm` builds the base parser, the independent `def/sofistik-def.wasm` configuration parser, and all five include variants. It uses the ecosystem manager's pinned CLI when present and the same exact repository pin elsewhere. The configuration grammar lives in `def/grammar.js` and exposes the language name `sofistik_def`. Include variants live under `include/<module>` and reuse the root generated parser and scanner through small C wrappers. Their `src/grammar.json` files supply build names; syntax is inherited from the root `grammar.js`, so no separate generated parser tables need maintaining.
 
 An include variant begins in its module's context: `aqa.include` uses AQUA, `msh.include` uses SOFIMSHC, `lfd.include` uses SOFILOAD, `dsn.include` uses DECREATOR, and `spt.include` or `tnd.include` uses TENDON. Explicit `PROG` and `$PROG` directives override that initial context, while `APPLY`, `SYS` and unknown modules clear it. Repeated `END` records preserve the selected module as they do in ordinary CADINP input. The shared syntax retains the Tree-sitter language name `sofistik` in every variant.
 

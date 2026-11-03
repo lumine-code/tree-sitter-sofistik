@@ -1,3 +1,5 @@
 schema/*.json
 src/grammar.json
 src/node-types.json
+def/src/grammar.json
+def/src/node-types.json

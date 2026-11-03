@@ -11,6 +11,9 @@ const generatedFiles = [
   ["src/parser.c", "parser.c"],
   ["src/schema.h", "schema.h"],
   ["schema/provenance.json", "provenance.json"],
+  ["def/src/grammar.json", "def/grammar.json"],
+  ["def/src/node-types.json", "def/node-types.json"],
+  ["def/src/parser.c", "def/parser.c"],
 ];
 
 function run(command, args) {
@@ -38,6 +41,13 @@ try {
     "--output",
     temporaryDirectory,
     path.join(root, "grammar.js"),
+  ]);
+  run(process.execPath, [
+    require.resolve("tree-sitter-cli/cli.js"),
+    "generate",
+    "--output",
+    path.join(temporaryDirectory, "def"),
+    path.join(root, "def", "grammar.js"),
   ]);
 
   const staleFiles = generatedFiles.filter(([expectedFile, generatedFile]) => {

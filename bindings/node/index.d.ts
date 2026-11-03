@@ -22,5 +22,5 @@ type Language = {
   nodeTypeInfo: NodeInfo[];
 };
 
-declare const language: Language;
+declare const language: Language & { def: Language };
 export = language;

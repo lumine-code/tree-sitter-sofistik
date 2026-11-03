@@ -9,3 +9,9 @@ try {
 } catch {
   // The generated node types are unavailable before the first grammar build.
 }
+
+try {
+  module.exports.def.nodeTypeInfo = require("../../def/src/node-types.json");
+} catch {
+  // The generated node types are unavailable before the first grammar build.
+}
