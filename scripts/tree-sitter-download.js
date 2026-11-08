@@ -3,21 +3,22 @@ const path = require("node:path");
 const https = require("node:https");
 const { createHash } = require("node:crypto");
 const { Readable } = require("node:stream");
+const { releaseMetadata, releaseAsset } = require("./github-release");
 
 const releaseAPI = "https://api.github.com/repos/tree-sitter/tree-sitter/releases";
 const maxArchiveBytes = 64 * 1024 * 1024;
 
-async function releaseBytes(url, fetch) {
+async function releaseBytes(url, fetch, token) {
   const [, tag, filename] =
     /^https:\/\/github\.com\/tree-sitter\/tree-sitter\/releases\/download\/([^/?#]+)\/(tree-sitter-[a-z0-9-]+\.gz)$/.exec(
       url,
     );
   const signal = AbortSignal.timeout(120000);
-  const metadata = await fetch(`${releaseAPI}/tags/${tag}`, {
-    headers: { Accept: "application/vnd.github+json" },
-    signal,
-  });
-  if (!metadata.ok) throw new Error(`Tree-sitter release API returned HTTP ${metadata.status}`);
+  const metadata = await releaseMetadata(`${releaseAPI}/tags/${tag}`, fetch, signal, token);
+  if (!metadata.ok) {
+    await metadata.body?.cancel();
+    throw new Error(`Tree-sitter release API returned HTTP ${metadata.status}`);
+  }
   const release = await metadata.json();
   const assets = release.assets?.filter(
     (asset) => asset.name === filename && asset.browser_download_url === url,
@@ -36,11 +37,11 @@ async function releaseBytes(url, fetch) {
   ) {
     throw new Error("The official Tree-sitter asset lacks a valid size, identifier or SHA-256");
   }
-  const response = await fetch(`${releaseAPI}/assets/${asset.id}`, {
-    headers: { Accept: "application/octet-stream" },
-    signal,
-  });
-  if (!response.ok) throw new Error(`Tree-sitter asset API returned HTTP ${response.status}`);
+  const response = await releaseAsset(`${releaseAPI}/assets/${asset.id}`, fetch, signal, token);
+  if (!response.ok) {
+    await response.body?.cancel();
+    throw new Error(`Tree-sitter asset API returned HTTP ${response.status}`);
+  }
   const chunks = [];
   const hash = createHash("sha256");
   let size = 0;
@@ -58,7 +59,7 @@ async function releaseBytes(url, fetch) {
   return Buffer.concat(chunks);
 }
 
-function downloadTransport(get, fetch, version, report = console.error) {
+function downloadTransport(get, fetch, version, report = console.error, token) {
   return function download(...args) {
     const [input, callback] = args;
     const url =
@@ -79,7 +80,7 @@ function downloadTransport(get, fetch, version, report = console.error) {
       }
       response.resume();
       report(`Downloading ${match[2]} through the official GitHub release asset API.`);
-      releaseBytes(url, fetch).then(
+      releaseBytes(url, fetch, token).then(
         (bytes) => {
           const verified = Readable.from([bytes]);
           verified.statusCode = 200;
@@ -117,7 +118,13 @@ if (
     !process.env.HTTPS_PROXY &&
     !process.env.https_proxy
   ) {
-    https.get = downloadTransport(https.get, globalThis.fetch, pin);
+    https.get = downloadTransport(
+      https.get,
+      globalThis.fetch,
+      pin,
+      console.error,
+      process.env.GITHUB_TOKEN,
+    );
   }
 }
 

@@ -14,6 +14,10 @@ test("the workflow preload path survives Node option parsing, including spaces a
   try {
     const preload = path.join(directory, "tree-sitter-download.js");
     fs.copyFileSync(path.join(__dirname, "tree-sitter-download.js"), preload);
+    fs.copyFileSync(
+      path.join(__dirname, "github-release.js"),
+      path.join(directory, "github-release.js"),
+    );
     const env = {
       ...process.env,
       NODE_OPTIONS: `--require ${JSON.stringify(preload)}`,
@@ -89,7 +93,12 @@ const asset = {
   digest: `sha256:${createHash("sha256").update(archive).digest("hex")}`,
 };
 
-function fixture(status, metadata = { tag_name: "v0.27.2", assets: [asset] }, bytes = archive) {
+function fixture(
+  status,
+  metadata = { tag_name: "v0.27.2", assets: [asset] },
+  bytes = archive,
+  token,
+) {
   const original = Readable.from([]);
   original.statusCode = status;
   const request = {};
@@ -107,9 +116,27 @@ function fixture(status, metadata = { tag_name: "v0.27.2", assets: [asset] }, by
     },
     "0.27.2",
     (message) => messages.push(message),
+    token,
   );
   return { get, original, request, calls, messages };
 }
+
+test("the lifecycle transport passes an explicitly supplied fixture token only to the API", async () => {
+  const token = "fixture-token-not-a-credential";
+  const f = fixture(504, undefined, undefined, token);
+  const response = await new Promise((resolve) => f.get(url, resolve));
+  assert.equal(response.statusCode, 200);
+  for (const call of f.calls.slice(1)) {
+    assert.equal(new URL(call.url).hostname, "api.github.com");
+    assert.equal(call.options.headers.Authorization, `Bearer ${token}`);
+  }
+  assert.equal(f.calls[1].options.redirect, "error");
+  assert.equal(f.calls[2].options.redirect, "manual");
+  assert.equal(
+    f.messages.some((message) => message.includes(token)),
+    false,
+  );
+});
 
 for (const status of [408, 429, 500, 504, 599]) {
   test(`official HTTP ${status} uses the same asset and verifies its digest`, async () => {
