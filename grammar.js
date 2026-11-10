@@ -396,7 +396,7 @@ module.exports = grammar({
         choice(
           seq(
             token(prec(20, "=")),
-            repeat1(choice($.dollar_variable, $.hash_variable, $.string, $.preprocessor_literal)),
+            repeat(choice($.dollar_variable, $.hash_variable, $.string, $.preprocessor_literal)),
           ),
           $._preprocessor_recovery_value,
         ),

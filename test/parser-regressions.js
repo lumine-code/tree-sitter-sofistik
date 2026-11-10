@@ -816,6 +816,126 @@ function registerParserRegressions(test, createParser) {
     }
   });
 
+  test("keeps empty inline DEFINE values on their own lines", () => {
+    const parser = createParser();
+    try {
+      for (const newline of ["\n", "\r\n"]) {
+        for (const finalNewline of ["", newline]) {
+          for (const [opening, closing] of [
+            [[], []],
+            [["+PROG TEMPLATE"], ["END"]],
+            [["+PROG TEMPLATE", "END"], []],
+          ]) {
+            for (const comment of ["", " ! empty", " $ empty", " // empty"]) {
+              const definitions = [`#define asetxt1 =${comment}`, "#define asetxt2 ="];
+              const source =
+                [...opening, ...definitions, "LET#next 1", ...closing].join(newline) + finalNewline;
+              const tree = parser.parse(source);
+              try {
+                assert.equal(tree.rootNode.hasError, false, source);
+                assert.deepEqual(
+                  texts(tree, "preprocessor_keyword"),
+                  ["#define", "#define"],
+                  source,
+                );
+                assert.deepEqual(texts(tree, "preprocessor_name"), ["asetxt1", "asetxt2"], source);
+                assert.deepEqual(texts(tree, "preprocessor_value"), ["=", "="], source);
+                assert.deepEqual(texts(tree, "preprocessor_define_header"), [], source);
+                assert.deepEqual(texts(tree, "ignored_text"), [], source);
+                assert.deepEqual(texts(tree, "variable_keyword"), ["LET"], source);
+                assert.deepEqual(texts(tree, "hash_variable_name"), ["#next"], source);
+                assert.deepEqual(texts(tree, "comment"), comment ? [comment.trim()] : [], source);
+                assert.deepEqual(
+                  texts(tree, "preprocessor_define_statement"),
+                  definitions.map((definition) => definition + newline),
+                  source,
+                );
+                for (const value of tree.rootNode.descendantsOfType("preprocessor_value")) {
+                  assert.equal(value.endPosition.row, value.startPosition.row, source);
+                }
+              } finally {
+                release(tree);
+              }
+            }
+          }
+        }
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
+  test("keeps TEMPLATE command validation active after empty inline DEFINE values", () => {
+    const parser = createParser();
+    try {
+      for (const comment of ["", " ! empty", " $ empty", " // empty"]) {
+        const source = `+PROG TEMPLATE\n#define asetxt1 =${comment}\n#define asetxt2 =\nDSLC 1\nEND\n`;
+        const tree = parser.parse(source);
+        try {
+          assert.equal(tree.rootNode.hasError, false, source);
+          assert.deepEqual(texts(tree, "preprocessor_value"), ["=", "="], source);
+          assert.deepEqual(texts(tree, "preprocessor_define_header"), [], source);
+          assert.deepEqual(texts(tree, "invalid_command"), ["DSLC"], source);
+        } finally {
+          release(tree);
+        }
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
+  test("preserves following statements after removing and restoring an inline DEFINE value", () => {
+    const parser = createParser();
+    try {
+      for (const newline of ["\n", "\r\n"]) {
+        for (const [opening, closing] of [
+          [[], []],
+          [["+PROG TEMPLATE"], ["END"]],
+          [["+PROG TEMPLATE", "END"], []],
+        ]) {
+          const before = [
+            ...opening,
+            "#define asetxt1 = initial",
+            "#define asetxt2 =",
+            "LET#next 1",
+            ...closing,
+          ].join(newline);
+          const empty = before.replace("= initial", "=");
+          for (const [original, updated] of [
+            [before, empty],
+            [empty, before],
+          ]) {
+            const tree = parser.parse(original);
+            let incremental, fresh;
+            try {
+              editTree(tree, original, updated);
+              incremental = parser.parse(updated, tree);
+              fresh = parser.parse(updated);
+              assert.equal(fresh.rootNode.hasError, false, updated);
+              assert.deepEqual(snapshot(incremental.rootNode), snapshot(fresh.rootNode), updated);
+              assert.deepEqual(
+                texts(incremental, "preprocessor_name"),
+                ["asetxt1", "asetxt2"],
+                updated,
+              );
+              assert.deepEqual(
+                texts(incremental, "preprocessor_value"),
+                [updated === empty ? "=" : "= initial", "="],
+                updated,
+              );
+              assert.deepEqual(texts(incremental, "variable_keyword"), ["LET"], updated);
+            } finally {
+              release(tree, incremental, fresh);
+            }
+          }
+        }
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
   test("ends tables before scalar and block DEFINE headers without losing their module", () => {
     const parser = createParser();
     try {
