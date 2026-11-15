@@ -41,7 +41,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@lumine-code/sofistik-schema": "github:lumine-code/sofistik-schema#bd3a5786560a01c4d725b2b0dad0aaec97078be3",
-    "eslint": "^10.14.0",
+    "eslint": "^10.15.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.14.0",
     "prettier": "^3.10.1",
@@ -74,7 +74,7 @@
     "test:wasm": "node --test test/wasm.test.js test/wasm-def.test.js test/wasm-regressions.test.js test/wasm-includes.test.js"
   },
   "overrides": {
-    "eslint@^10.14.0": {
+    "eslint@^10.15.0": {
       "minimatch": "11.0.8"
     },
     "@eslint/config-array@0.23.5": {
