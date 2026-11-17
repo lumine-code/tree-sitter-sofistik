@@ -40,7 +40,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@lumine-code/sofistik-schema": "github:lumine-code/sofistik-schema#889dda67e4099d82828ea741e654310c591ba1ff",
+    "@lumine-code/sofistik-schema": "github:lumine-code/sofistik-schema#44764ec92f52068a691b36e76be82c2d03d9a646",
     "eslint": "^10.15.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.14.0",
