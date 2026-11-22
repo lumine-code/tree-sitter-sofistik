@@ -76,11 +76,20 @@ function buildResolverVocabulary(schemaProvider = getSchemaProvider()) {
         if (!modules.has(moduleName)) modules.set(moduleName, new Map());
         const module = modules.get(moduleName);
         for (const [commandName, command] of Object.entries(commands)) {
-          if (!module.has(commandName)) module.set(commandName, new Set());
-          const values = module.get(commandName);
+          if (!module.has(commandName)) {
+            module.set(commandName, { values: new Set(), itemValues: new Map() });
+          }
+          const { values, itemValues } = module.get(commandName);
           for (const form of command.forms) {
             for (const slot of form.slots) {
-              for (const value of slot.enumValues) values.add(String(value).toUpperCase());
+              for (const value of slot.enumValues) {
+                const word = String(value).toUpperCase();
+                values.add(word);
+                if (slot.name && /^[A-Z_][A-Z0-9_]*$/.test(word)) {
+                  if (!itemValues.has(slot.name)) itemValues.set(slot.name, new Set());
+                  itemValues.get(slot.name).add(word);
+                }
+              }
             }
           }
         }
@@ -92,7 +101,10 @@ function buildResolverVocabulary(schemaProvider = getSchemaProvider()) {
     [...modules].map(([moduleName, commands]) => [
       moduleName,
       Object.fromEntries(
-        [...commands].map(([commandName, values]) => [commandName, [...values].sort()]),
+        [...commands].map(([commandName, { values, itemValues }]) => [
+          commandName,
+          { values: [...values].sort(), itemValues },
+        ]),
       ),
     ]),
   );
@@ -107,6 +119,7 @@ function buildTables(vocabulary, resolverVocabulary = {}) {
   const commands = [];
   const items = [];
   const commandValues = [];
+  const assignedItemCollisions = [];
   const globalCommands = new Set(Object.keys(basic));
   for (const [moduleName, commandMap] of Object.entries(vocabulary.modules)) {
     for (const commandName of Object.keys({
@@ -129,10 +142,20 @@ function buildTables(vocabulary, resolverVocabulary = {}) {
       }
       const itemStart = items.length;
       const valueStart = commandValues.length;
-      const resolverValues = resolverCommandMap[commandName] || [];
+      const { values = [], itemValues } = resolverCommandMap[commandName] || {};
 
       items.push(...commandItems);
-      commandValues.push(...resolverValues.filter((value) => globalCommands.has(value)));
+      commandValues.push(...values.filter((value) => globalCommands.has(value)));
+      if (itemValues) {
+        for (const [index, name] of commandItems.entries()) {
+          const candidates = itemValues.get(name);
+          if (!candidates) continue;
+          for (const value of commandItems) {
+            if (candidates.has(value))
+              assignedItemCollisions.push({ item: itemStart + index, value });
+          }
+        }
+      }
       commands.push({
         name: commandName,
         itemStart,
@@ -155,9 +178,11 @@ function buildTables(vocabulary, resolverVocabulary = {}) {
     };
     const resolverCommandMap = { ...(resolverVocabulary[moduleName] || {}) };
     for (const [commandName, values] of Object.entries(COMMAND_VALUE_OVERRIDES[moduleName] || {})) {
-      resolverCommandMap[commandName] = [
-        ...new Set([...(resolverCommandMap[commandName] || []), ...values]),
-      ].sort();
+      const command = resolverCommandMap[commandName];
+      resolverCommandMap[commandName] = {
+        ...command,
+        values: [...new Set([...(command?.values ?? []), ...values])].sort(),
+      };
     }
     appendCommands(commandMap, resolverCommandMap);
 
@@ -188,6 +213,7 @@ function buildTables(vocabulary, resolverVocabulary = {}) {
     commands,
     items,
     commandValues,
+    assignedItemCollisions,
     globalCommands: [...globalCommands].sort(),
   };
 }
@@ -221,6 +247,11 @@ typedef struct {
   uint32_t value_count;
 } SofistikCommandSchema;
 
+typedef struct {
+  uint32_t item;
+  const char *value;
+} SofistikAssignedItemCollision;
+
 static const SofistikModuleSchema SOFISTIK_MODULES[] = {
 ${rows(tables.modules, (entry) => `{${cString(entry.name)}, ${entry.commandStart}, ${entry.commandCount}}`)}
 };
@@ -237,6 +268,10 @@ static const char *const SOFISTIK_COMMAND_VALUES[] = {
 ${rows(tables.commandValues, cString)}
 };
 
+static const SofistikAssignedItemCollision SOFISTIK_ASSIGNED_ITEM_COLLISIONS[] = {
+${rows(tables.assignedItemCollisions, (entry) => `{${entry.item}, ${cString(entry.value)}}`)}
+};
+
 static const char *const SOFISTIK_GLOBAL_COMMANDS[] = {
 ${rows(tables.globalCommands, cString)}
 };
@@ -247,6 +282,7 @@ ${rows(tables.globalCommands, cString)}
 #define SOFISTIK_COMMAND_COUNT ${tables.commands.length}u
 #define SOFISTIK_ITEM_COUNT ${tables.items.length}u
 #define SOFISTIK_COMMAND_VALUE_COUNT ${tables.commandValues.length}u
+#define SOFISTIK_ASSIGNED_ITEM_COLLISION_COUNT ${tables.assignedItemCollisions.length}u
 #define SOFISTIK_GLOBAL_COMMAND_COUNT ${tables.globalCommands.length}u
 
 #endif

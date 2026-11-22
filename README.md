@@ -62,11 +62,13 @@ npm run generate
 npm run check:generated
 ```
 
-The compact `src/schema.h` scanner tables derive commands and items from `getGrammarVocabulary()` and retain only enum values that collide with command names for resolver disambiguation. `schema/provenance.json` records the exact schema commit together with the complete schema and grammar-vocabulary digests; the full versioned schema remains owned by `@lumine-code/sofistik-schema` and is not copied into this repository.
+The compact `src/schema.h` scanner tables derive commands and items from `getGrammarVocabulary()`. They also record enum words that overlap command names or an item name in an explicit `ITEM=value` assignment so the parser can distinguish those roles. `schema/provenance.json` records the exact schema commit and the complete schema and grammar-vocabulary digests. The complete versioned schema lives in `@lumine-code/sofistik-schema`.
 
 The native and WebAssembly regression suites share fixtures for Unicode content, table and command boundaries, and incremental edits. Complexity checks count lexer advances and parser steps so failed TEXT substitutions and edits in large record groups are tested independently of machine speed.
 
 An `input_block` contains `program_body_group` nodes grouping up to 64 body elements, followed by its terminator. These groups are storage boundaries, not CADINP scopes; consumers looking for statements should traverse descendants instead of assuming their immediate parent is `input_block`. Visible groups let Tree-sitter skip unchanged parts during changed-range comparison as well as parsing. Group boundaries may move after edits.
+
+A table command keeps its header in the `record` field of `command`. Its `table_body_group` children hold up to 64 body elements each, with a `record` field for each table row and an `auxiliary` field for each preprocessor directive. Rows starting on an indented line include the indentation in their range. Their value fields still start at the first character of each value. Like program body groups, these nodes can move after edits and do not affect CADINP scope.
 
 `npm run build:wasm` builds the base parser, the independent `def/sofistik-def.wasm` configuration parser, and all five include variants. It uses the ecosystem manager's pinned CLI when present and the same exact repository pin elsewhere. The configuration grammar lives in `def/grammar.js` and exposes the language name `sofistik_def`. Include variants live under `include/<module>` and reuse the root generated parser and scanner through small C wrappers. Their `src/grammar.json` files supply build names; syntax is inherited from the root `grammar.js`, so no separate generated parser tables need maintaining.
 

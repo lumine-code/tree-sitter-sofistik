@@ -226,13 +226,19 @@
           {
             "type": "table_definition",
             "named": true
-          },
-          {
-            "type": "table_row",
-            "named": true
           }
         ]
       }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "table_body_group",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -2211,6 +2217,32 @@
           "named": true
         }
       ]
+    }
+  },
+  {
+    "type": "table_body_group",
+    "named": true,
+    "fields": {
+      "auxiliary": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "preprocessor_directive",
+            "named": true
+          }
+        ]
+      },
+      "record": {
+        "multiple": true,
+        "required": false,
+        "types": [
+          {
+            "type": "table_row",
+            "named": true
+          }
+        ]
+      }
     }
   },
   {

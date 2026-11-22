@@ -380,16 +380,17 @@ END
             item: (item_name)
             item: (item_name)
             item: (item_name))
-          record: (table_row
-            value: (number)
-            value: (number)
-            value: (number)
-            value: (number))
-          record: (table_row
-            value: (number)
-            value: (number)
-            value: (number)
-            value: (number))))
+          (table_body_group
+            record: (table_row
+              value: (number)
+              value: (number)
+              value: (number)
+              value: (number))
+            record: (table_row
+              value: (number)
+              value: (number)
+              value: (number)
+              value: (number)))))
       (end_record
         keyword: (control_keyword)))))
 
@@ -573,10 +574,11 @@ END
         item: (item_name)
         item: (item_name)
         item: (item_name))
-      record: (table_row
-        value: (number)
-        value: (number)
-        value: (number)))
+      (table_body_group
+        record: (table_row
+          value: (number)
+          value: (number)
+          value: (number))))
     tail: (end_record
       keyword: (control_keyword))))
 

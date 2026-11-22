@@ -47,6 +47,8 @@ module.exports = grammar({
     $._table_row_start,
     $._command_end,
     $._mojibake_bom,
+    $._item_name_before_assignment,
+    $._table_indent,
     $._error_sentinel,
   ],
 
@@ -166,7 +168,7 @@ module.exports = grammar({
         seq(
           field("name", $.command_name),
           choice(
-            seq(field("record", $.table_definition), repeat($._table_body_group)),
+            seq(field("record", $.table_definition), repeat($.table_body_group)),
             seq(field("record", $.record), repeat($._command_body_group)),
           ),
           // Commit the command before lexing its successor in the outer scope.
@@ -175,15 +177,20 @@ module.exports = grammar({
         ),
       ),
 
-    _table_body_group: ($) => boundedChunk($._table_body_chunk),
+    // Changed-range comparison can skip unchanged groups instead of visiting every table row.
+    table_body_group: ($) => boundedChunk($._table_body_chunk),
 
     _table_body_chunk: ($) => boundedChunk($._table_body),
 
+    // An indent can stand alone before the next statement closes the table.
     _table_body: ($) =>
-      choice(
-        field("record", $.table_row),
-        $._line_end,
-        field("auxiliary", $.preprocessor_directive),
+      prec.right(
+        choice(
+          field("record", $.table_row),
+          seq(optional($._table_indent), $._line_end),
+          seq(optional($._table_indent), field("auxiliary", $.preprocessor_directive)),
+          $._table_indent,
+        ),
       ),
 
     _command_body_group: ($) => boundedChunk($._command_body_chunk),
@@ -228,7 +235,19 @@ module.exports = grammar({
       choice($.item_sequence, $._value, $._value_separator, $._continued_line),
 
     item_sequence: ($) =>
-      prec.right(seq(field("item", $.item_name), repeat(field("value", $._separated_value)))),
+      prec.right(
+        seq(
+          choice(
+            field("item", $.item_name),
+            seq(
+              field("item", alias($._item_name_before_assignment, $.item_name)),
+              field("value", $.expression),
+              field("value", $.bare_value),
+            ),
+          ),
+          repeat(field("value", $._separated_value)),
+        ),
+      ),
 
     // The scanner recognizes an all-item header once, so subsequent rows do
     // not keep an alternative implicit-record parse alive for the whole table.
@@ -243,6 +262,7 @@ module.exports = grammar({
     // statement, without consuming the word while closing the prior command.
     table_row: ($) =>
       seq(
+        optional($._table_indent),
         $._table_row_start,
         field("value", $._value),
         repeat(choice($._value_separator, field("value", $._value))),

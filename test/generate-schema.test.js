@@ -47,10 +47,13 @@ const fixtureMetadata = {
 };
 const fixtureResolverVocabulary = {
   BASIC: {
-    HEAD: ["PAGE", "PLAIN"],
+    HEAD: { values: ["PAGE", "PLAIN"] },
   },
   AQUA: {
-    CONC: ["HEAD", "LOCAL"],
+    CONC: {
+      values: ["HEAD", "LOCAL", "NO", "TITL"],
+      itemValues: new Map([["TYPE", new Set(["HEAD", "NO", "TITL"])]]),
+    },
   },
 };
 
@@ -95,11 +98,19 @@ test("keeps command-like enum values local to their active command", () => {
   assert.deepStrictEqual(tables.commandValues, ["PAGE", "HEAD"]);
 });
 
+test("keeps explicit assignment collisions only between items of the same command", () => {
+  const tables = buildTables(fixtureVocabulary, fixtureResolverVocabulary);
+  assert.deepStrictEqual(tables.assignedItemCollisions, [
+    { item: tables.items.indexOf("TYPE"), value: "NO" },
+  ]);
+});
+
 test("collects resolver values from every pinned schema", () => {
   const resolverVocabulary = buildResolverVocabulary();
-  assert.ok(resolverVocabulary.AQB.COMB.includes("SUM"));
-  assert.ok(resolverVocabulary.AQB.COMB.includes("MIN"));
-  assert.ok(resolverVocabulary.AQB.COMB.includes("MAX"));
+  assert.ok(resolverVocabulary.AQB.COMB.values.includes("SUM"));
+  assert.ok(resolverVocabulary.AQB.COMB.values.includes("MIN"));
+  assert.ok(resolverVocabulary.AQB.COMB.values.includes("MAX"));
+  assert.ok(resolverVocabulary.AQB.EIGE.itemValues.get("RH").has("TEMP"));
 });
 
 test("collects resolver values from every alternative command form", () => {
@@ -113,9 +124,11 @@ test("collects resolver values from every alternative command form", () => {
           ITEM: {
             forms: [
               {
-                slots: [{ enumValues: ["FIRST"] }, { enumValues: [] }],
+                slots: [{ name: "PARAM", enumValues: ["FIRST"] }, { enumValues: [] }],
               },
-              { slots: [{ enumValues: ["SECOND", "FIRST"] }] },
+              {
+                slots: [{ name: "PARAM", enumValues: ["second", "FIRST", "not a word"] }],
+              },
             ],
           },
         },
@@ -124,7 +137,12 @@ test("collects resolver values from every alternative command form", () => {
   };
 
   assert.deepStrictEqual(buildResolverVocabulary(schemaProvider), {
-    TEST: { ITEM: ["FIRST", "SECOND"] },
+    TEST: {
+      ITEM: {
+        values: ["FIRST", "NOT A WORD", "SECOND"],
+        itemValues: new Map([["PARAM", new Set(["FIRST", "SECOND"])]]),
+      },
+    },
   });
 });
 

@@ -25,10 +25,11 @@ END
             item: (item_name)
             item: (item_name)
             item: (item_name))
-          record: (table_row
-            value: (bare_value)
-            value: (bare_value)
-            value: (bare_value)))
+          (table_body_group
+            record: (table_row
+              value: (bare_value)
+              value: (bare_value)
+              value: (bare_value))))
         (variable_statement
           keyword: (variable_keyword)
           variable: (hash_variable
@@ -40,10 +41,11 @@ END
             item: (item_name)
             item: (item_name)
             item: (item_name))
-          record: (table_row
-            value: (bare_value)
-            value: (bare_value)
-            value: (bare_value)))
+          (table_body_group
+            record: (table_row
+              value: (bare_value)
+              value: (bare_value)
+              value: (bare_value))))
         (variable_statement
           keyword: (variable_keyword)
           variable: (hash_variable

@@ -52,6 +52,8 @@ enum TokenType {
   TABLE_ROW_START,
   COMMAND_END,
   MOJIBAKE_BOM,
+  ITEM_NAME_BEFORE_ASSIGNMENT,
+  TABLE_INDENT,
   ERROR_SENTINEL,
 };
 
@@ -73,6 +75,8 @@ typedef struct {
   // The non-consuming table boundary already verified this statement's hash
   // argument, so its keyword wins over a schema command such as spaced DEL.
   bool table_variable_pending;
+  // Retain physical line-start context across the table indentation token.
+  uint32_t table_indent_column;
   uint32_t template_define_depth;
   // A failed dollar candidate has already looked ahead to this line's end.
   // Keep that dependency on its first token, without rescanning the suffix
@@ -94,6 +98,10 @@ static bool is_schema_character(int32_t character) {
   return (character >= 'a' && character <= 'z') ||
          (character >= 'A' && character <= 'Z') ||
          (character >= '0' && character <= '9') || character == '_';
+}
+
+static bool is_horizontal_space(int32_t character) {
+  return character == ' ' || character == '\t' || character == '\f' || character == 0xfeff;
 }
 
 static bool is_bare_value_suffix(int32_t character) {
@@ -1189,6 +1197,60 @@ static bool scan_table_start(const Scanner *scanner, TSLexer *lexer) {
   return true;
 }
 
+static bool scan_item_name(
+  const Scanner *scanner,
+  TSLexer *lexer,
+  const bool *valid_symbols,
+  uint32_t item
+) {
+  if (valid_symbols[ITEM_NAME_BEFORE_ASSIGNMENT]) {
+    uint32_t left = 0;
+    uint32_t right = SOFISTIK_ASSIGNED_ITEM_COLLISION_COUNT;
+    while (left < right) {
+      uint32_t middle = left + (right - left) / 2;
+      if (SOFISTIK_ASSIGNED_ITEM_COLLISIONS[middle].item < item) {
+        left = middle + 1;
+      } else {
+        right = middle;
+      }
+    }
+    if (left < SOFISTIK_ASSIGNED_ITEM_COLLISION_COUNT &&
+        SOFISTIK_ASSIGNED_ITEM_COLLISIONS[left].item == item) {
+      while (lexer->lookahead == ' ' || lexer->lookahead == '\t' || lexer->lookahead == '\f') {
+        lexer->advance(lexer, false);
+      }
+      if (lexer->lookahead == '=') {
+        // Keep the item's existing end mark. The parser can consume '=' and
+        // the value normally after an item whose next word is an enum/item collision.
+        lexer->advance(lexer, false);
+        while (lexer->lookahead == ' ' || lexer->lookahead == '\t' || lexer->lookahead == '\f') {
+          lexer->advance(lexer, false);
+        }
+        char value[128] = {0};
+        bool contextual = false;
+        bool followed_by_hash = false;
+        if (read_word(lexer, value, sizeof(value), &contextual, &followed_by_hash, false) &&
+            contextual && is_root_directive_separator(lexer->lookahead)) {
+          for (uint32_t index = left; index < SOFISTIK_ASSIGNED_ITEM_COLLISION_COUNT; index++) {
+            const SofistikAssignedItemCollision *collision = &SOFISTIK_ASSIGNED_ITEM_COLLISIONS[index];
+            if (collision->item != item) break;
+            if (strcmp(collision->value, value) == 0) {
+              lexer->result_symbol = ITEM_NAME_BEFORE_ASSIGNMENT;
+              return true;
+            }
+          }
+        }
+        lexer->result_symbol = ITEM_NAME;
+        return true;
+      }
+    }
+  }
+
+  lexer->result_symbol = valid_symbols[TABLE_START] && scan_table_start(scanner, lexer)
+    ? TABLE_START : ITEM_NAME;
+  return true;
+}
+
 static bool scan_structured_command_end(TSLexer *lexer) {
   int32_t marker = lexer->lookahead;
   lexer->advance(lexer, false);
@@ -1241,7 +1303,7 @@ static bool scan_word(
         sizeof(word),
         &contextual,
         &followed_by_hash,
-        !can_terminate_input && !can_end_command
+        !can_terminate_input && !can_end_command && !valid_symbols[TABLE_ROW_START]
       )) {
     return false;
   }
@@ -1266,7 +1328,7 @@ static bool scan_word(
     ) {
       lexer->advance(lexer, false);
     }
-    if (scan_hash_variable_candidate(lexer)) {
+    if (can_end_command && scan_hash_variable_candidate(lexer)) {
       reset_command(scanner);
       scanner->table_variable_pending = true;
       lexer->result_symbol = COMMAND_END;
@@ -1274,7 +1336,7 @@ static bool scan_word(
     }
     // A schema command such as DEL QUAD still closes the table. Without a
     // hash argument, other variable-looking names remain ordinary cells.
-    lexer->result_symbol = find_command(scanner->module, word) != SOFISTIK_UNKNOWN_ID
+    lexer->result_symbol = can_end_command && find_command(scanner->module, word) != SOFISTIK_UNKNOWN_ID
       ? COMMAND_END : TABLE_ROW_START;
     return true;
   }
@@ -1331,14 +1393,12 @@ static bool scan_word(
     return false;
   }
   if (!contextual) {
-    if (
-      valid_symbols[ITEM_NAME] &&
-      find_item(scanner->command, word) != SOFISTIK_UNKNOWN_ID
-    ) {
+    uint32_t item = valid_symbols[ITEM_NAME]
+      ? find_item(scanner->command, word)
+      : SOFISTIK_UNKNOWN_ID;
+    if (item != SOFISTIK_UNKNOWN_ID) {
       lexer->mark_end(lexer);
-      lexer->result_symbol = valid_symbols[TABLE_START] && scan_table_start(scanner, lexer)
-        ? TABLE_START : ITEM_NAME;
-      return true;
+      return scan_item_name(scanner, lexer, valid_symbols, item);
     }
     if (valid_symbols[BARE_WORD]) {
       if (
@@ -1466,8 +1526,7 @@ static bool scan_word(
   if (valid_symbols[TABLE_START] && item != SOFISTIK_UNKNOWN_ID) {
     // The first item's end stays marked while looking ahead over the header.
     // Choose the table only when the entire record consists of schema items.
-    lexer->result_symbol = scan_table_start(scanner, lexer) ? TABLE_START : ITEM_NAME;
-    return true;
+    return scan_item_name(scanner, lexer, valid_symbols, item);
   }
 
   if (
@@ -1505,8 +1564,7 @@ static bool scan_word(
   }
 
   if (item != SOFISTIK_UNKNOWN_ID) {
-    lexer->result_symbol = ITEM_NAME;
-    return true;
+    return scan_item_name(scanner, lexer, valid_symbols, item);
   }
 
   if (valid_symbols[VARIABLE_KEYWORD] && is_variable_keyword(word)) {
@@ -2131,6 +2189,8 @@ bool tree_sitter_sofistik_external_scanner_scan(
   const bool *valid_symbols
 ) {
   Scanner *scanner = payload;
+  uint32_t table_indent_column = scanner->table_indent_column;
+  scanner->table_indent_column = 0;
 
   // Tree-sitter marks every external token valid during error recovery. The
   // sentinel is never part of a successful production; checking the complete
@@ -2196,6 +2256,19 @@ bool tree_sitter_sofistik_external_scanner_scan(
       '"',
       DOUBLE_STRING_CONTENT
     );
+  }
+
+  // Let each physical table row own its indentation so changed-range
+  // comparison does not see it move between groups after an insertion.
+  if (valid_symbols[TABLE_INDENT] && is_horizontal_space(lexer->lookahead) &&
+      lexer->get_column(lexer) == 0) {
+    do {
+      lexer->advance(lexer, false);
+    } while (is_horizontal_space(lexer->lookahead));
+    scanner->table_indent_column = lexer->get_column(lexer);
+    lexer->mark_end(lexer);
+    lexer->result_symbol = TABLE_INDENT;
+    return true;
   }
 
   // SYS passes its entire physical command line to the shell: no CADINP
@@ -2267,8 +2340,10 @@ bool tree_sitter_sofistik_external_scanner_scan(
     return scan_generator_separator(lexer);
   }
 
+  uint32_t skipped_columns = table_indent_column && lexer->get_column(lexer) == table_indent_column
+    ? table_indent_column : 0;
   bool needs_line_start = valid_symbols[BARE_WORD] && valid_symbols[IGNORED_TEXT];
-  bool at_line_start = needs_line_start && lexer->get_column(lexer) == 0;
+  bool at_line_start = needs_line_start && lexer->get_column(lexer) == skipped_columns;
 
   if (
     valid_symbols[UNTERMINATED_INPUT_BLOCK] || valid_symbols[COMMAND_END] ||
@@ -2277,11 +2352,7 @@ bool tree_sitter_sofistik_external_scanner_scan(
     lexer->mark_end(lexer);
   }
 
-  uint32_t skipped_columns = 0;
-  while (
-    lexer->lookahead == ' ' || lexer->lookahead == '\t' ||
-    lexer->lookahead == '\f' || lexer->lookahead == 0xfeff
-  ) {
+  while (is_horizontal_space(lexer->lookahead)) {
     lexer->advance(lexer, true);
     skipped_columns++;
   }
@@ -2470,6 +2541,10 @@ unsigned tree_sitter_sofistik_external_scanner_serialize(
   write_u32(buffer + 11, scanner->template_define_depth);
   buffer[15] = scanner->text_dollar_close_missing ? 1 : 0;
   buffer[16] = scanner->table_variable_pending ? 1 : 0;
+  if (scanner->table_indent_column) {
+    write_u32(buffer + 17, scanner->table_indent_column);
+    return 21;
+  }
   return 17;
 }
 
@@ -2480,6 +2555,7 @@ void tree_sitter_sofistik_external_scanner_deserialize(
 ) {
   Scanner *scanner = payload;
   reset_context(scanner);
+  scanner->table_indent_column = 0;
   scanner->text_state = OUTSIDE_TEXT;
 #ifdef SOFISTIK_INITIAL_MODULE
   if (length == 0) {
@@ -2497,6 +2573,7 @@ void tree_sitter_sofistik_external_scanner_deserialize(
   scanner->template_define_depth = length >= 15 ? read_u32(buffer + 11) : 0;
   scanner->text_dollar_close_missing = length >= 16 && buffer[15] != 0;
   scanner->table_variable_pending = length >= 17 && buffer[16] != 0;
+  scanner->table_indent_column = length >= 21 ? read_u32(buffer + 17) : 0;
   if (scanner->module >= SOFISTIK_MODULE_COUNT) {
     scanner->module = SOFISTIK_UNKNOWN_ID;
   }

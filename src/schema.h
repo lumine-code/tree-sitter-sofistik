@@ -22,6 +22,11 @@ typedef struct {
   uint32_t value_count;
 } SofistikCommandSchema;
 
+typedef struct {
+  uint32_t item;
+  const char *value;
+} SofistikAssignedItemCollision;
+
 static const SofistikModuleSchema SOFISTIK_MODULES[] = {
   {"AQB", 35, 28},
   {"AQUA", 63, 91},
@@ -19476,6 +19481,27 @@ static const char *const SOFISTIK_COMMAND_VALUES[] = {
   "NODE",
 };
 
+static const SofistikAssignedItemCollision SOFISTIK_ASSIGNED_ITEM_COLLISIONS[] = {
+  {536, "TEMP"},
+  {1619, "A"},
+  {2375, "A"},
+  {2809, "NO"},
+  {4443, "TEMP"},
+  {4538, "TEMP"},
+  {6464, "NO"},
+  {10205, "SAR"},
+  {10205, "SLN"},
+  {10206, "SAR"},
+  {10206, "SLN"},
+  {10450, "S"},
+  {10450, "Y"},
+  {10450, "Z"},
+  {10466, "Y"},
+  {10466, "Z"},
+  {12459, "NO"},
+  {13103, "NO"},
+};
+
 static const char *const SOFISTIK_GLOBAL_COMMANDS[] = {
   "ACCE",
   "ACHS",
@@ -20258,6 +20284,7 @@ static const char *const SOFISTIK_GLOBAL_COMMANDS[] = {
 #define SOFISTIK_COMMAND_COUNT 1456u
 #define SOFISTIK_ITEM_COUNT 14556u
 #define SOFISTIK_COMMAND_VALUE_COUNT 3387u
+#define SOFISTIK_ASSIGNED_ITEM_COLLISION_COUNT 18u
 #define SOFISTIK_GLOBAL_COMMAND_COUNT 773u
 
 #endif

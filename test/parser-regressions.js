@@ -44,6 +44,66 @@ function isLog(message, event) {
 }
 
 function registerParserRegressions(test, createParser) {
+  test("keeps explicit values which share an item name in the preceding item sequence", () => {
+    const parser = createParser();
+    try {
+      for (const [body, items, values] of [
+        ["EIGE TEMP 20 RH = TeMp", ["TEMP", "RH"], ["TeMp"]],
+        ["EIGE RH=TEMP TEMP\n- 20", ["RH", "TEMP"], ["TEMP", "-"]],
+        ["EIGE REL=TEMP 20", ["REL", "TEMP"], []],
+        ["EIGE RH=TEMP=20", ["RH", "TEMP"], []],
+        ["EIGE RH == TEMP 20", ["RH", "TEMP"], []],
+        ["EIGE RH='TEMP' TEMP 20", ["RH", "TEMP"], []],
+      ]) {
+        const tree = parser.parse(`+PROG AQB\n${body}\nEND\n`);
+        try {
+          assert.equal(tree.rootNode.hasError, false, body);
+          assert.deepEqual(texts(tree, "item_name"), items, body);
+          assert.deepEqual(texts(tree, "bare_value"), values, body);
+        } finally {
+          release(tree);
+        }
+      }
+    } finally {
+      release(parser);
+    }
+  });
+
+  test("updates explicit assignments after edits on either side of the equals sign", () => {
+    const parser = createParser();
+    const sources = [
+      "EIGE TEMP 20 RH = TEMP",
+      "EIGE TEMP 20 RH = TROP",
+      "EIGE TEMP 20 REL = TEMP",
+      "EIGE TEMP 20 RH = TEMP",
+      "EIGE TEMP 20 RH TEMP",
+      "EIGE TEMP 20 RH=TEMP",
+    ].map((body) => `+PROG AQB\n${body}\nEND\n`);
+    let source = sources[0];
+    let tree = parser.parse(source);
+    try {
+      for (const nextSource of sources.slice(1)) {
+        editTree(tree, source, nextSource);
+        const incremental = parser.parse(nextSource, tree);
+        const fresh = parser.parse(nextSource);
+        try {
+          assert.equal(incremental.rootNode.hasError, false, nextSource);
+          assert.deepEqual(snapshot(incremental.rootNode), snapshot(fresh.rootNode), nextSource);
+        } catch (error) {
+          release(incremental);
+          throw error;
+        } finally {
+          release(fresh);
+        }
+        release(tree);
+        tree = incremental;
+        source = nextSource;
+      }
+    } finally {
+      release(tree, parser);
+    }
+  });
+
   test("recognizes legacy BLOCK directives with the existing preprocessor tree shape", () => {
     const parser = createParser();
     try {
@@ -107,7 +167,8 @@ function registerParserRegressions(test, createParser) {
       assert.deepEqual(texts(tree, "table_row"), ["1 0 0 0\n", "2 1 2 3\n"]);
       assert.deepEqual(texts(tree, "implicit_record"), ["4 1 2 3\n"]);
       const commands = tree.rootNode.descendantsOfType("command");
-      assert.equal(commands[0].childrenForFieldName("auxiliary")[0].text, "$BLOCK SET2\n");
+      const tableGroup = commands[0].descendantsOfType("table_body_group")[0];
+      assert.equal(tableGroup.childForFieldName("auxiliary").text, "$BLOCK SET2\n");
       assert.equal(commands[1].childrenForFieldName("auxiliary")[0].text, "$BLOCK SET3\n");
       assert.equal(texts(tree, "preprocessor_directive").length, 5);
       assert.deepEqual(texts(tree, "comment"), []);
@@ -1347,9 +1408,11 @@ function registerParserRegressions(test, createParser) {
         try {
           assert.equal(tree.rootNode.hasError, false, suffix);
           const command = tree.rootNode.descendantsOfType("command")[0];
+          assert.equal(command.childForFieldName("record").type, "table_definition", suffix);
+          const group = command.descendantsOfType("table_body_group")[0];
           assert.deepEqual(
-            command.childrenForFieldName("record").map((node) => node.type),
-            ["table_definition", "table_row", "table_row"],
+            group.childrenForFieldName("record").map((node) => node.type),
+            ["table_row", "table_row"],
             suffix,
           );
           assert.deepEqual(texts(tree, "item_name"), ["NO", "X", "Y", "Z"], suffix);
@@ -1385,6 +1448,165 @@ function registerParserRegressions(test, createParser) {
       release(parser);
     }
   });
+
+  test("preserves cells and statement boundaries after indented table rows", () => {
+    const parser = createParser();
+    const source = [
+      "+PROG SOFILOAD",
+      "ACT TYPE PART SUP",
+      "\t 'lp_u' q_1 COND ; 'lp_v' q_2 PERM",
+      " \t$BLOCK SET2",
+      " \t! comment",
+      " \t#include file.dat",
+      " \tlp_x q_1 COND",
+      " \tSTO#next 2",
+      "  LC 1",
+      " END",
+      "",
+    ].join("\n");
+    let tree, switchedProgram;
+    try {
+      tree = parser.parse(source);
+      assert.equal(tree.rootNode.hasError, false);
+      const group = tree.rootNode.descendantsOfType("table_body_group")[0];
+      const rows = group.childrenForFieldName("record");
+      assert.deepEqual(
+        rows.map((row) => row.childrenForFieldName("value").map((value) => value.text)),
+        [
+          ["'lp_u'", "q_1", "COND"],
+          ["'lp_v'", "q_2", "PERM"],
+          ["lp_x", "q_1", "COND"],
+        ],
+      );
+      assert.deepEqual(
+        rows.map((row) => row.startPosition.column),
+        [0, 20, 0],
+      );
+      assert.deepEqual(
+        rows.map((row) => row.childForFieldName("value").startPosition.column),
+        [2, 20, 2],
+      );
+      assert.deepEqual(
+        group.childrenForFieldName("auxiliary").map((node) => node.text),
+        ["$BLOCK SET2\n", "#include file.dat\n"],
+      );
+      assert.deepEqual(texts(tree, "comment"), ["! comment"]);
+      assert.deepEqual(texts(tree, "variable_statement"), ["STO#next 2\n"]);
+      assert.deepEqual(texts(tree, "command_name"), ["ACT", "LC"]);
+      assert.deepEqual(texts(tree, "control_keyword"), ["END"]);
+
+      switchedProgram = parser.parse(
+        "+PROG SOFIMSHA\nNODE NO X Y Z\n  1 0 0 0\n  +PROG AQUA\nEND\n",
+      );
+      assert.equal(switchedProgram.rootNode.hasError, false);
+      assert.deepEqual(texts(switchedProgram, "module_name"), ["SOFIMSHA", "AQUA"]);
+      assert.equal(texts(switchedProgram, "table_row").length, 1);
+      assert.equal(texts(switchedProgram, "unterminated_input_block").length, 1);
+    } finally {
+      release(tree, switchedProgram, parser);
+    }
+  });
+
+  for (const fixture of [
+    {
+      name: "SOFIMSHA table",
+      module: "SOFIMSHA",
+      header: "NODE NO X Y Z",
+      nextCommand: "NODE 900 X 1",
+      row: (index) => ` ${index + 1} 0 0 0\n`,
+      changedRow: (index) => ` ${index + 1} A 0 0\n`,
+    },
+    {
+      name: "MAXIMA table",
+      module: "MAXIMA",
+      header: "SUPP ETYP TYPE LC",
+      nextCommand: "SUPP ETYP NODE TYPE N LC 501",
+      row: (index) => `\t'BEAM' MY ${index + 501}\n`,
+      changedRow: (index) => `\tBEAM MY ${index + 501}\n`,
+    },
+  ]) {
+    test(`keeps ${fixture.name} row fields and local changed ranges across group boundary edits`, () => {
+      const parser = createParser();
+      const tableRows = Array.from({ length: 256 }, (_, index) => fixture.row(index));
+      const prefix = `+PROG ${fixture.module}\n${fixture.header}\n`;
+      const source = prefix + tableRows.join("") + `${fixture.nextCommand}\nEND\n`;
+      const snapshotWithoutGroups = (node) => {
+        const children = node.children.flatMap(snapshotWithoutGroups);
+        return node.type === "table_body_group"
+          ? children
+          : [[node.type, node.startIndex, node.endIndex, children]];
+      };
+      let baseline;
+      try {
+        baseline = parser.parse(source);
+        assert.equal(baseline.rootNode.hasError, false);
+        const commands = baseline.rootNode
+          .descendantsOfType("command_name")
+          .map((node) => node.text);
+        const command = baseline.rootNode.descendantsOfType("command")[0];
+        assert.equal(command.childForFieldName("record").type, "table_definition");
+        const groups = command.descendantsOfType("table_body_group");
+        const groupedRows = groups.map((group) => group.childrenForFieldName("record"));
+        assert.deepEqual(
+          groupedRows.map((rows) => rows.length),
+          [64, 64, 64, 64],
+        );
+        for (const row of groupedRows.flat()) {
+          assert.equal(row.type, "table_row");
+          assert.equal(row.startPosition.column, 0);
+          assert.equal(row.childForFieldName("value").startPosition.column, 1);
+        }
+        assert.equal(commands.length, 2);
+        for (const row of [63, 64, 65, 127, 128, 129]) {
+          const start = prefix.length + tableRows.slice(0, row).join("").length;
+          const end = start + tableRows[row].length;
+          for (const [startIndex, oldEndIndex, inserted, expectedRowCount] of [
+            [start, end, fixture.changedRow(row), tableRows.length],
+            [start, start + 1, "  ", tableRows.length],
+            [start, start, fixture.row(999), tableRows.length + 1],
+            [start, end, "", tableRows.length - 1],
+            [start, start, "\n", tableRows.length],
+            [start + 1, start + 1, "\n", tableRows.length],
+            [end - 1, end - 1, "\n", tableRows.length],
+          ]) {
+            const updated = source.slice(0, startIndex) + inserted + source.slice(oldEndIndex);
+            const newEndIndex = startIndex + inserted.length;
+            const old = parser.parse(source);
+            let incremental, fresh;
+            try {
+              const startPosition = pointAt(source, startIndex);
+              old.edit({
+                startIndex,
+                oldEndIndex,
+                newEndIndex,
+                startPosition,
+                oldEndPosition: pointAt(source, oldEndIndex),
+                newEndPosition: pointAt(updated, newEndIndex),
+              });
+              incremental = parser.parse(updated, old);
+              fresh = parser.parse(updated);
+              assert.equal(incremental.rootNode.hasError, false);
+              assert.equal(fresh.rootNode.hasError, false);
+              assert.deepEqual(
+                snapshotWithoutGroups(incremental.rootNode),
+                snapshotWithoutGroups(fresh.rootNode),
+              );
+              assert.equal(texts(incremental, "table_row").length, expectedRowCount);
+              assert.deepEqual(texts(incremental, "command_name"), commands);
+              for (const range of old.getChangedRanges(incremental)) {
+                assert.ok(range.startPosition.row >= startPosition.row - 1);
+                assert.ok(range.endPosition.row <= startPosition.row + 64);
+              }
+            } finally {
+              release(old, incremental, fresh);
+            }
+          }
+        }
+      } finally {
+        release(baseline, parser);
+      }
+    });
+  }
 
   const shapes = {
     program: ["", ""],
@@ -1431,7 +1653,7 @@ function registerParserRegressions(test, createParser) {
             count + 1,
           );
         }
-        if (table || implicit) {
+        if (implicit) {
           assert.equal(
             incremental.rootNode.descendantsOfType("command")[0].childrenForFieldName("record")
               .length,

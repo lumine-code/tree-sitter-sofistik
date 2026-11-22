@@ -1589,7 +1589,11 @@ test("keeps command and table rows in module scope across blank lines", () => {
     assert.strictEqual(tree.rootNode.descendantsOfType("program").length, 1);
     assert.strictEqual(tree.rootNode.descendantsOfType("cdb_statement").length, 0);
     const command = tree.rootNode.descendantsOfType("command")[0];
-    assert.strictEqual(command.childrenForFieldName("record").length, recordCount);
+    const directRecords = command.childrenForFieldName("record");
+    const groupedRows = command
+      .descendantsOfType("table_body_group")
+      .flatMap((group) => group.childrenForFieldName("record"));
+    assert.strictEqual(directRecords.length + groupedRows.length, recordCount);
     assert.strictEqual(command.parent.type, "program");
   }
 });
