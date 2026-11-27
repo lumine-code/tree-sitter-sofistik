@@ -42,7 +42,7 @@
     "@eslint/js": "^10.0.1",
     "@lumine-code/sofistik-schema": "github:lumine-code/sofistik-schema#f9bc40c3c905861cd361f96eee2f50fefc079d93",
     "eslint": "^10.15.0",
-    "eslint-config-prettier": "^10.1.8",
+    "eslint-config-prettier": "^10.1.9",
     "globals": "^17.14.0",
     "prettier": "^3.10.1",
     "tree-sitter": "^0.25.1",
